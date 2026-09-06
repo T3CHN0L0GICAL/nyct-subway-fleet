@@ -56,7 +56,23 @@
         font-weight: bold;
         margin-bottom: 8px;
     }
+   
+.title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
 
+.title-row img {
+    width: 55px;
+    height: 55px;
+    object-fit: contain;
+}
+
+.title-row h1 {
+    margin: 0;
+}
     .input-row {
         display: flex;
         gap: 10px;
@@ -165,7 +181,11 @@
 <body>
 
 <header>
-    <h1>NYCT Subway Fleet Identifier</h1>
+    <div class="title-row">
+        <img src="mta-logo.png" alt="MTA Logo">
+        <h1>NYC Subway Fleet Identifier</h1>
+    </div>
+
     <p>Enter a subway car number to identify its fleet.</p>
 </header>
 
