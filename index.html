@@ -10,12 +10,12 @@
         box-sizing: border-box;
     }
 
-    body {
-        margin: 0;
-        font-family: Arial, Helvetica, sans-serif;
-        background: #f2f2f2;
-        color: #111;
-    }
+   body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #000;
+    color: #fff;
+}
 
     header {
         background: #111;
@@ -42,12 +42,14 @@
 
     .search-box,
     .result {
-        background: white;
-        border-radius: 14px;
-        padding: 22px;
-        box-shadow: 0 3px 14px rgba(0,0,0,0.12);
-        margin-bottom: 20px;
-    }
+    background: #000;
+    color: #fff;
+    border: 1px solid #333;
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 3px 14px rgba(255,255,255,0.08);
+    margin-bottom: 20px;
+}
 
     label {
         display: block;
@@ -61,23 +63,25 @@
     }
 
     input {
-        flex: 1;
-        padding: 14px;
-        font-size: 18px;
-        border: 2px solid #ccc;
-        border-radius: 9px;
-    }
+    flex: 1;
+    padding: 14px;
+    font-size: 18px;
+    border: 2px solid #555;
+    border-radius: 9px;
+    background: #fff;
+    color: #000;
+}
 
     button {
-        padding: 14px 22px;
-        font-size: 17px;
-        font-weight: bold;
-        border: none;
-        border-radius: 9px;
-        background: #111;
-        color: white;
-        cursor: pointer;
-    }
+    padding: 14px 22px;
+    font-size: 17px;
+    font-weight: bold;
+    border: 1px solid #555;
+    border-radius: 9px;
+    background: #000;
+    color: #fff;
+    cursor: pointer;
+}
 
     button:hover {
         background: #333;
@@ -88,39 +92,43 @@
     }
 
     .fleet-title {
-        font-size: 30px;
-        font-weight: bold;
-        margin-bottom: 5px;
-    }
+    color: #fff;
+    font-size: 30px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
 
     .car-number {
-        color: #666;
-        margin-bottom: 20px;
-    }
+    color: #ccc;
+    margin-bottom: 20px;
+}
 
     .configuration {
-        display: inline-block;
-        background: #e8e8e8;
-        padding: 7px 11px;
-        border-radius: 7px;
-        font-weight: bold;
-        margin-bottom: 18px;
-    }
+    display: inline-block;
+    background: #222;
+    color: #fff;
+    padding: 7px 11px;
+    border-radius: 7px;
+    font-weight: bold;
+    margin-bottom: 18px;
+}
 
     .info {
-        display: grid;
-        grid-template-columns: 180px 1fr;
-        border-top: 1px solid #ddd;
-    }
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    border-top: 1px solid #333;
+    color: #fff;
+}
 
-    .info div {
-        padding: 12px 5px;
-        border-bottom: 1px solid #ddd;
-    }
+.info div {
+    padding: 12px 5px;
+    border-bottom: 1px solid #333;
+}
 
-    .info .label {
-        font-weight: bold;
-    }
+.info .label {
+    font-weight: bold;
+    color: #fff;
+}
 
     .error {
         background: #fff0f0;
