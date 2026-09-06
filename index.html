@@ -10,12 +10,12 @@
         box-sizing: border-box;
     }
 
-   body {
-    margin: 0;
-    font-family: Arial, Helvetica, sans-serif;
-    background: #990F02;
-    color: #111;
-}
+    body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #f2f2f2;
+        color: #111;
+    }
 
     header {
         background: #111;
@@ -39,16 +39,15 @@
         margin: 35px auto;
         padding: 0 16px;
     }
-   
-.search-box,
-.result {
-    background: #0047AB;
-    color: black;
-    border-radius: 14px;
-    padding: 22px;
-    box-shadow: 0 3px 14px rgba(0,0,0,0.12);
-    margin-bottom: 20px;
-}
+
+    .search-box,
+    .result {
+        background: white;
+        border-radius: 14px;
+        padding: 22px;
+        box-shadow: 0 3px 14px rgba(0,0,0,0.12);
+        margin-bottom: 20px;
+    }
 
     label {
         display: block;
@@ -61,15 +60,13 @@
         gap: 10px;
     }
 
-  input {
-    flex: 1;
-    padding: 14px;
-    font-size: 18px;
-    border: 2px solid #ccc;
-    border-radius: 9px;
-    background: white;
-    color: black;
-}
+    input {
+        flex: 1;
+        padding: 14px;
+        font-size: 18px;
+        border: 2px solid #ccc;
+        border-radius: 9px;
+    }
 
     button {
         padding: 14px 22px;
@@ -89,31 +86,41 @@
     .hidden {
         display: none;
     }
-.fleet-title {
-    color: black;
-    font-size: 30px;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
 
-.car-number {
-    color: black;
-    margin-bottom: 20px;
-}
+    .fleet-title {
+        font-size: 30px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
 
-.info {
-    color: black;
-}
-   
-.info div {
+    .car-number {
+        color: #666;
+        margin-bottom: 20px;
+    }
+
+    .configuration {
+        display: inline-block;
+        background: #e8e8e8;
+        padding: 7px 11px;
+        border-radius: 7px;
+        font-weight: bold;
+        margin-bottom: 18px;
+    }
+
+    .info {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        border-top: 1px solid #ddd;
+    }
+
+    .info div {
         padding: 12px 5px;
         border-bottom: 1px solid #ddd;
     }
 
-.info .label {
-    color: black;
-    font-weight: bold;
-}
+    .info .label {
+        font-weight: bold;
+    }
 
     .error {
         background: #fff0f0;
@@ -136,7 +143,6 @@
         }
 
         .info {
-            color: black;
             grid-template-columns: 1fr;
         }
 
