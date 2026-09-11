@@ -1,0 +1,29 @@
+NYCT Subway Fleet Identifier — PWA files
+
+Upload these files to the ROOT of the same GitHub Pages repository:
+
+- index.html
+- manifest.json
+- service-worker.js
+- icon-192.png
+- icon-512.png
+
+Keep your existing files in the repo too:
+- apple-touch-icon.png
+- favicon.png
+- mta-logo.png
+
+Then commit the changes and wait for GitHub Pages to redeploy.
+
+Android/Chrome:
+Open the site in Chrome and use "Install app" / "Add to Home screen" when offered.
+
+iPhone:
+Open the site in Safari, tap Share, then "Add to Home Screen".
+iOS uses apple-touch-icon.png for the Home Screen icon.
+
+If you later change the app and an old version stays cached, change:
+nyct-fleet-identifier-v1
+to:
+nyct-fleet-identifier-v2
+inside service-worker.js.
