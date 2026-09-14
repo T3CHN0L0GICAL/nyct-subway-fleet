@@ -475,6 +475,19 @@
         margin-top: 6px;
     }
 
+
+    .sightings-filters {
+        display: grid;
+        grid-template-columns: 1fr 160px 160px;
+        gap: 10px;
+        margin: 14px 0 6px;
+    }
+    .sightings-filters input, .sightings-filters select {
+        width: 100%; padding: 11px; font-size: 15px; border: 1px solid var(--fi-border);
+        border-radius: 9px; background: #fff; color: #000;
+    }
+    @media (max-width: 600px) { .sightings-filters { grid-template-columns: 1fr; } }
+
 </style>
 </head>
 
@@ -586,6 +599,16 @@
 
     <section id="mySightingsPanel" class="account-panel hidden">
         <h2>My Sightings</h2>
+        <div class="sightings-filters">
+            <input id="sightingsSearch" type="search" placeholder="Search car number or fleet" autocomplete="off" oninput="applySightingsFilters()">
+            <select id="sightingsLineFilter" onchange="applySightingsFilters()"><option value="">All lines</option></select>
+            <select id="sightingsSort" onchange="applySightingsFilters()">
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="car-asc">Car number ↑</option>
+                <option value="car-desc">Car number ↓</option>
+            </select>
+        </div>
         <div id="mySightingsStatus" class="status-message">Loading sightings...</div>
         <div id="mySightingsList"></div>
     </section>
@@ -1463,17 +1486,17 @@ function escapeHTML(value) {
         .replaceAll("'", "&#039;");
 }
 
+let mySightingsData = [];
+
 async function loadMySightings() {
     const status = document.getElementById("mySightingsStatus");
     const list = document.getElementById("mySightingsList");
-
     status.textContent = "Loading sightings...";
     list.innerHTML = "";
 
-    const { data: { session }, error: sessionError } =
-        await supabaseClient.auth.getSession();
-
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
     if (sessionError || !session?.user) {
+        mySightingsData = [];
         status.textContent = "Sign in to view your saved sightings.";
         return;
     }
@@ -1490,48 +1513,79 @@ async function loadMySightings() {
         return;
     }
 
-    if (!data || data.length === 0) {
+    mySightingsData = data || [];
+    populateSightingsLineFilter();
+    applySightingsFilters();
+}
+
+function populateSightingsLineFilter() {
+    const select = document.getElementById("sightingsLineFilter");
+    if (!select) return;
+    const current = select.value;
+    const lines = [...new Set(mySightingsData.map(s => s.line).filter(Boolean))]
+        .sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric:true}));
+    select.innerHTML = `<option value="">All lines</option>` + lines.map(line =>
+        `<option value="${escapeHTML(line)}">${escapeHTML(line)}</option>`
+    ).join("");
+    if (lines.includes(current)) select.value = current;
+}
+
+function applySightingsFilters() {
+    const search = (document.getElementById("sightingsSearch")?.value || "").trim().toLowerCase();
+    const line = document.getElementById("sightingsLineFilter")?.value || "";
+    const sort = document.getElementById("sightingsSort")?.value || "newest";
+
+    let filtered = mySightingsData.filter(s => {
+        const matchesSearch = !search || String(s.car_number).toLowerCase().includes(search) || String(s.fleet).toLowerCase().includes(search);
+        const matchesLine = !line || s.line === line;
+        return matchesSearch && matchesLine;
+    });
+
+    filtered = [...filtered].sort((a,b) => {
+        if (sort === "oldest") return new Date(a.saved_at || 0) - new Date(b.saved_at || 0);
+        if (sort === "car-asc") return Number(a.car_number) - Number(b.car_number);
+        if (sort === "car-desc") return Number(b.car_number) - Number(a.car_number);
+        return new Date(b.saved_at || 0) - new Date(a.saved_at || 0);
+    });
+
+    renderMySightings(filtered);
+}
+
+function renderMySightings(data) {
+    const status = document.getElementById("mySightingsStatus");
+    const list = document.getElementById("mySightingsList");
+    if (!status || !list) return;
+
+    if (mySightingsData.length === 0) {
         status.textContent = "You haven't saved any sightings yet.";
+        list.innerHTML = "";
+        return;
+    }
+    if (data.length === 0) {
+        status.textContent = "No sightings match your search or filters.";
+        list.innerHTML = "";
         return;
     }
 
-    status.textContent = `${data.length} saved sighting${data.length === 1 ? "" : "s"}`;
+    status.textContent = data.length === mySightingsData.length
+        ? `${data.length} saved sighting${data.length === 1 ? "" : "s"}`
+        : `${data.length} of ${mySightingsData.length} sightings shown`;
 
     list.innerHTML = data.map(sighting => {
-        const date = sighting.saved_at
-            ? new Date(sighting.saved_at).toLocaleString()
-            : "";
-
+        const date = sighting.saved_at ? new Date(sighting.saved_at).toLocaleString() : "";
         return `
             <div id="sighting-${Number(sighting.id)}" style="padding:14px 0;border-bottom:1px solid var(--fi-border);">
-                <div style="font-size:20px;font-weight:bold;">
-                    ${escapeHTML(sighting.fleet)} — Car ${escapeHTML(sighting.car_number)}
-                </div>
-                <div style="margin-top:5px;">
-                    Line: <strong id="sighting-line-${Number(sighting.id)}">${escapeHTML(sighting.line)}</strong>
-                </div>
-                <div class="account-small-note" style="margin-top:5px;">
-                    ${escapeHTML(date)}
-                </div>
-
+                <div style="font-size:20px;font-weight:bold;">${escapeHTML(sighting.fleet)} — Car ${escapeHTML(sighting.car_number)}</div>
+                <div style="margin-top:5px;">Line: <strong id="sighting-line-${Number(sighting.id)}">${escapeHTML(sighting.line)}</strong></div>
+                <div class="account-small-note" style="margin-top:5px;">${escapeHTML(date)}</div>
                 <div class="sighting-actions">
-                    <button type="button"
-                            onclick='openEditSighting(${Number(sighting.id)}, ${JSON.stringify(sighting.fleet)}, ${JSON.stringify(sighting.line)})'>
-                        Edit
-                    </button>
-
-                    <button type="button"
-                            onclick="deleteSighting(${Number(sighting.id)})">
-                        Delete
-                    </button>
+                    <button type="button" onclick='openEditSighting(${Number(sighting.id)}, ${JSON.stringify(sighting.fleet)}, ${JSON.stringify(sighting.line)})'>Edit</button>
+                    <button type="button" onclick="deleteSighting(${Number(sighting.id)})">Delete</button>
                 </div>
-
                 <div id="edit-sighting-${Number(sighting.id)}" class="sighting-edit-box hidden"></div>
-            </div>
-        `;
+            </div>`;
     }).join("");
 }
-
 
 function getDivisionForFleet(fleet) {
     return fleetData[fleet]?.division || "";
