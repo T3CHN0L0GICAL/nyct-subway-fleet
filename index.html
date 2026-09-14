@@ -475,6 +475,25 @@
         margin-top: 6px;
     }
 
+    .sighting-notes, .sighting-edit-box textarea {
+        width: 100%;
+        min-height: 80px;
+        resize: vertical;
+        padding: 10px;
+        font: inherit;
+        border: 1px solid var(--fi-border);
+        border-radius: 9px;
+        background: #fff;
+        color: #000;
+        margin-top: 6px;
+    }
+
+    .sighting-note-display {
+        margin-top: 7px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
 
     .sightings-filters {
         display: grid;
@@ -658,7 +677,7 @@
         </div>
 
         <div class="sightings-filters">
-            <input id="sightingsSearch" type="search" placeholder="Search car number or fleet" autocomplete="off" oninput="applySightingsFilters()">
+            <input id="sightingsSearch" type="search" placeholder="Search car, fleet, or notes" autocomplete="off" oninput="applySightingsFilters()">
             <select id="sightingsLineFilter" onchange="applySightingsFilters()"><option value="">All lines</option></select>
             <select id="sightingsSort" onchange="applySightingsFilters()">
                 <option value="newest">Newest first</option>
@@ -1222,13 +1241,16 @@ async function saveSighting() {
         status.textContent = "Saving sighting...";
     }
 
+    const notes = document.getElementById("sightingNotes")?.value.trim() || "";
+
     const { error } = await supabaseClient
         .from("sightings")
         .insert({
             user_id: session.user.id,
             car_number: pendingSighting.carNumber,
             fleet: pendingSighting.fleet,
-            line: pendingSighting.line
+            line: pendingSighting.line,
+            notes: notes || null
         });
 
     if (error) {
@@ -1479,7 +1501,11 @@ function identify() {
             <h3>Log this sighting</h3>
             <div>Which line did you see car <strong>${input}</strong> on?</div>
             <div class="line-grid">${lineButtonsHTML(data.division)}</div>
-            <button type="button" onclick="saveSighting()">Save Sighting</button>
+
+            <label for="sightingNotes" style="margin-top:12px;">Notes (optional)</label>
+            <textarea id="sightingNotes" class="sighting-notes" maxlength="1000" placeholder="Add notes about this sighting."></textarea>
+
+            <button type="button" onclick="saveSighting()" style="margin-top:10px;">Save Sighting</button>
             <div id="sightingStatus" class="status-message"></div>
         </div>
 
@@ -1566,7 +1592,7 @@ async function loadMySightings() {
 
     const { data, error } = await supabaseClient
         .from("sightings")
-        .select("id, car_number, fleet, line, saved_at")
+        .select("id, car_number, fleet, line, notes, saved_at")
         .eq("user_id", session.user.id)
         .order("saved_at", { ascending: false });
 
@@ -1656,7 +1682,10 @@ function applySightingsFilters() {
     const sort = document.getElementById("sightingsSort")?.value || "newest";
 
     let filtered = mySightingsData.filter(s => {
-        const matchesSearch = !search || String(s.car_number).toLowerCase().includes(search) || String(s.fleet).toLowerCase().includes(search);
+        const matchesSearch = !search ||
+            String(s.car_number || "").toLowerCase().includes(search) ||
+            String(s.fleet || "").toLowerCase().includes(search) ||
+            String(s.notes || "").toLowerCase().includes(search);
         const matchesLine = !line || s.line === line;
         return matchesSearch && matchesLine;
     });
@@ -1697,9 +1726,10 @@ function renderMySightings(data) {
             <div id="sighting-${Number(sighting.id)}" style="padding:14px 0;border-bottom:1px solid var(--fi-border);">
                 <div style="font-size:20px;font-weight:bold;">${escapeHTML(sighting.fleet)} — Car ${escapeHTML(sighting.car_number)}</div>
                 <div style="margin-top:5px;">Line: <strong id="sighting-line-${Number(sighting.id)}">${escapeHTML(sighting.line)}</strong></div>
+                ${sighting.notes ? `<div class="sighting-note-display"><strong>Notes:</strong> ${escapeHTML(sighting.notes)}</div>` : ""}
                 <div class="account-small-note" style="margin-top:5px;">${escapeHTML(date)}</div>
                 <div class="sighting-actions">
-                    <button type="button" onclick='openEditSighting(${Number(sighting.id)}, ${JSON.stringify(sighting.fleet)}, ${JSON.stringify(sighting.line)})'>Edit</button>
+                    <button type="button" onclick='openEditSighting(${Number(sighting.id)}, ${JSON.stringify(sighting.fleet)}, ${JSON.stringify(sighting.line)}, ${JSON.stringify(sighting.notes || "")})'>Edit</button>
                     <button type="button" onclick="deleteSighting(${Number(sighting.id)})">Delete</button>
                 </div>
                 <div id="edit-sighting-${Number(sighting.id)}" class="sighting-edit-box hidden"></div>
@@ -1727,7 +1757,7 @@ function editLineOptionsHTML(fleet, currentLine) {
     `).join("");
 }
 
-function openEditSighting(id, fleet, currentLine) {
+function openEditSighting(id, fleet, currentLine, currentNotes = "") {
     const box = document.getElementById(`edit-sighting-${id}`);
     if (!box) return;
 
@@ -1737,6 +1767,9 @@ function openEditSighting(id, fleet, currentLine) {
         <select id="edit-line-${id}">
             ${editLineOptionsHTML(fleet, currentLine)}
         </select>
+
+        <label for="edit-notes-${id}" style="margin-top:12px;">Notes (optional)</label>
+        <textarea id="edit-notes-${id}" maxlength="1000" placeholder="Add notes about this sighting.">${escapeHTML(currentNotes)}</textarea>
 
         <div class="sighting-actions">
             <button type="button" onclick="saveSightingEdit(${id})">Save Changes</button>
@@ -1756,11 +1789,13 @@ function cancelSightingEdit(id) {
 
 async function saveSightingEdit(id) {
     const select = document.getElementById(`edit-line-${id}`);
+    const notesInput = document.getElementById(`edit-notes-${id}`);
     const status = document.getElementById(`edit-status-${id}`);
 
     if (!select) return;
 
     const newLine = select.value;
+    const newNotes = notesInput?.value.trim() || "";
 
     if (status) {
         status.textContent = "Saving changes...";
@@ -1768,7 +1803,7 @@ async function saveSightingEdit(id) {
 
     const { error } = await supabaseClient
         .from("sightings")
-        .update({ line: newLine })
+        .update({ line: newLine, notes: newNotes || null })
         .eq("id", Number(id));
 
     if (error) {
