@@ -1518,12 +1518,10 @@ async function getUserDisplay(user) {
 async function renderAuthState(session) {
     const signedOutView = document.getElementById("signedOutView");
     const signedInView = document.getElementById("signedInView");
-    const summary = document.getElementById("accountSummary");
 
     if (!session?.user) {
         signedOutView.classList.remove("hidden");
         signedInView.classList.add("hidden");
-        summary.textContent = "Not signed in";
         return;
     }
 
@@ -1541,26 +1539,6 @@ async function renderAuthState(session) {
 
     document.getElementById("signedInEmail").textContent =
         user.email || "";
-
-    summary.textContent = profile.username
-        ? "Signed in as @" + profile.username
-        : "Signed in";
-}
-
-    const user = session.user;
-    const profile = getUserDisplay(user);
-
-    signedOutView.classList.add("hidden");
-    signedInView.classList.remove("hidden");
-
-    document.getElementById("signedInName").textContent = profile.displayName;
-    document.getElementById("signedInUsername").textContent =
-        profile.username ? "@" + profile.username : "";
-    document.getElementById("signedInEmail").textContent = user.email || "";
-
-    summary.textContent = profile.username
-        ? "Signed in as @" + profile.username
-        : "Signed in";
 }
 
 async function initializeAuth() {
@@ -1571,11 +1549,11 @@ async function initializeAuth() {
         return;
     }
 
-   await renderAuthState(data.session);
+    await renderAuthState(data.session);
 
-   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-    await renderAuthState(session);
-});
+    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+        await renderAuthState(session);
+    });
 }
 
 initializeAuth();
