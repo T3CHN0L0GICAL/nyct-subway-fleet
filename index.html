@@ -1478,15 +1478,44 @@ async function logOut() {
     }
 }
 
-function getUserDisplay(user) {
-    const meta = user?.user_metadata || {};
+async function getUserDisplay(user) {
+    if (!user) {
+        return {
+            username: "",
+            displayName: "Fleet Identifier User"
+        };
+    }
+
+    const { data, error } = await supabaseClient
+        .from("profiles")
+        .select("username, display_name")
+        .eq("id", user.id)
+        .single();
+
+    if (error) {
+        console.error("Could not load profile:", error);
+
+        const meta = user.user_metadata || {};
+
+        return {
+            username: meta.username || "",
+            displayName:
+                meta.display_name ||
+                meta.username ||
+                "Fleet Identifier User"
+        };
+    }
+
     return {
-        username: meta.username || "",
-        displayName: meta.display_name || meta.username || "Fleet Identifier User"
+        username: data?.username || "",
+        displayName:
+            data?.display_name ||
+            data?.username ||
+            "Fleet Identifier User"
     };
 }
 
-function renderAuthState(session) {
+async function renderAuthState(session) {
     const signedOutView = document.getElementById("signedOutView");
     const signedInView = document.getElementById("signedInView");
     const summary = document.getElementById("accountSummary");
@@ -1497,6 +1526,26 @@ function renderAuthState(session) {
         summary.textContent = "Not signed in";
         return;
     }
+
+    const user = session.user;
+    const profile = await getUserDisplay(user);
+
+    signedOutView.classList.add("hidden");
+    signedInView.classList.remove("hidden");
+
+    document.getElementById("signedInName").textContent =
+        profile.displayName;
+
+    document.getElementById("signedInUsername").textContent =
+        profile.username ? "@" + profile.username : "";
+
+    document.getElementById("signedInEmail").textContent =
+        user.email || "";
+
+    summary.textContent = profile.username
+        ? "Signed in as @" + profile.username
+        : "Signed in";
+}
 
     const user = session.user;
     const profile = getUserDisplay(user);
@@ -1522,11 +1571,11 @@ async function initializeAuth() {
         return;
     }
 
-    renderAuthState(data.session);
+   await renderAuthState(data.session);
 
-    supabaseClient.auth.onAuthStateChange((_event, session) => {
-        renderAuthState(session);
-    });
+   supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    await renderAuthState(session);
+});
 }
 
 initializeAuth();
