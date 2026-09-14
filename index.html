@@ -437,6 +437,18 @@
         line-height: 1.4;
     }
 
+
+    body.focus-mode header,
+    body.focus-mode .search-box,
+    body.focus-mode #result,
+    body.focus-mode footer {
+        display: none !important;
+    }
+
+    body.focus-mode main {
+        margin-top: 20px;
+    }
+
 </style>
 </head>
 
@@ -454,10 +466,25 @@
 <main>
 
 
-    <div class="account-bar">
-        <div id="accountSummary" class="account-status">Not signed in</div>
-        <button id="accountButton" type="button" onclick="toggleAccountPanel()">Account</button>
+
+
+
+    <div id="settingsControls" class="settings-row">
+        <button type="button" onclick="toggleSettings()" aria-controls="settingsPanel">Settings</button>
     </div>
+
+    <section id="settingsPanel" class="settings-panel hidden">
+        <h2>Settings</h2>
+        <label for="themeSelect">Appearance</label>
+        <select id="themeSelect" onchange="setTheme(this.value)">
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+            <option value="system">System</option>
+        </select>
+
+        <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--fi-border);">
+            <button type="button" onclick="toggleAccountPanel()">Account</button>
+        </div>
 
     <section id="accountPanel" class="account-panel hidden">
         <div id="signedOutView">
@@ -527,20 +554,6 @@
             </div>
         </div>
     </section>
-
-
-    <div class="settings-row">
-        <button type="button" onclick="toggleSettings()" aria-controls="settingsPanel">Settings</button>
-    </div>
-
-    <section id="settingsPanel" class="settings-panel hidden">
-        <h2>Settings</h2>
-        <label for="themeSelect">Appearance</label>
-        <select id="themeSelect" onchange="setTheme(this.value)">
-            <option value="dark">Dark</option>
-            <option value="light">Light</option>
-            <option value="system">System</option>
-        </select>
     </section>
 
     <section class="search-box">
@@ -584,7 +597,16 @@ function setTheme(theme) {
 }
 
 function toggleSettings() {
-    document.getElementById("settingsPanel").classList.toggle("hidden");
+    const settingsPanel = document.getElementById("settingsPanel");
+    const opening = settingsPanel.classList.contains("hidden");
+
+    settingsPanel.classList.toggle("hidden", !opening);
+
+    if (!opening) {
+        document.getElementById("accountPanel").classList.add("hidden");
+    }
+
+    updateFocusMode();
 }
 
 window.addEventListener("DOMContentLoaded", function() {
@@ -1349,6 +1371,11 @@ if ("serviceWorker" in navigator) {
 const SUPABASE_URL = "https://jkgjektucefrtxkcngcw.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Prb-Tm0UxZxc_lPG6iWbJQ_maolEsol";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+function updateFocusMode() {
+    const settingsOpen = !document.getElementById("settingsPanel").classList.contains("hidden");
+    document.body.classList.toggle("focus-mode", settingsOpen);
+}
 
 function toggleAccountPanel() {
     document.getElementById("accountPanel").classList.toggle("hidden");
