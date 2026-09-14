@@ -484,6 +484,9 @@
 
         <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--fi-border);">
             <button type="button" onclick="toggleAccountPanel()">Account</button>
+            <div style="margin-top:12px;">
+                <button type="button" onclick="toggleSightingsPanel()">My Sightings</button>
+            </div>
         </div>
 
     <section id="accountPanel" class="account-panel hidden">
@@ -553,6 +556,12 @@
                 <button type="button" onclick="logOut()">Log Out</button>
             </div>
         </div>
+    </section>
+
+    <section id="mySightingsPanel" class="account-panel hidden">
+        <h2>My Sightings</h2>
+        <div id="mySightingsStatus" class="status-message">Loading sightings...</div>
+        <div id="mySightingsList"></div>
     </section>
     </section>
 
@@ -1407,6 +1416,105 @@ function updateFocusMode() {
 
 function toggleAccountPanel() {
     document.getElementById("accountPanel").classList.toggle("hidden");
+}
+
+async function toggleSightingsPanel() {
+    const panel = document.getElementById("mySightingsPanel");
+    const opening = panel.classList.contains("hidden");
+    panel.classList.toggle("hidden", !opening);
+
+    if (opening) {
+        await loadMySightings();
+    }
+}
+
+function escapeHTML(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+async function loadMySightings() {
+    const status = document.getElementById("mySightingsStatus");
+    const list = document.getElementById("mySightingsList");
+
+    status.textContent = "Loading sightings...";
+    list.innerHTML = "";
+
+    const { data: { session }, error: sessionError } =
+        await supabaseClient.auth.getSession();
+
+    if (sessionError || !session?.user) {
+        status.textContent = "Sign in to view your saved sightings.";
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from("sightings")
+        .select("id, car_number, fleet, line, saved_at")
+        .eq("user_id", session.user.id)
+        .order("saved_at", { ascending: false });
+
+    if (error) {
+        console.error("Could not load sightings:", error);
+        status.textContent = "Could not load your sightings. Please try again.";
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        status.textContent = "You haven't saved any sightings yet.";
+        return;
+    }
+
+    status.textContent = `${data.length} saved sighting${data.length === 1 ? "" : "s"}`;
+
+    list.innerHTML = data.map(sighting => {
+        const date = sighting.saved_at
+            ? new Date(sighting.saved_at).toLocaleString()
+            : "";
+
+        return `
+            <div style="padding:14px 0;border-bottom:1px solid var(--fi-border);">
+                <div style="font-size:20px;font-weight:bold;">
+                    ${escapeHTML(sighting.fleet)} — Car ${escapeHTML(sighting.car_number)}
+                </div>
+                <div style="margin-top:5px;">
+                    Line: <strong>${escapeHTML(sighting.line)}</strong>
+                </div>
+                <div class="account-small-note" style="margin-top:5px;">
+                    ${escapeHTML(date)}
+                </div>
+                <button type="button"
+                        style="margin-top:10px;"
+                        onclick="deleteSighting(${Number(sighting.id)})">
+                    Delete
+                </button>
+            </div>
+        `;
+    }).join("");
+}
+
+async function deleteSighting(id) {
+    if (!Number.isFinite(Number(id))) return;
+
+    const status = document.getElementById("mySightingsStatus");
+    status.textContent = "Deleting sighting...";
+
+    const { error } = await supabaseClient
+        .from("sightings")
+        .delete()
+        .eq("id", Number(id));
+
+    if (error) {
+        console.error("Could not delete sighting:", error);
+        status.textContent = "Could not delete sighting. Please try again.";
+        return;
+    }
+
+    await loadMySightings();
 }
 
 function showAccountTab(tab) {
