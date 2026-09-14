@@ -1074,26 +1074,54 @@ function chooseLine(line) {
     });
 }
 
-function saveSighting() {
+async function saveSighting() {
     if (!pendingSighting) return;
 
     const status = document.getElementById("sightingStatus");
+
     if (!pendingSighting.line) {
-        if (status) status.textContent = "Choose the line you saw this car on first.";
+        if (status) {
+            status.textContent = "Choose the line you saw this car on first.";
+        }
         return;
     }
 
-    const sightings = getSavedSightings();
-    sightings.unshift({
-        carNumber: pendingSighting.carNumber,
-        fleet: pendingSighting.fleet,
-        line: pendingSighting.line,
-        savedAt: new Date().toISOString()
-    });
-    localStorage.setItem("fleetIdentifierSightings", JSON.stringify(sightings));
+    const {
+        data: { session }
+    } = await supabaseClient.auth.getSession();
+
+    if (!session?.user) {
+        if (status) {
+            status.textContent = "You need to be signed in to save sightings to the cloud.";
+        }
+        return;
+    }
 
     if (status) {
-        status.textContent = `Saved: car ${pendingSighting.carNumber} on the ${pendingSighting.line} line.`;
+        status.textContent = "Saving sighting...";
+    }
+
+    const { error } = await supabaseClient
+        .from("sightings")
+        .insert({
+            user_id: session.user.id,
+            car_number: pendingSighting.carNumber,
+            fleet: pendingSighting.fleet,
+            line: pendingSighting.line
+        });
+
+    if (error) {
+        console.error("Could not save sighting:", error);
+
+        if (status) {
+            status.textContent = "Could not save sighting. Please try again.";
+        }
+        return;
+    }
+
+    if (status) {
+        status.textContent =
+            `Saved: car ${pendingSighting.carNumber} on the ${pendingSighting.line} line.`;
     }
 }
 
