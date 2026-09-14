@@ -449,6 +449,32 @@
         margin-top: 20px;
     }
 
+
+    .sighting-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+
+    .sighting-edit-box {
+        margin-top: 12px;
+        padding: 12px;
+        border: 1px solid var(--fi-border);
+        border-radius: 9px;
+    }
+
+    .sighting-edit-box select {
+        width: 100%;
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid var(--fi-border);
+        border-radius: 9px;
+        background: #fff;
+        color: #000;
+        margin-top: 6px;
+    }
+
 </style>
 </head>
 
@@ -1477,24 +1503,116 @@ async function loadMySightings() {
             : "";
 
         return `
-            <div style="padding:14px 0;border-bottom:1px solid var(--fi-border);">
+            <div id="sighting-${Number(sighting.id)}" style="padding:14px 0;border-bottom:1px solid var(--fi-border);">
                 <div style="font-size:20px;font-weight:bold;">
                     ${escapeHTML(sighting.fleet)} — Car ${escapeHTML(sighting.car_number)}
                 </div>
                 <div style="margin-top:5px;">
-                    Line: <strong>${escapeHTML(sighting.line)}</strong>
+                    Line: <strong id="sighting-line-${Number(sighting.id)}">${escapeHTML(sighting.line)}</strong>
                 </div>
                 <div class="account-small-note" style="margin-top:5px;">
                     ${escapeHTML(date)}
                 </div>
-                <button type="button"
-                        style="margin-top:10px;"
-                        onclick="deleteSighting(${Number(sighting.id)})">
-                    Delete
-                </button>
+
+                <div class="sighting-actions">
+                    <button type="button"
+                            onclick='openEditSighting(${Number(sighting.id)}, ${JSON.stringify(sighting.fleet)}, ${JSON.stringify(sighting.line)})'>
+                        Edit
+                    </button>
+
+                    <button type="button"
+                            onclick="deleteSighting(${Number(sighting.id)})">
+                        Delete
+                    </button>
+                </div>
+
+                <div id="edit-sighting-${Number(sighting.id)}" class="sighting-edit-box hidden"></div>
             </div>
         `;
     }).join("");
+}
+
+
+function getDivisionForFleet(fleet) {
+    return fleetData[fleet]?.division || "";
+}
+
+function editLineOptionsHTML(fleet, currentLine) {
+    const division = getDivisionForFleet(fleet);
+    const lines = linesForDivision(division);
+
+    return lines.map(line => `
+        <option value="${escapeHTML(line)}" ${line === currentLine ? "selected" : ""}>
+            ${escapeHTML(
+                line === "42 St S" ? "S — 42nd Street" :
+                line === "Franklin S" ? "Sᶠ — Franklin Avenue" :
+                line === "Rockaway S" ? "Sᴿ — Rockaway Park" :
+                line
+            )}
+        </option>
+    `).join("");
+}
+
+function openEditSighting(id, fleet, currentLine) {
+    const box = document.getElementById(`edit-sighting-${id}`);
+    if (!box) return;
+
+    box.classList.remove("hidden");
+    box.innerHTML = `
+        <label for="edit-line-${id}">Line</label>
+        <select id="edit-line-${id}">
+            ${editLineOptionsHTML(fleet, currentLine)}
+        </select>
+
+        <div class="sighting-actions">
+            <button type="button" onclick="saveSightingEdit(${id})">Save Changes</button>
+            <button type="button" onclick="cancelSightingEdit(${id})">Cancel</button>
+        </div>
+
+        <div id="edit-status-${id}" class="status-message"></div>
+    `;
+}
+
+function cancelSightingEdit(id) {
+    const box = document.getElementById(`edit-sighting-${id}`);
+    if (!box) return;
+    box.classList.add("hidden");
+    box.innerHTML = "";
+}
+
+async function saveSightingEdit(id) {
+    const select = document.getElementById(`edit-line-${id}`);
+    const status = document.getElementById(`edit-status-${id}`);
+
+    if (!select) return;
+
+    const newLine = select.value;
+
+    if (status) {
+        status.textContent = "Saving changes...";
+    }
+
+    const { error } = await supabaseClient
+        .from("sightings")
+        .update({ line: newLine })
+        .eq("id", Number(id));
+
+    if (error) {
+        console.error("Could not update sighting:", error);
+
+        if (status) {
+            status.textContent = "Could not update sighting. Please try again.";
+        }
+        return;
+    }
+
+    const lineDisplay = document.getElementById(`sighting-line-${id}`);
+    if (lineDisplay) {
+        lineDisplay.textContent = newLine;
+    }
+
+    cancelSightingEdit(id);
+    await loadMySightings();
 }
 
 async function deleteSighting(id) {
