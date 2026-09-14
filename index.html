@@ -351,6 +351,92 @@
         font-weight: 800;
     }
 
+
+    .account-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+    }
+
+    .account-status {
+        color: var(--fi-muted);
+        font-size: 14px;
+    }
+
+    .account-panel {
+        background: var(--fi-bg);
+        color: var(--fi-text);
+        border: 1px solid var(--fi-border);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .account-panel h2 {
+        margin: 0 0 14px;
+        font-size: 22px;
+    }
+
+    .account-tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .account-tabs button.active {
+        outline: 2px solid var(--fi-text);
+        background: var(--fi-hover);
+    }
+
+    .account-form {
+        display: grid;
+        gap: 12px;
+    }
+
+    .account-form.hidden {
+        display: none;
+    }
+
+    .account-form input {
+        width: 100%;
+    }
+
+    .account-message {
+        margin-top: 12px;
+        font-weight: bold;
+        color: var(--fi-muted);
+        white-space: pre-wrap;
+    }
+
+    .account-message.error-text {
+        color: #ff4d4d;
+    }
+
+    .signed-in-card {
+        display: grid;
+        gap: 10px;
+    }
+
+    .signed-in-name {
+        font-size: 22px;
+        font-weight: bold;
+    }
+
+    .signed-in-email {
+        color: var(--fi-muted);
+        word-break: break-word;
+    }
+
+    .account-small-note {
+        color: var(--fi-muted);
+        font-size: 13px;
+        line-height: 1.4;
+    }
+
 </style>
 </head>
 
@@ -366,6 +452,82 @@
 </header>
 
 <main>
+
+
+    <div class="account-bar">
+        <div id="accountSummary" class="account-status">Not signed in</div>
+        <button id="accountButton" type="button" onclick="toggleAccountPanel()">Account</button>
+    </div>
+
+    <section id="accountPanel" class="account-panel hidden">
+        <div id="signedOutView">
+            <h2>Fleet Identifier Account</h2>
+
+            <div class="account-tabs">
+                <button id="loginTabButton" type="button" class="active" onclick="showAccountTab('login')">Log In</button>
+                <button id="signupTabButton" type="button" onclick="showAccountTab('signup')">Create Account</button>
+            </div>
+
+            <form id="loginForm" class="account-form" onsubmit="logIn(event)">
+                <div>
+                    <label for="loginEmail">Email</label>
+                    <input id="loginEmail" type="email" autocomplete="email" required>
+                </div>
+
+                <div>
+                    <label for="loginPassword">Password</label>
+                    <input id="loginPassword" type="password" autocomplete="current-password" required>
+                </div>
+
+                <button type="submit">Log In</button>
+            </form>
+
+            <form id="signupForm" class="account-form hidden" onsubmit="createAccount(event)">
+                <div>
+                    <label for="signupUsername">Username</label>
+                    <input id="signupUsername" type="text" autocomplete="username" minlength="3" maxlength="30" required>
+                </div>
+
+                <div>
+                    <label for="signupDisplayName">Display name</label>
+                    <input id="signupDisplayName" type="text" maxlength="50" required>
+                </div>
+
+                <div>
+                    <label for="signupEmail">Email</label>
+                    <input id="signupEmail" type="email" autocomplete="email" required>
+                </div>
+
+                <div>
+                    <label for="signupPassword">Password</label>
+                    <input id="signupPassword" type="password" autocomplete="new-password" minlength="8" required>
+                </div>
+
+                <div>
+                    <label for="signupPasswordConfirm">Confirm password</label>
+                    <input id="signupPasswordConfirm" type="password" autocomplete="new-password" minlength="8" required>
+                </div>
+
+                <div class="account-small-note">
+                    You will be asked to confirm your email before the account can be used.
+                </div>
+
+                <button type="submit">Create Account</button>
+            </form>
+
+            <div id="accountMessage" class="account-message"></div>
+        </div>
+
+        <div id="signedInView" class="hidden">
+            <div class="signed-in-card">
+                <div id="signedInName" class="signed-in-name">Signed in</div>
+                <div id="signedInUsername"></div>
+                <div id="signedInEmail" class="signed-in-email"></div>
+                <button type="button" onclick="logOut()">Log Out</button>
+            </div>
+        </div>
+    </section>
+
 
     <div class="settings-row">
         <button type="button" onclick="toggleSettings()" aria-controls="settingsPanel">Settings</button>
@@ -1187,6 +1349,161 @@ if ("serviceWorker" in navigator) {
 const SUPABASE_URL = "https://jkgjektucefrtxkcngcw.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Prb-Tm0UxZxc_lPG6iWbJQ_maolEsol";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+function toggleAccountPanel() {
+    document.getElementById("accountPanel").classList.toggle("hidden");
+}
+
+function showAccountTab(tab) {
+    const loginForm = document.getElementById("loginForm");
+    const signupForm = document.getElementById("signupForm");
+    const loginButton = document.getElementById("loginTabButton");
+    const signupButton = document.getElementById("signupTabButton");
+    const message = document.getElementById("accountMessage");
+
+    if (message) {
+        message.textContent = "";
+        message.classList.remove("error-text");
+    }
+
+    const loginActive = tab === "login";
+    loginForm.classList.toggle("hidden", !loginActive);
+    signupForm.classList.toggle("hidden", loginActive);
+    loginButton.classList.toggle("active", loginActive);
+    signupButton.classList.toggle("active", !loginActive);
+}
+
+function setAccountMessage(message, isError = false) {
+    const el = document.getElementById("accountMessage");
+    if (!el) return;
+    el.textContent = message;
+    el.classList.toggle("error-text", isError);
+}
+
+async function createAccount(event) {
+    event.preventDefault();
+
+    const username = document.getElementById("signupUsername").value.trim();
+    const displayName = document.getElementById("signupDisplayName").value.trim();
+    const email = document.getElementById("signupEmail").value.trim();
+    const password = document.getElementById("signupPassword").value;
+    const confirmPassword = document.getElementById("signupPasswordConfirm").value;
+
+    if (password !== confirmPassword) {
+        setAccountMessage("Passwords do not match.", true);
+        return;
+    }
+
+    setAccountMessage("Creating account...");
+
+    const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+            emailRedirectTo: window.location.origin + window.location.pathname,
+            data: {
+                username,
+                display_name: displayName
+            }
+        }
+    });
+
+    if (error) {
+        setAccountMessage(error.message, true);
+        return;
+    }
+
+    document.getElementById("signupForm").reset();
+
+    if (data.session) {
+        setAccountMessage("Account created and signed in.");
+    } else {
+        setAccountMessage("Account created. Check your email and confirm your address, then return here and log in.");
+    }
+}
+
+async function logIn(event) {
+    event.preventDefault();
+
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+
+    setAccountMessage("Logging in...");
+
+    const { error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+    });
+
+    if (error) {
+        setAccountMessage(error.message, true);
+        return;
+    }
+
+    document.getElementById("loginForm").reset();
+    setAccountMessage("");
+}
+
+async function logOut() {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) {
+        alert("Could not log out: " + error.message);
+    }
+}
+
+function getUserDisplay(user) {
+    const meta = user?.user_metadata || {};
+    return {
+        username: meta.username || "",
+        displayName: meta.display_name || meta.username || "Fleet Identifier User"
+    };
+}
+
+function renderAuthState(session) {
+    const signedOutView = document.getElementById("signedOutView");
+    const signedInView = document.getElementById("signedInView");
+    const summary = document.getElementById("accountSummary");
+
+    if (!session?.user) {
+        signedOutView.classList.remove("hidden");
+        signedInView.classList.add("hidden");
+        summary.textContent = "Not signed in";
+        return;
+    }
+
+    const user = session.user;
+    const profile = getUserDisplay(user);
+
+    signedOutView.classList.add("hidden");
+    signedInView.classList.remove("hidden");
+
+    document.getElementById("signedInName").textContent = profile.displayName;
+    document.getElementById("signedInUsername").textContent =
+        profile.username ? "@" + profile.username : "";
+    document.getElementById("signedInEmail").textContent = user.email || "";
+
+    summary.textContent = profile.username
+        ? "Signed in as @" + profile.username
+        : "Signed in";
+}
+
+async function initializeAuth() {
+    const { data, error } = await supabaseClient.auth.getSession();
+
+    if (error) {
+        console.error("Could not load Supabase session:", error);
+        return;
+    }
+
+    renderAuthState(data.session);
+
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+        renderAuthState(session);
+    });
+}
+
+initializeAuth();
+
 </script>
 
 </body>
