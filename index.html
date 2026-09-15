@@ -1339,6 +1339,26 @@ function updateReportLineOptions() {
     if (note) note.textContent = `Showing ${division} sighting options.`;
 }
 
+async function logEasterEggEvent(codeLabel) {
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+
+        const { error } = await supabaseClient
+            .from("easter_egg_events")
+            .insert({
+                code_label: codeLabel,
+                user_id: session?.user?.id || null,
+                platform: window.matchMedia("(display-mode: standalone)").matches ? "pwa" : "web"
+            });
+
+        if (error) {
+            console.error("Could not log Easter egg event:", error);
+        }
+    } catch (error) {
+        console.error("Could not log Easter egg event:", error);
+    }
+}
+
 function identify() {
 
     const input =
@@ -1350,9 +1370,17 @@ function identify() {
 
     // Secret access code
     if (
-    input === "16244142715659" ||
-    input === "239555766"
-) {
+        input === "16244142715659" ||
+        input === "239555766"
+    ) {
+        const codeLabel = input === "16244142715659"
+            ? "owner-code-1"
+            : "owner-code-2";
+
+        // Log the trigger without storing the actual secret code.
+        // Do not block the welcome message if logging fails.
+        logEasterEggEvent(codeLabel);
+
         resultBox.className = "result";
 
         resultBox.innerHTML = `
