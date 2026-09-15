@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Identifier — Admin</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      width: min(1100px, 92%);
+      margin: 0 auto;
+      padding: 40px 0;
+    }
+
+    header {
+      margin-bottom: 35px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      color: #999;
+      margin-top: 8px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 35px;
+    }
+
+    .card {
+      background: #181818;
+      border: 1px solid #2a2a2a;
+      border-radius: 14px;
+      padding: 22px;
+    }
+
+    .card-label {
+      color: #999;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .card-value {
+      font-size: 30px;
+      font-weight: bold;
+    }
+
+    .section {
+      background: #181818;
+      border: 1px solid #2a2a2a;
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+
+    .section h2 {
+      margin-top: 0;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 13px 10px;
+      border-bottom: 1px solid #292929;
+      white-space: nowrap;
+    }
+
+    th {
+      color: #999;
+      font-size: 13px;
+    }
+
+    .empty {
+      color: #777;
+      padding: 20px 0;
+    }
+
+    #status {
+      color: #888;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <header>
+      <h1>Fleet Identifier Admin</h1>
+      <div class="subtitle">Sightings overview</div>
+    </header>
+
+    <div id="status">Loading dashboard...</div>
+
+    <div class="stats">
+
+      <div class="card">
+        <div class="card-label">Total Sightings</div>
+        <div class="card-value" id="totalSightings">—</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Unique Fleets</div>
+        <div class="card-value" id="uniqueFleets">—</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Lines Reported</div>
+        <div class="card-value" id="uniqueLines">—</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Sightings Today</div>
+        <div class="card-value" id="todaySightings">—</div>
+      </div>
+
+    </div>
+
+    <div class="section">
+      <h2>Recent Sightings</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Car</th>
+              <th>Fleet</th>
+              <th>Line</th>
+              <th>Time</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+
+          <tbody id="sightingsTable">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /*
+      Supabase connection gets added next.
+
+      We're intentionally NOT putting any private/service-role
+      Supabase key in this page.
+    */
+
+    const sightings = [];
+
+    function loadDashboard() {
+      document.getElementById("totalSightings").textContent =
+        sightings.length;
+
+      document.getElementById("uniqueFleets").textContent =
+        new Set(sightings.map(s => s.fleet).filter(Boolean)).size;
+
+      document.getElementById("uniqueLines").textContent =
+        new Set(sightings.map(s => s.line).filter(Boolean)).size;
+
+      const today = new Date().toDateString();
+
+      document.getElementById("todaySightings").textContent =
+        sightings.filter(s =>
+          s.created_at &&
+          new Date(s.created_at).toDateString() === today
+        ).length;
+
+      const table = document.getElementById("sightingsTable");
+
+      table.innerHTML = "";
+
+      if (!sightings.length) {
+        table.innerHTML = `
+          <tr>
+            <td colspan="5" class="empty">
+              No sighting data loaded yet.
+            </td>
+          </tr>
+        `;
+
+        document.getElementById("status").textContent =
+          "Dashboard ready — waiting for Supabase connection.";
+
+        return;
+      }
+
+      sightings
+        .sort((a, b) =>
+          new Date(b.created_at) - new Date(a.created_at)
+        )
+        .slice(0, 20)
+        .forEach(sighting => {
+
+          const row = document.createElement("tr");
+
+          const values = [
+            sighting.car_number ?? "—",
+            sighting.fleet ?? "—",
+            sighting.line ?? "—",
+            sighting.created_at
+              ? new Date(sighting.created_at).toLocaleString()
+              : "—",
+            sighting.notes ?? "—"
+          ];
+
+          values.forEach(value => {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+            row.appendChild(cell);
+          });
+
+          table.appendChild(row);
+        });
+
+      document.getElementById("status").textContent =
+        "Dashboard updated.";
+    }
+
+    loadDashboard();
+  </script>
+
+</body>
+</html>
