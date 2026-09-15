@@ -1339,6 +1339,22 @@ function updateReportLineOptions() {
     if (note) note.textContent = `Showing ${division} sighting options.`;
 }
 
+function getFleetIdentifierPlatform() {
+    // Capacitor injects this object when the app is running natively.
+    const capacitorPlatform = window.Capacitor?.getPlatform?.();
+
+    if (capacitorPlatform === "android") return "android";
+    if (capacitorPlatform === "ios") return "ios";
+
+    // Installed PWAs use standalone display mode. navigator.standalone
+    // covers older/iOS standalone behavior as well.
+    const isStandalonePWA =
+        window.matchMedia?.("(display-mode: standalone)")?.matches ||
+        window.navigator.standalone === true;
+
+    return isStandalonePWA ? "pwa" : "web";
+}
+
 async function logEasterEggEvent(codeLabel) {
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
@@ -1348,7 +1364,7 @@ async function logEasterEggEvent(codeLabel) {
             .insert({
                 code_label: codeLabel,
                 user_id: session?.user?.id || null,
-                platform: window.matchMedia("(display-mode: standalone)").matches ? "pwa" : "web"
+                platform: getFleetIdentifierPlatform()
             });
 
         if (error) {
