@@ -244,8 +244,8 @@ async function startAdminDashboard() {
       error: sightingsError
     } = await supabaseClient
       .from("sightings")
-      .select("id, user_id, car_number, fleet, line, created_at, notes")
-      .order("created_at", { ascending: false });
+      .select("id, user_id, car_number, fleet, line, saved_at, notes")
+      .order("saved_at", { ascending: false });
 
     if (sightingsError) {
       console.error("Sightings error:", sightingsError);
@@ -285,8 +285,8 @@ function loadDashboard(profile) {
 
   document.getElementById("todaySightings").textContent =
     sightings.filter(s =>
-      s.created_at &&
-      new Date(s.created_at).toDateString() === today
+      s.saved_at &&
+      new Date(s.saved_at).toDateString() === today
     ).length;
 
   const table = document.getElementById("sightingsTable");
@@ -319,8 +319,8 @@ function loadDashboard(profile) {
         sighting.car_number ?? "—",
         sighting.fleet ?? "—",
         sighting.line ?? "—",
-        sighting.created_at
-          ? new Date(sighting.created_at).toLocaleString()
+        sighting.saved_at
+          ? new Date(sighting.saved_at).toLocaleString()
           : "—",
         sighting.notes ?? "—"
       ];
