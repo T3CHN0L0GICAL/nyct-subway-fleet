@@ -171,6 +171,42 @@
       font-size: 12px;
       margin-left: 8px;
     }
+
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .filters input,
+    .filters select {
+      background: #111;
+      color: white;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 9px 11px;
+      font: inherit;
+    }
+
+    .filters input {
+      flex: 1 1 220px;
+      min-width: 180px;
+    }
+
+    .filter-button {
+      border: 1px solid #444;
+      background: #222;
+      color: white;
+      border-radius: 8px;
+      padding: 9px 12px;
+      cursor: pointer;
+    }
+
+    .filter-button:hover {
+      background: #2b2b2b;
+    }
   </style>
 </head>
 
@@ -213,6 +249,13 @@
     <div class="section">
       <h2>Recent Sightings</h2>
 
+      <div class="filters">
+        <input id="sightingSearch" type="search" placeholder="Search car, fleet, line, or notes">
+        <select id="fleetFilter"><option value="">All fleets</option></select>
+        <select id="lineFilter"><option value="">All lines</option></select>
+        <button id="clearSightingFilters" class="filter-button" type="button">Clear Filters</button>
+      </div>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -235,6 +278,16 @@
     <!-- User Management -->
     <div class="section">
       <h2>User Management</h2>
+
+      <div class="filters">
+        <input id="userSearch" type="search" placeholder="Search username or display name">
+        <select id="adminFilter">
+          <option value="">All users</option>
+          <option value="admin">Admins</option>
+          <option value="non-admin">Non-admins</option>
+        </select>
+        <button id="clearUserFilters" class="filter-button" type="button">Clear Filters</button>
+      </div>
 
       <div class="table-wrap">
         <table>
@@ -365,6 +418,7 @@
         }
 
         sightings = sightingsData || [];
+        populateSightingFilters();
 
         const {
           data: profilesData,
@@ -437,20 +491,34 @@
 
       table.innerHTML = "";
 
-      if (!sightings.length) {
+      const search = (document.getElementById("sightingSearch")?.value || "").trim().toLowerCase();
+      const fleetFilter = document.getElementById("fleetFilter")?.value || "";
+      const lineFilter = document.getElementById("lineFilter")?.value || "";
+
+      const filteredSightings = sightings.filter(s => {
+        const haystack = [s.car_number, s.fleet, s.line, s.notes]
+          .map(v => v ?? "")
+          .join(" ")
+          .toLowerCase();
+        return (!search || haystack.includes(search)) &&
+          (!fleetFilter || s.fleet === fleetFilter) &&
+          (!lineFilter || s.line === lineFilter);
+      });
+
+      if (!filteredSightings.length) {
         const row = document.createElement("tr");
         const cell = document.createElement("td");
 
         cell.colSpan = 6;
         cell.className = "empty";
         cell.textContent =
-          "No sightings have been submitted yet.";
+          sightings.length ? "No sightings match your filters." : "No sightings have been submitted yet.";
 
         row.appendChild(cell);
         table.appendChild(row);
 
       } else {
-        sightings
+        filteredSightings
           .slice(0, 20)
           .forEach(sighting => {
             const row =
@@ -634,21 +702,35 @@
 
       table.innerHTML = "";
 
-      if (!profiles.length) {
+      const search = (document.getElementById("userSearch")?.value || "").trim().toLowerCase();
+      const adminFilter = document.getElementById("adminFilter")?.value || "";
+
+      const filteredProfiles = profiles.filter(profile => {
+        const haystack = [profile.username, profile.display_name]
+          .map(v => v ?? "")
+          .join(" ")
+          .toLowerCase();
+        const matchesAdmin = !adminFilter ||
+          (adminFilter === "admin" && profile.admin === true) ||
+          (adminFilter === "non-admin" && profile.admin !== true);
+        return (!search || haystack.includes(search)) && matchesAdmin;
+      });
+
+      if (!filteredProfiles.length) {
         const row = document.createElement("tr");
         const cell = document.createElement("td");
 
         cell.colSpan = 5;
         cell.className = "empty";
         cell.textContent =
-          "No user profiles found.";
+          profiles.length ? "No users match your filters." : "No user profiles found.";
 
         row.appendChild(cell);
         table.appendChild(row);
         return;
       }
 
-      profiles.forEach(profile => {
+      filteredProfiles.forEach(profile => {
         const row = document.createElement("tr");
 
         const usernameCell = document.createElement("td");
@@ -707,6 +789,48 @@
       });
     }
 
+
+    function populateSightingFilters() {
+      const fleetSelect = document.getElementById("fleetFilter");
+      const lineSelect = document.getElementById("lineFilter");
+      if (!fleetSelect || !lineSelect) return;
+
+      const currentFleet = fleetSelect.value;
+      const currentLine = lineSelect.value;
+      const fleets = [...new Set(sightings.map(s => s.fleet).filter(Boolean))].sort();
+      const lines = [...new Set(sightings.map(s => s.line).filter(Boolean))].sort();
+
+      fleetSelect.innerHTML = '<option value="">All fleets</option>';
+      lineSelect.innerHTML = '<option value="">All lines</option>';
+      fleets.forEach(value => fleetSelect.add(new Option(value, value)));
+      lines.forEach(value => lineSelect.add(new Option(value, value)));
+      fleetSelect.value = fleets.includes(currentFleet) ? currentFleet : "";
+      lineSelect.value = lines.includes(currentLine) ? currentLine : "";
+    }
+
+    function setupFilters() {
+      ["sightingSearch", "fleetFilter", "lineFilter"].forEach(id => {
+        const el = document.getElementById(id);
+        el?.addEventListener(id === "sightingSearch" ? "input" : "change", () => loadDashboard(currentAdminProfile));
+      });
+      ["userSearch", "adminFilter"].forEach(id => {
+        const el = document.getElementById(id);
+        el?.addEventListener(id === "userSearch" ? "input" : "change", loadUsers);
+      });
+      document.getElementById("clearSightingFilters")?.addEventListener("click", () => {
+        document.getElementById("sightingSearch").value = "";
+        document.getElementById("fleetFilter").value = "";
+        document.getElementById("lineFilter").value = "";
+        loadDashboard(currentAdminProfile);
+      });
+      document.getElementById("clearUserFilters")?.addEventListener("click", () => {
+        document.getElementById("userSearch").value = "";
+        document.getElementById("adminFilter").value = "";
+        loadUsers();
+      });
+    }
+
+    setupFilters();
     startAdminDashboard();
   </script>
 
