@@ -207,6 +207,12 @@
     .filter-button:hover {
       background: #2b2b2b;
     }
+
+    .result-count {
+      color: #888;
+      font-size: 13px;
+      margin: -6px 0 14px;
+    }
   </style>
 </head>
 
@@ -256,6 +262,8 @@
         <button id="clearSightingFilters" class="filter-button" type="button">Clear Filters</button>
       </div>
 
+      <div id="sightingResultCount" class="result-count"></div>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -288,6 +296,8 @@
         </select>
         <button id="clearUserFilters" class="filter-button" type="button">Clear Filters</button>
       </div>
+
+      <div id="userResultCount" class="result-count"></div>
 
       <div class="table-wrap">
         <table>
@@ -505,6 +515,12 @@
           (!lineFilter || s.line === lineFilter);
       });
 
+      const sightingCount = document.getElementById("sightingResultCount");
+      if (sightingCount) {
+        sightingCount.textContent =
+          `Showing ${filteredSightings.length} of ${sightings.length} ${sightings.length === 1 ? "sighting" : "sightings"}`;
+      }
+
       if (!filteredSightings.length) {
         const row = document.createElement("tr");
         const cell = document.createElement("td");
@@ -715,6 +731,12 @@
           (adminFilter === "non-admin" && profile.admin !== true);
         return (!search || haystack.includes(search)) && matchesAdmin;
       });
+
+      const userCount = document.getElementById("userResultCount");
+      if (userCount) {
+        userCount.textContent =
+          `Showing ${filteredProfiles.length} of ${profiles.length} ${profiles.length === 1 ? "user" : "users"}`;
+      }
 
       if (!filteredProfiles.length) {
         const row = document.createElement("tr");
