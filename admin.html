@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fleet Identifier — Admin</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  
+
   <style>
     * {
       box-sizing: border-box;
@@ -144,6 +144,7 @@
 
     </div>
 
+    <!-- Recent Sightings -->
     <div class="section">
       <h2>Recent Sightings</h2>
 
@@ -165,186 +166,329 @@
       </div>
     </div>
 
+    <!-- User Management -->
+    <div class="section">
+      <h2>User Management</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Display Name</th>
+              <th>Joined</th>
+              <th>Admin</th>
+            </tr>
+          </thead>
+
+          <tbody id="usersTable">
+            <tr>
+              <td colspan="4" class="empty">
+                Loading users...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script>
-const SUPABASE_URL = "https://jkgjektucefrtxkcngcw.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY =
-  "sb_publishable_Prb-Tm0UxZxc_lPG6iWbJQ_maolEsol";
+  <script>
+    const SUPABASE_URL =
+      "https://jkgjektucefrtxkcngcw.supabase.co";
 
-const supabaseClient = supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_PUBLISHABLE_KEY
-);
+    const SUPABASE_PUBLISHABLE_KEY =
+      "sb_publishable_Prb-Tm0UxZxc_lPG6iWbJQ_maolEsol";
 
-let sightings = [];
+    const supabaseClient = supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    );
 
-function showDenied(message) {
-  document.getElementById("status").textContent = message;
+    let sightings = [];
+    let profiles = [];
 
-  document.querySelector(".stats").style.display = "none";
-  document.querySelector(".section").style.display = "none";
-}
+    function showDenied(message) {
+      document.getElementById("status").textContent = message;
 
-async function startAdminDashboard() {
-  const status = document.getElementById("status");
+      document.querySelector(".stats").style.display = "none";
 
-  status.textContent = "Checking admin access...";
-
-  try {
-    // 1. Check whether somebody is signed in.
-    const {
-      data: { session },
-      error: sessionError
-    } = await supabaseClient.auth.getSession();
-
-    if (sessionError) {
-      console.error("Session error:", sessionError);
-      showDenied("Could not verify your session.");
-      return;
+      document
+        .querySelectorAll(".section")
+        .forEach(section => {
+          section.style.display = "none";
+        });
     }
 
-    if (!session?.user) {
-      showDenied(
-        "You must be signed in to the Fleet Identifier to access this page."
-      );
-      return;
+    async function startAdminDashboard() {
+      const status = document.getElementById("status");
+
+      status.textContent = "Checking admin access...";
+
+      try {
+
+        // Check whether somebody is signed in.
+        const {
+          data: { session },
+          error: sessionError
+        } = await supabaseClient.auth.getSession();
+
+        if (sessionError) {
+          console.error("Session error:", sessionError);
+          showDenied("Could not verify your session.");
+          return;
+        }
+
+        if (!session?.user) {
+          showDenied(
+            "You must be signed in to the Fleet Identifier to access this page."
+          );
+          return;
+        }
+
+        // Read the signed-in user's profile.
+        const {
+          data: profile,
+          error: profileError
+        } = await supabaseClient
+          .from("profiles")
+          .select("id, username, admin")
+          .eq("id", session.user.id)
+          .single();
+
+        if (profileError) {
+          console.error("Profile error:", profileError);
+          showDenied("Could not verify admin access.");
+          return;
+        }
+
+        // Stop if this account isn't an administrator.
+        if (profile?.admin !== true) {
+          showDenied(
+            "Access denied. This account is not an administrator."
+          );
+          return;
+        }
+
+        status.textContent =
+          `Signed in as ${profile.username || "administrator"} — loading dashboard...`;
+
+        // Load all sightings.
+        const {
+          data: sightingsData,
+          error: sightingsError
+        } = await supabaseClient
+          .from("sightings")
+          .select(
+            "id, user_id, car_number, fleet, line, saved_at, notes"
+          )
+          .order("saved_at", { ascending: false });
+
+        if (sightingsError) {
+          console.error(
+            "Sightings error:",
+            sightingsError
+          );
+
+          status.textContent =
+            "Could not load sighting data.";
+
+          return;
+        }
+
+        sightings = sightingsData || [];
+
+        // Load all user profiles.
+        const {
+          data: profilesData,
+          error: profilesError
+        } = await supabaseClient
+          .from("profiles")
+          .select("*");
+
+        if (profilesError) {
+          console.error(
+            "Profiles error:",
+            profilesError
+          );
+
+          profiles = [];
+        } else {
+          profiles = profilesData || [];
+        }
+
+        loadDashboard(profile);
+        loadUsers();
+
+      } catch (error) {
+        console.error(
+          "Admin dashboard error:",
+          error
+        );
+
+        showDenied(
+          "Something went wrong while loading the admin dashboard."
+        );
+      }
     }
 
-    // 2. Read the signed-in user's profile.
-    const {
-      data: profile,
-      error: profileError
-    } = await supabaseClient
-      .from("profiles")
-      .select("id, username, admin")
-      .eq("id", session.user.id)
-      .single();
+    function loadDashboard(profile) {
 
-    if (profileError) {
-      console.error("Profile error:", profileError);
-      showDenied("Could not verify admin access.");
-      return;
-    }
+      document.getElementById(
+        "totalSightings"
+      ).textContent = sightings.length;
 
-    // 3. Stop here if this account is not an admin.
-    if (profile?.admin !== true) {
-      showDenied("Access denied. This account is not an administrator.");
-      return;
-    }
+      document.getElementById(
+        "uniqueFleets"
+      ).textContent =
+        new Set(
+          sightings
+            .map(s => s.fleet)
+            .filter(Boolean)
+        ).size;
 
-    status.textContent =
-      `Signed in as ${profile.username || "administrator"} — loading dashboard...`;
+      document.getElementById(
+        "uniqueLines"
+      ).textContent =
+        new Set(
+          sightings
+            .map(s => s.line)
+            .filter(Boolean)
+        ).size;
 
-    // 4. Because the user passed the admin check, request all sightings.
-    // Supabase RLS still decides whether this request is actually allowed.
-    const {
-      data,
-      error: sightingsError
-    } = await supabaseClient
-      .from("sightings")
-      .select("id, user_id, car_number, fleet, line, saved_at, notes")
-      .order("saved_at", { ascending: false });
+      const today = new Date().toDateString();
 
-    if (sightingsError) {
-      console.error("Sightings error:", sightingsError);
-      status.textContent = "Could not load sighting data.";
-      return;
-    }
+      document.getElementById(
+        "todaySightings"
+      ).textContent =
+        sightings.filter(s =>
+          s.saved_at &&
+          new Date(s.saved_at).toDateString() === today
+        ).length;
 
-    sightings = data || [];
+      const table =
+        document.getElementById("sightingsTable");
 
-    loadDashboard(profile);
+      table.innerHTML = "";
 
-  } catch (error) {
-    console.error("Admin dashboard error:", error);
-    showDenied("Something went wrong while loading the admin dashboard.");
-  }
-}
+      if (!sightings.length) {
 
-function loadDashboard(profile) {
-  document.getElementById("totalSightings").textContent =
-    sightings.length;
-
-  document.getElementById("uniqueFleets").textContent =
-    new Set(
-      sightings
-        .map(s => s.fleet)
-        .filter(Boolean)
-    ).size;
-
-  document.getElementById("uniqueLines").textContent =
-    new Set(
-      sightings
-        .map(s => s.line)
-        .filter(Boolean)
-    ).size;
-
-  const today = new Date().toDateString();
-
-  document.getElementById("todaySightings").textContent =
-    sightings.filter(s =>
-      s.saved_at &&
-      new Date(s.saved_at).toDateString() === today
-    ).length;
-
-  const table = document.getElementById("sightingsTable");
-
-  table.innerHTML = "";
-
-  if (!sightings.length) {
-    const row = document.createElement("tr");
-    const cell = document.createElement("td");
-
-    cell.colSpan = 5;
-    cell.className = "empty";
-    cell.textContent = "No sightings have been submitted yet.";
-
-    row.appendChild(cell);
-    table.appendChild(row);
-
-    document.getElementById("status").textContent =
-      `Admin access confirmed — signed in as ${profile.username || "administrator"}.`;
-
-    return;
-  }
-
-  sightings
-    .slice(0, 20)
-    .forEach(sighting => {
-      const row = document.createElement("tr");
-
-      const values = [
-        sighting.car_number ?? "—",
-        sighting.fleet ?? "—",
-        sighting.line ?? "—",
-        sighting.saved_at
-          ? new Date(sighting.saved_at).toLocaleString()
-          : "—",
-        sighting.notes ?? "—"
-      ];
-
-      values.forEach(value => {
+        const row = document.createElement("tr");
         const cell = document.createElement("td");
 
-        // User-submitted data is inserted as text, not HTML.
-        cell.textContent = value;
+        cell.colSpan = 5;
+        cell.className = "empty";
+        cell.textContent =
+          "No sightings have been submitted yet.";
 
         row.appendChild(cell);
+        table.appendChild(row);
+
+      } else {
+
+        sightings
+          .slice(0, 20)
+          .forEach(sighting => {
+
+            const row =
+              document.createElement("tr");
+
+            const values = [
+              sighting.car_number ?? "—",
+              sighting.fleet ?? "—",
+              sighting.line ?? "—",
+              sighting.saved_at
+                ? new Date(
+                    sighting.saved_at
+                  ).toLocaleString()
+                : "—",
+              sighting.notes ?? "—"
+            ];
+
+            values.forEach(value => {
+              const cell =
+                document.createElement("td");
+
+              cell.textContent = value;
+
+              row.appendChild(cell);
+            });
+
+            table.appendChild(row);
+          });
+      }
+
+      document.getElementById(
+        "status"
+      ).textContent =
+        `Admin access confirmed — signed in as ${profile.username || "administrator"}.`;
+    }
+
+    function loadUsers() {
+      const table =
+        document.getElementById("usersTable");
+
+      table.innerHTML = "";
+
+      if (!profiles.length) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = 4;
+        cell.className = "empty";
+        cell.textContent =
+          "No user profiles found.";
+
+        row.appendChild(cell);
+        table.appendChild(row);
+
+        return;
+      }
+
+      profiles.forEach(profile => {
+        const row = document.createElement("tr");
+
+        const username =
+          profile.username ?? "—";
+
+        const displayName =
+          profile.display_name ?? "—";
+
+        const joined =
+          profile.created_at
+            ? new Date(
+                profile.created_at
+              ).toLocaleString()
+            : "—";
+
+        const admin =
+          profile.admin === true
+            ? "Yes"
+            : "No";
+
+        [
+          username,
+          displayName,
+          joined,
+          admin
+        ].forEach(value => {
+          const cell =
+            document.createElement("td");
+
+          cell.textContent = value;
+
+          row.appendChild(cell);
+        });
+
+        table.appendChild(row);
       });
+    }
 
-      table.appendChild(row);
-    });
+    startAdminDashboard();
+  </script>
 
-  document.getElementById("status").textContent =
-    `Admin access confirmed — signed in as ${profile.username || "administrator"}.`;
-}
-
-startAdminDashboard();
-</script>
-
-  
 </body>
 </html>
