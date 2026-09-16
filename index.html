@@ -1414,12 +1414,17 @@ function identify() {
         document.getElementById("result");
 
 
-    // Test car — intentionally cannot be logged as a sighting.
+    // Test car — can be logged only on the TEST line.
     if (input === "0000") {
-        pendingSighting = null;
+        pendingSighting = {
+            carNumber: "0000",
+            fleet: "TEST",
+            line: null
+        };
+
         resultBox.className = "result";
         resultBox.innerHTML = `
-            <div class="fleet-title unknown-value">N/A</div>
+            <div class="fleet-title unknown-value">TEST</div>
             <div class="car-number">Car number: <strong>0000</strong></div>
             <div class="info">
                 <div class="label">Builder</div><div class="unknown-value">N/A</div>
@@ -1433,6 +1438,20 @@ function identify() {
                 <div class="label">Design speed</div><div class="unknown-value">N/A</div>
                 <div class="label">Propulsion</div><div class="unknown-value">N/A</div>
                 <div class="label">Notes</div><div class="unknown-value">N/A</div>
+            </div>
+
+            <div class="sighting-panel">
+                <h3>Log this sighting</h3>
+                <div>Which line did you see car <strong>0000</strong> on?</div>
+                <div class="line-grid">
+                    <button type="button" class="line-button" data-line="TEST" onclick="chooseLine('TEST')">TEST</button>
+                </div>
+
+                <label for="sightingNotes" style="margin-top:12px;">Notes (optional)</label>
+                <textarea id="sightingNotes" class="sighting-notes" maxlength="1000" placeholder="Add notes about this sighting."></textarea>
+
+                <button type="button" onclick="saveSighting()" style="margin-top:10px;">Save Sighting</button>
+                <div id="sightingStatus" class="status-message"></div>
             </div>
         `;
         return;
