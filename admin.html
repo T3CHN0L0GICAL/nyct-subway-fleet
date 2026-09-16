@@ -118,6 +118,16 @@
     #status {
       color: #888;
       margin-bottom: 20px;
+      min-height: 20px;
+      transition: color 0.2s ease;
+    }
+
+    #status.status-success {
+      color: #8ee6a3;
+    }
+
+    #status.status-error {
+      color: #ff9b9b;
     }
 
     .delete-button {
@@ -341,6 +351,35 @@
     let sightings = [];
     let profiles = [];
     let currentAdminProfile = null;
+
+    let statusResetTimer = null;
+
+    function normalAdminStatus() {
+      return `Admin access confirmed — signed in as ${currentAdminProfile?.username || "administrator"}.`;
+    }
+
+    function setStatus(message, type = "normal", resetAfter = 0) {
+      const status = document.getElementById("status");
+      if (!status) return;
+
+      clearTimeout(statusResetTimer);
+      status.classList.remove("status-success", "status-error");
+
+      if (type === "success") {
+        status.classList.add("status-success");
+      } else if (type === "error") {
+        status.classList.add("status-error");
+      }
+
+      status.textContent = message;
+
+      if (resetAfter > 0 && currentAdminProfile) {
+        statusResetTimer = setTimeout(() => {
+          status.classList.remove("status-success", "status-error");
+          status.textContent = normalAdminStatus();
+        }, resetAfter);
+      }
+    }
 
     function showDenied(message) {
       document.getElementById("status").textContent = message;
@@ -585,10 +624,10 @@
           });
       }
 
-      document.getElementById(
-        "status"
-      ).textContent =
-        `Admin access confirmed — signed in as ${profile.username || "administrator"}.`;
+      if (!document.getElementById("status").classList.contains("status-success") &&
+          !document.getElementById("status").classList.contains("status-error")) {
+        setStatus(normalAdminStatus());
+      }
     }
 
     async function deleteSighting(
@@ -596,9 +635,7 @@
       button
     ) {
       if (!sighting?.id) {
-        alert(
-          "This sighting does not have a valid ID."
-        );
+        setStatus("Could not delete sighting — invalid sighting ID.", "error", 4000);
         return;
       }
 
@@ -630,9 +667,7 @@
             error
           );
 
-          alert(
-            "Could not delete this sighting."
-          );
+          setStatus("Could not delete this sighting.", "error", 4000);
 
           button.disabled = false;
           button.textContent = "Delete";
@@ -643,9 +678,11 @@
           item => item.id !== sighting.id
         );
 
+        populateSightingFilters();
         loadDashboard(
           currentAdminProfile
         );
+        setStatus(`Sighting for car ${car} deleted successfully.`, "success", 3500);
 
       } catch (error) {
         console.error(
@@ -653,8 +690,10 @@
           error
         );
 
-        alert(
-          "Something went wrong while deleting this sighting."
+        setStatus(
+          "Something went wrong while deleting this sighting.",
+          "error",
+          4000
         );
 
         button.disabled = false;
@@ -664,12 +703,12 @@
 
     async function setUserAdmin(profile, newStatus, button) {
       if (!profile?.id) {
-        alert("This user does not have a valid profile ID.");
+        setStatus("Could not update admin status — invalid profile ID.", "error", 4000);
         return;
       }
 
       if (profile.id === currentAdminProfile?.id && newStatus === false) {
-        alert("You cannot remove your own admin access.");
+        setStatus("You cannot remove your own admin access.", "error", 4000);
         return;
       }
 
@@ -696,7 +735,7 @@
 
         if (error) {
           console.error("Admin status error:", error);
-          alert("Could not update this user's admin status.");
+          setStatus("Could not update this user's admin status.", "error", 4000);
           button.disabled = false;
           button.textContent = newStatus ? "Make Admin" : "Remove Admin";
           return;
@@ -704,9 +743,20 @@
 
         profile.admin = newStatus;
         loadUsers();
+        setStatus(
+          newStatus
+            ? `Admin access granted to ${username}.`
+            : `Admin access removed from ${username}.`,
+          "success",
+          3500
+        );
       } catch (error) {
         console.error("Admin status error:", error);
-        alert("Something went wrong while updating admin status.");
+        setStatus(
+          "Something went wrong while updating admin status.",
+          "error",
+          4000
+        );
         button.disabled = false;
         button.textContent = newStatus ? "Make Admin" : "Remove Admin";
       }
