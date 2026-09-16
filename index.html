@@ -545,14 +545,22 @@
         }
     }
 
+    .display-name-panel,
     .password-panel {
         margin-top: 14px;
         padding-top: 14px;
         border-top: 1px solid var(--fi-border);
     }
 
+    .display-name-panel .account-form,
     .password-panel .account-form {
         margin-top: 12px;
+    }
+
+    .account-form-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
     }
 
 </style>
@@ -659,6 +667,28 @@
                 <div id="signedInName" class="signed-in-name">Signed in</div>
                 <div id="signedInUsername"></div>
                 <div id="signedInEmail" class="signed-in-email"></div>
+
+                <div class="display-name-panel">
+                    <button type="button" onclick="toggleDisplayNameForm()">Edit Display Name</button>
+
+                    <form id="changeDisplayNameForm" class="account-form hidden" onsubmit="changeDisplayName(event)">
+                        <div>
+                            <label for="newDisplayName">Display name</label>
+                            <input id="newDisplayName" type="text" maxlength="40" autocomplete="name" required>
+                        </div>
+
+                        <div class="account-small-note">
+                            Display names can be up to 40 characters.
+                        </div>
+
+                        <div class="account-form-actions">
+                            <button type="submit">Save Display Name</button>
+                            <button type="button" onclick="cancelDisplayNameEdit()">Cancel</button>
+                        </div>
+
+                        <div id="changeDisplayNameMessage" class="account-message"></div>
+                    </form>
+                </div>
 
                 <div class="password-panel">
                     <button type="button" onclick="togglePasswordForm()">Change Password</button>
@@ -2053,6 +2083,114 @@ async function logIn(event) {
 
     document.getElementById("loginForm").reset();
     setAccountMessage("");
+}
+
+function setDisplayNameMessage(text, isError = false) {
+    const message = document.getElementById("changeDisplayNameMessage");
+    if (!message) return;
+
+    message.textContent = text;
+    message.classList.toggle("error-text", isError);
+}
+
+async function toggleDisplayNameForm() {
+    const form = document.getElementById("changeDisplayNameForm");
+    const input = document.getElementById("newDisplayName");
+    if (!form || !input) return;
+
+    const opening = form.classList.contains("hidden");
+    form.classList.toggle("hidden", !opening);
+    setDisplayNameMessage("");
+
+    if (opening) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+
+        if (!session?.user) {
+            form.classList.add("hidden");
+            return;
+        }
+
+        const profile = await getUserDisplay(session.user);
+        input.value = profile.displayName || "";
+        input.focus();
+        input.select();
+    } else {
+        form.reset();
+    }
+}
+
+function cancelDisplayNameEdit() {
+    const form = document.getElementById("changeDisplayNameForm");
+    if (!form) return;
+
+    form.reset();
+    form.classList.add("hidden");
+    setDisplayNameMessage("");
+}
+
+async function changeDisplayName(event) {
+    event.preventDefault();
+
+    const input = document.getElementById("newDisplayName");
+    const saveButton = event.submitter;
+    if (!input) return;
+
+    const displayName = input.value.trim();
+
+    if (!displayName) {
+        setDisplayNameMessage("Display name cannot be empty.", true);
+        return;
+    }
+
+    if (displayName.length > 40) {
+        setDisplayNameMessage("Display name cannot exceed 40 characters.", true);
+        return;
+    }
+
+    setDisplayNameMessage("Saving display name...");
+    if (saveButton) saveButton.disabled = true;
+
+    try {
+        const { error } = await supabaseClient.rpc(
+            "update_my_display_name",
+            { new_display_name: displayName }
+        );
+
+        if (error) {
+            console.error("Could not update display name:", error);
+            setDisplayNameMessage(error.message || "Could not update display name.", true);
+            return;
+        }
+
+        const { data: { session }, error: sessionError } =
+            await supabaseClient.auth.getSession();
+
+        if (sessionError || !session?.user) {
+            setDisplayNameMessage(
+                "Display name was saved, but the account view could not refresh.",
+                true
+            );
+            return;
+        }
+
+        const profile = await getUserDisplay(session.user);
+
+        document.getElementById("signedInName").textContent =
+            profile.displayName;
+
+        input.value = profile.displayName;
+        setDisplayNameMessage("Display name changed successfully.");
+
+        setTimeout(() => {
+            const form = document.getElementById("changeDisplayNameForm");
+            if (!form) return;
+            form.classList.add("hidden");
+            setDisplayNameMessage("");
+        }, 1800);
+
+    } finally {
+        if (saveButton) saveButton.disabled = false;
+    }
 }
 
 function togglePasswordForm() {
