@@ -130,6 +130,38 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
+
+    .admin-button {
+      border: 1px solid #3d5f86;
+      background: #172334;
+      color: #a9d2ff;
+      border-radius: 8px;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .admin-button.remove {
+      border-color: #705b37;
+      background: #2b2417;
+      color: #ffd28a;
+    }
+
+    .admin-button:hover {
+      filter: brightness(1.15);
+    }
+
+    .admin-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .you-label {
+      color: #777;
+      font-size: 12px;
+      margin-left: 8px;
+    }
   </style>
 </head>
 
@@ -203,12 +235,13 @@
               <th>Display Name</th>
               <th>Joined</th>
               <th>Admin</th>
+              <th>Actions</th>
             </tr>
           </thead>
 
           <tbody id="usersTable">
             <tr>
-              <td colspan="4" class="empty">
+              <td colspan="5" class="empty">
                 Loading users...
               </td>
             </tr>
@@ -536,6 +569,56 @@
       }
     }
 
+    async function setUserAdmin(profile, newStatus, button) {
+      if (!profile?.id) {
+        alert("This user does not have a valid profile ID.");
+        return;
+      }
+
+      if (profile.id === currentAdminProfile?.id && newStatus === false) {
+        alert("You cannot remove your own admin access.");
+        return;
+      }
+
+      const username = profile.username || "this user";
+      const action = newStatus ? "grant admin access to" : "remove admin access from";
+
+      const confirmed = window.confirm(
+        `Are you sure you want to ${action} ${username}?`
+      );
+
+      if (!confirmed) return;
+
+      button.disabled = true;
+      button.textContent = "Updating...";
+
+      try {
+        const { error } = await supabaseClient.rpc(
+          "set_user_admin",
+          {
+            target_user_id: profile.id,
+            new_admin_status: newStatus
+          }
+        );
+
+        if (error) {
+          console.error("Admin status error:", error);
+          alert("Could not update this user's admin status.");
+          button.disabled = false;
+          button.textContent = newStatus ? "Make Admin" : "Remove Admin";
+          return;
+        }
+
+        profile.admin = newStatus;
+        loadUsers();
+      } catch (error) {
+        console.error("Admin status error:", error);
+        alert("Something went wrong while updating admin status.");
+        button.disabled = false;
+        button.textContent = newStatus ? "Make Admin" : "Remove Admin";
+      }
+    }
+
     function loadUsers() {
       const table =
         document.getElementById("usersTable");
@@ -546,51 +629,71 @@
         const row = document.createElement("tr");
         const cell = document.createElement("td");
 
-        cell.colSpan = 4;
+        cell.colSpan = 5;
         cell.className = "empty";
         cell.textContent =
           "No user profiles found.";
 
         row.appendChild(cell);
         table.appendChild(row);
-
         return;
       }
 
       profiles.forEach(profile => {
         const row = document.createElement("tr");
 
-        const username =
-          profile.username ?? "—";
+        const usernameCell = document.createElement("td");
+        usernameCell.textContent = profile.username ?? "—";
 
-        const displayName =
-          profile.display_name ?? "—";
+        if (profile.id === currentAdminProfile?.id) {
+          const you = document.createElement("span");
+          you.className = "you-label";
+          you.textContent = "(You)";
+          usernameCell.appendChild(you);
+        }
 
-        const joined =
+        row.appendChild(usernameCell);
+
+        const values = [
+          profile.display_name ?? "—",
           profile.created_at
-            ? new Date(
-                profile.created_at
-              ).toLocaleString()
-            : "—";
+            ? new Date(profile.created_at).toLocaleString()
+            : "—",
+          profile.admin === true ? "Yes" : "No"
+        ];
 
-        const admin =
-          profile.admin === true
-            ? "Yes"
-            : "No";
-
-        [
-          username,
-          displayName,
-          joined,
-          admin
-        ].forEach(value => {
-          const cell =
-            document.createElement("td");
-
+        values.forEach(value => {
+          const cell = document.createElement("td");
           cell.textContent = value;
           row.appendChild(cell);
         });
 
+        const actionsCell = document.createElement("td");
+        const adminButton = document.createElement("button");
+        adminButton.type = "button";
+        adminButton.className = "admin-button";
+
+        if (profile.admin === true) {
+          adminButton.textContent = "Remove Admin";
+          adminButton.classList.add("remove");
+
+          if (profile.id === currentAdminProfile?.id) {
+            adminButton.disabled = true;
+            adminButton.title = "You cannot remove your own admin access.";
+          } else {
+            adminButton.addEventListener("click", () =>
+              setUserAdmin(profile, false, adminButton)
+            );
+          }
+        } else {
+          adminButton.textContent = "Make Admin";
+          adminButton.addEventListener("click", () =>
+            setUserAdmin(profile, true, adminButton)
+          );
+        }
+
+        actionsCell.appendChild(adminButton);
+        row.appendChild(actionsCell);
         table.appendChild(row);
       });
     }
