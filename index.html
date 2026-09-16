@@ -545,6 +545,16 @@
         }
     }
 
+    .password-panel {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--fi-border);
+    }
+
+    .password-panel .account-form {
+        margin-top: 12px;
+    }
+
 </style>
 </head>
 
@@ -649,6 +659,26 @@
                 <div id="signedInName" class="signed-in-name">Signed in</div>
                 <div id="signedInUsername"></div>
                 <div id="signedInEmail" class="signed-in-email"></div>
+
+                <div class="password-panel">
+                    <button type="button" onclick="togglePasswordForm()">Change Password</button>
+
+                    <form id="changePasswordForm" class="account-form hidden" onsubmit="changePassword(event)">
+                        <div>
+                            <label for="newPassword">New password</label>
+                            <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required>
+                        </div>
+
+                        <div>
+                            <label for="newPasswordConfirm">Confirm new password</label>
+                            <input id="newPasswordConfirm" type="password" autocomplete="new-password" minlength="8" required>
+                        </div>
+
+                        <button type="submit">Save New Password</button>
+                        <div id="changePasswordMessage" class="account-message"></div>
+                    </form>
+                </div>
+
                 <button type="button" onclick="logOut()">Log Out</button>
             </div>
         </div>
@@ -1384,6 +1414,31 @@ function identify() {
         document.getElementById("result");
 
 
+    // Test car — intentionally cannot be logged as a sighting.
+    if (input === "0000") {
+        pendingSighting = null;
+        resultBox.className = "result";
+        resultBox.innerHTML = `
+            <div class="fleet-title unknown-value">N/A</div>
+            <div class="car-number">Car number: <strong>0000</strong></div>
+            <div class="info">
+                <div class="label">Builder</div><div class="unknown-value">N/A</div>
+                <div class="label">Years built</div><div class="unknown-value">N/A</div>
+                <div class="label">Lines</div><div class="unknown-value">N/A</div>
+                <div class="label">Division</div><div class="unknown-value">N/A</div>
+                <div class="label">Factory version</div><div class="unknown-value">N/A</div>
+                <div class="label">Passenger version</div><div class="unknown-value">N/A</div>
+                <div class="label">Fleet size</div><div class="unknown-value">N/A</div>
+                <div class="label">Maximum service speed</div><div class="unknown-value">N/A</div>
+                <div class="label">Design speed</div><div class="unknown-value">N/A</div>
+                <div class="label">Propulsion</div><div class="unknown-value">N/A</div>
+                <div class="label">Notes</div><div class="unknown-value">N/A</div>
+            </div>
+        `;
+        return;
+    }
+
+
     // Secret access code
     if (
         input === "16244142715659" ||
@@ -1979,6 +2034,62 @@ async function logIn(event) {
 
     document.getElementById("loginForm").reset();
     setAccountMessage("");
+}
+
+function togglePasswordForm() {
+    const form = document.getElementById("changePasswordForm");
+    const message = document.getElementById("changePasswordMessage");
+    if (!form) return;
+
+    const opening = form.classList.contains("hidden");
+    form.classList.toggle("hidden", !opening);
+
+    if (message) {
+        message.textContent = "";
+        message.classList.remove("error-text");
+    }
+
+    if (!opening) {
+        form.reset();
+    }
+}
+
+async function changePassword(event) {
+    event.preventDefault();
+
+    const password = document.getElementById("newPassword").value;
+    const confirmPassword = document.getElementById("newPasswordConfirm").value;
+    const message = document.getElementById("changePasswordMessage");
+
+    function setPasswordMessage(text, isError = false) {
+        if (!message) return;
+        message.textContent = text;
+        message.classList.toggle("error-text", isError);
+    }
+
+    if (password !== confirmPassword) {
+        setPasswordMessage("Passwords do not match.", true);
+        return;
+    }
+
+    if (password.length < 8) {
+        setPasswordMessage("Password must be at least 8 characters.", true);
+        return;
+    }
+
+    setPasswordMessage("Changing password...");
+
+    const { error } = await supabaseClient.auth.updateUser({
+        password
+    });
+
+    if (error) {
+        setPasswordMessage(error.message, true);
+        return;
+    }
+
+    document.getElementById("changePasswordForm").reset();
+    setPasswordMessage("Password changed successfully.");
 }
 
 async function logOut() {
