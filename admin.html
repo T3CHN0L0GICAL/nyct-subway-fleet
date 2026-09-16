@@ -18,6 +18,10 @@
       font-family: Arial, sans-serif;
     }
 
+    button {
+      font: inherit;
+    }
+
     .container {
       width: min(1100px, 92%);
       margin: 0 auto;
@@ -106,6 +110,26 @@
       color: #888;
       margin-bottom: 20px;
     }
+
+    .delete-button {
+      border: 1px solid #703737;
+      background: #2b1717;
+      color: #ff9b9b;
+      border-radius: 8px;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .delete-button:hover {
+      background: #3a1c1c;
+    }
+
+    .delete-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 
@@ -157,6 +181,7 @@
               <th>Line</th>
               <th>Time</th>
               <th>Notes</th>
+              <th>Actions</th>
             </tr>
           </thead>
 
@@ -210,6 +235,7 @@
 
     let sightings = [];
     let profiles = [];
+    let currentAdminProfile = null;
 
     function showDenied(message) {
       document.getElementById("status").textContent = message;
@@ -229,8 +255,6 @@
       status.textContent = "Checking admin access...";
 
       try {
-
-        // Check whether somebody is signed in.
         const {
           data: { session },
           error: sessionError
@@ -249,7 +273,6 @@
           return;
         }
 
-        // Read the signed-in user's profile.
         const {
           data: profile,
           error: profileError
@@ -265,7 +288,6 @@
           return;
         }
 
-        // Stop if this account isn't an administrator.
         if (profile?.admin !== true) {
           showDenied(
             "Access denied. This account is not an administrator."
@@ -273,10 +295,11 @@
           return;
         }
 
+        currentAdminProfile = profile;
+
         status.textContent =
           `Signed in as ${profile.username || "administrator"} — loading dashboard...`;
 
-        // Load all sightings.
         const {
           data: sightingsData,
           error: sightingsError
@@ -301,7 +324,6 @@
 
         sightings = sightingsData || [];
 
-        // Load all user profiles.
         const {
           data: profilesData,
           error: profilesError
@@ -336,7 +358,6 @@
     }
 
     function loadDashboard(profile) {
-
       document.getElementById(
         "totalSightings"
       ).textContent = sightings.length;
@@ -375,11 +396,10 @@
       table.innerHTML = "";
 
       if (!sightings.length) {
-
         const row = document.createElement("tr");
         const cell = document.createElement("td");
 
-        cell.colSpan = 5;
+        cell.colSpan = 6;
         cell.className = "empty";
         cell.textContent =
           "No sightings have been submitted yet.";
@@ -388,11 +408,9 @@
         table.appendChild(row);
 
       } else {
-
         sightings
           .slice(0, 20)
           .forEach(sighting => {
-
             const row =
               document.createElement("tr");
 
@@ -413,9 +431,29 @@
                 document.createElement("td");
 
               cell.textContent = value;
-
               row.appendChild(cell);
             });
+
+            const actionsCell =
+              document.createElement("td");
+
+            const deleteButton =
+              document.createElement("button");
+
+            deleteButton.type = "button";
+            deleteButton.className = "delete-button";
+            deleteButton.textContent = "Delete";
+
+            deleteButton.addEventListener(
+              "click",
+              () => deleteSighting(
+                sighting,
+                deleteButton
+              )
+            );
+
+            actionsCell.appendChild(deleteButton);
+            row.appendChild(actionsCell);
 
             table.appendChild(row);
           });
@@ -425,6 +463,77 @@
         "status"
       ).textContent =
         `Admin access confirmed — signed in as ${profile.username || "administrator"}.`;
+    }
+
+    async function deleteSighting(
+      sighting,
+      button
+    ) {
+      if (!sighting?.id) {
+        alert(
+          "This sighting does not have a valid ID."
+        );
+        return;
+      }
+
+      const car =
+        sighting.car_number ?? "this sighting";
+
+      const confirmed = window.confirm(
+        `Delete sighting for car ${car}?\n\nThis cannot be undone.`
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Deleting...";
+
+      try {
+        const {
+          error
+        } = await supabaseClient
+          .from("sightings")
+          .delete()
+          .eq("id", sighting.id);
+
+        if (error) {
+          console.error(
+            "Delete sighting error:",
+            error
+          );
+
+          alert(
+            "Could not delete this sighting."
+          );
+
+          button.disabled = false;
+          button.textContent = "Delete";
+          return;
+        }
+
+        sightings = sightings.filter(
+          item => item.id !== sighting.id
+        );
+
+        loadDashboard(
+          currentAdminProfile
+        );
+
+      } catch (error) {
+        console.error(
+          "Delete sighting error:",
+          error
+        );
+
+        alert(
+          "Something went wrong while deleting this sighting."
+        );
+
+        button.disabled = false;
+        button.textContent = "Delete";
+      }
     }
 
     function loadUsers() {
@@ -479,7 +588,6 @@
             document.createElement("td");
 
           cell.textContent = value;
-
           row.appendChild(cell);
         });
 
