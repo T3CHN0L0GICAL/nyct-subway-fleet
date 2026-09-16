@@ -223,6 +223,126 @@
       font-size: 13px;
       margin: -6px 0 14px;
     }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .auth-shell {
+      width: min(520px, 100%);
+      margin: 20px auto 0;
+    }
+
+    .auth-card {
+      background: #181818;
+      border: 1px solid #2a2a2a;
+      border-radius: 14px;
+      padding: 22px;
+    }
+
+    .auth-card h2 {
+      margin: 0 0 8px;
+    }
+
+    .auth-description {
+      color: #999;
+      margin: 0 0 20px;
+      line-height: 1.45;
+    }
+
+    .auth-choice {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .auth-choice button,
+    .auth-form button,
+    .sign-out-button {
+      border: 1px solid #444;
+      background: #222;
+      color: white;
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font: inherit;
+      font-weight: bold;
+    }
+
+    .auth-choice button.active {
+      background: #303030;
+      border-color: #666;
+    }
+
+    .auth-choice button:hover,
+    .auth-form button:hover,
+    .sign-out-button:hover {
+      background: #2b2b2b;
+    }
+
+    .auth-choice button:disabled,
+    .auth-form button:disabled,
+    .sign-out-button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .auth-form {
+      display: grid;
+      gap: 12px;
+    }
+
+    .auth-form label {
+      display: block;
+      color: #aaa;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .auth-form input {
+      width: 100%;
+      background: #111;
+      color: white;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 11px 12px;
+      font: inherit;
+    }
+
+    .auth-message {
+      min-height: 20px;
+      margin-top: 14px;
+      color: #999;
+      font-size: 14px;
+    }
+
+    .auth-message.success {
+      color: #8ee6a3;
+    }
+
+    .auth-message.error {
+      color: #ff9b9b;
+    }
+
+    .auth-note {
+      color: #777;
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 12px;
+    }
+
+    .admin-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      margin: -8px 0 18px;
+    }
+
+    @media (max-width: 520px) {
+      .auth-choice {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 
@@ -235,9 +355,57 @@
       <div class="subtitle">Sightings overview</div>
     </header>
 
-    <div id="status">Loading dashboard...</div>
+    <div id="authShell" class="auth-shell hidden">
+      <div class="auth-card">
+        <h2>Admin Sign In</h2>
+        <p class="auth-description">
+          Sign in with an administrator account or use the private Admin Code.
+        </p>
 
-    <div class="stats">
+        <div class="auth-choice">
+          <button id="accountModeButton" type="button" class="active">Sign in with Account</button>
+          <button id="codeModeButton" type="button">Use Admin Code</button>
+        </div>
+
+        <form id="accountLoginForm" class="auth-form">
+          <div>
+            <label for="adminEmail">Email</label>
+            <input id="adminEmail" type="email" autocomplete="email" required>
+          </div>
+
+          <div>
+            <label for="adminPassword">Password</label>
+            <input id="adminPassword" type="password" autocomplete="current-password" required>
+          </div>
+
+          <button id="accountLoginButton" type="submit">Sign In</button>
+        </form>
+
+        <form id="adminCodeForm" class="auth-form hidden">
+          <div>
+            <label for="adminCode">Admin Code</label>
+            <input id="adminCode" type="password" autocomplete="off" required>
+          </div>
+
+          <button id="adminCodeButton" type="submit">Continue</button>
+
+          <div class="auth-note">
+            Repeated incorrect Admin Code attempts may be temporarily blocked.
+          </div>
+        </form>
+
+        <div id="authMessage" class="auth-message"></div>
+      </div>
+    </div>
+
+    <div id="dashboardShell" class="hidden">
+      <div id="status">Checking admin access...</div>
+
+      <div class="admin-toolbar">
+        <button id="signOutButton" class="sign-out-button" type="button">Sign Out</button>
+      </div>
+
+      <div class="stats">
 
       <div class="card">
         <div class="card-label">Total Sightings</div>
@@ -332,6 +500,7 @@
       </div>
     </div>
 
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -381,23 +550,144 @@
       }
     }
 
+    function setAuthMessage(message, type = "normal") {
+      const element = document.getElementById("authMessage");
+      if (!element) return;
+
+      element.textContent = message;
+      element.classList.remove("success", "error");
+
+      if (type === "success") {
+        element.classList.add("success");
+      } else if (type === "error") {
+        element.classList.add("error");
+      }
+    }
+
+    function showAuthScreen(message = "") {
+      document.getElementById("dashboardShell").classList.add("hidden");
+      document.getElementById("authShell").classList.remove("hidden");
+      setAuthMessage(message);
+    }
+
+    function showDashboardShell() {
+      document.getElementById("authShell").classList.add("hidden");
+      document.getElementById("dashboardShell").classList.remove("hidden");
+    }
+
     function showDenied(message) {
-      document.getElementById("status").textContent = message;
+      currentAdminProfile = null;
+      sightings = [];
+      profiles = [];
+      showAuthScreen(message);
+    }
 
-      document.querySelector(".stats").style.display = "none";
+    function setAuthMode(mode) {
+      const accountButton = document.getElementById("accountModeButton");
+      const codeButton = document.getElementById("codeModeButton");
+      const accountForm = document.getElementById("accountLoginForm");
+      const codeForm = document.getElementById("adminCodeForm");
 
-      document
-        .querySelectorAll(".section")
-        .forEach(section => {
-          section.style.display = "none";
-        });
+      const useCode = mode === "code";
+
+      accountButton.classList.toggle("active", !useCode);
+      codeButton.classList.toggle("active", useCode);
+      accountForm.classList.toggle("hidden", useCode);
+      codeForm.classList.toggle("hidden", !useCode);
+
+      setAuthMessage("");
+
+      if (useCode) {
+        document.getElementById("adminCode").focus();
+      } else {
+        document.getElementById("adminEmail").focus();
+      }
+    }
+
+    async function verifyAdminSession(session) {
+      if (!session?.user) {
+        return {
+          ok: false,
+          message: "You must sign in to access the admin dashboard."
+        };
+      }
+
+      const {
+        data: profile,
+        error: profileError
+      } = await supabaseClient
+        .from("profiles")
+        .select("id, username, admin")
+        .eq("id", session.user.id)
+        .single();
+
+      if (profileError) {
+        console.error("Profile error:", profileError);
+        return {
+          ok: false,
+          message: "Could not verify admin access."
+        };
+      }
+
+      if (profile?.admin !== true) {
+        return {
+          ok: false,
+          message: "Access denied. This account is not an administrator."
+        };
+      }
+
+      return {
+        ok: true,
+        profile
+      };
+    }
+
+    async function loadAdminData(profile) {
+      currentAdminProfile = profile;
+      showDashboardShell();
+
+      setStatus(
+        `Signed in as ${profile.username || "administrator"} — loading dashboard...`
+      );
+
+      const {
+        data: sightingsData,
+        error: sightingsError
+      } = await supabaseClient
+        .from("sightings")
+        .select(
+          "id, user_id, car_number, fleet, line, saved_at, notes"
+        )
+        .order("saved_at", { ascending: false });
+
+      if (sightingsError) {
+        console.error("Sightings error:", sightingsError);
+        setStatus("Could not load sighting data.", "error");
+        return;
+      }
+
+      sightings = sightingsData || [];
+      populateSightingFilters();
+
+      const {
+        data: profilesData,
+        error: profilesError
+      } = await supabaseClient
+        .from("profiles")
+        .select("*");
+
+      if (profilesError) {
+        console.error("Profiles error:", profilesError);
+        profiles = [];
+      } else {
+        profiles = profilesData || [];
+      }
+
+      loadDashboard(profile);
+      loadUsers();
     }
 
     async function startAdminDashboard() {
-      const status = document.getElementById("status");
-
-      status.textContent = "Checking admin access...";
-
       try {
         const {
           data: { session },
@@ -406,100 +696,215 @@
 
         if (sessionError) {
           console.error("Session error:", sessionError);
-          showDenied("Could not verify your session.");
+          showAuthScreen("Could not verify your existing session.");
           return;
         }
 
         if (!session?.user) {
-          showDenied(
-            "You must be signed in to the Fleet Identifier to access this page."
-          );
+          showAuthScreen();
           return;
         }
 
-        const {
-          data: profile,
-          error: profileError
-        } = await supabaseClient
-          .from("profiles")
-          .select("id, username, admin")
-          .eq("id", session.user.id)
-          .single();
+        const verification = await verifyAdminSession(session);
 
-        if (profileError) {
-          console.error("Profile error:", profileError);
-          showDenied("Could not verify admin access.");
+        if (!verification.ok) {
+          await supabaseClient.auth.signOut();
+          showAuthScreen(verification.message);
           return;
         }
 
-        if (profile?.admin !== true) {
-          showDenied(
-            "Access denied. This account is not an administrator."
-          );
-          return;
-        }
-
-        currentAdminProfile = profile;
-
-        status.textContent =
-          `Signed in as ${profile.username || "administrator"} — loading dashboard...`;
-
-        const {
-          data: sightingsData,
-          error: sightingsError
-        } = await supabaseClient
-          .from("sightings")
-          .select(
-            "id, user_id, car_number, fleet, line, saved_at, notes"
-          )
-          .order("saved_at", { ascending: false });
-
-        if (sightingsError) {
-          console.error(
-            "Sightings error:",
-            sightingsError
-          );
-
-          status.textContent =
-            "Could not load sighting data.";
-
-          return;
-        }
-
-        sightings = sightingsData || [];
-        populateSightingFilters();
-
-        const {
-          data: profilesData,
-          error: profilesError
-        } = await supabaseClient
-          .from("profiles")
-          .select("*");
-
-        if (profilesError) {
-          console.error(
-            "Profiles error:",
-            profilesError
-          );
-
-          profiles = [];
-        } else {
-          profiles = profilesData || [];
-        }
-
-        loadDashboard(profile);
-        loadUsers();
+        await loadAdminData(verification.profile);
 
       } catch (error) {
-        console.error(
-          "Admin dashboard error:",
-          error
-        );
-
-        showDenied(
+        console.error("Admin dashboard error:", error);
+        showAuthScreen(
           "Something went wrong while loading the admin dashboard."
         );
       }
+    }
+
+    async function signInWithAccount(event) {
+      event.preventDefault();
+
+      const email = document.getElementById("adminEmail").value.trim();
+      const password = document.getElementById("adminPassword").value;
+      const button = document.getElementById("accountLoginButton");
+
+      if (!email || !password) {
+        setAuthMessage("Enter your email and password.", "error");
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Signing In...";
+      setAuthMessage("Signing in...");
+
+      try {
+        const {
+          data,
+          error
+        } = await supabaseClient.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error || !data.session) {
+          console.error("Account sign-in error:", error);
+          setAuthMessage("Email or password is incorrect.", "error");
+          return;
+        }
+
+        const verification = await verifyAdminSession(data.session);
+
+        if (!verification.ok) {
+          await supabaseClient.auth.signOut();
+          setAuthMessage(verification.message, "error");
+          return;
+        }
+
+        document.getElementById("accountLoginForm").reset();
+        await loadAdminData(verification.profile);
+
+      } catch (error) {
+        console.error("Account sign-in error:", error);
+        setAuthMessage(
+          "Something went wrong while signing in.",
+          "error"
+        );
+      } finally {
+        button.disabled = false;
+        button.textContent = "Sign In";
+      }
+    }
+
+    async function signInWithAdminCode(event) {
+      event.preventDefault();
+
+      const codeInput = document.getElementById("adminCode");
+      const button = document.getElementById("adminCodeButton");
+      const code = codeInput.value.trim();
+
+      if (!code) {
+        setAuthMessage("Enter the Admin Code.", "error");
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Checking...";
+      setAuthMessage("Checking Admin Code...");
+
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/functions/v1/admin-code-login`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": SUPABASE_PUBLISHABLE_KEY
+            },
+            body: JSON.stringify({ code })
+          }
+        );
+
+        let result = {};
+
+        try {
+          result = await response.json();
+        } catch {
+          result = {};
+        }
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            setAuthMessage("Invalid admin code.", "error");
+          } else if (response.status === 429) {
+            setAuthMessage(
+              "Too many failed attempts. Try again later.",
+              "error"
+            );
+          } else {
+            setAuthMessage(
+              result.error || "Admin Code login is temporarily unavailable.",
+              "error"
+            );
+          }
+          return;
+        }
+
+        if (!result.access_token || !result.refresh_token) {
+          setAuthMessage(
+            "Admin Code login returned an invalid session.",
+            "error"
+          );
+          return;
+        }
+
+        const {
+          data,
+          error: sessionError
+        } = await supabaseClient.auth.setSession({
+          access_token: result.access_token,
+          refresh_token: result.refresh_token
+        });
+
+        if (sessionError || !data.session) {
+          console.error("Admin Code session error:", sessionError);
+          await supabaseClient.auth.signOut();
+          setAuthMessage(
+            "Could not establish the admin session.",
+            "error"
+          );
+          return;
+        }
+
+        const verification = await verifyAdminSession(data.session);
+
+        if (!verification.ok) {
+          await supabaseClient.auth.signOut();
+          setAuthMessage(verification.message, "error");
+          return;
+        }
+
+        codeInput.value = "";
+        await loadAdminData(verification.profile);
+
+      } catch (error) {
+        console.error("Admin Code login error:", error);
+        setAuthMessage(
+          "Could not reach the Admin Code login service.",
+          "error"
+        );
+      } finally {
+        button.disabled = false;
+        button.textContent = "Continue";
+      }
+    }
+
+    async function signOutAdmin() {
+      const button = document.getElementById("signOutButton");
+      button.disabled = true;
+      button.textContent = "Signing Out...";
+
+      try {
+        await supabaseClient.auth.signOut();
+      } catch (error) {
+        console.error("Sign-out error:", error);
+      }
+
+      currentAdminProfile = null;
+      sightings = [];
+      profiles = [];
+
+      document.getElementById("sightingsTable").innerHTML = "";
+      document.getElementById("usersTable").innerHTML = "";
+      document.getElementById("accountLoginForm").reset();
+      document.getElementById("adminCodeForm").reset();
+
+      button.disabled = false;
+      button.textContent = "Sign Out";
+
+      setAuthMode("account");
+      showAuthScreen("Signed out.");
     }
 
     function loadDashboard(profile) {
@@ -901,6 +1306,26 @@
         loadUsers();
       });
     }
+
+    document
+      .getElementById("accountModeButton")
+      ?.addEventListener("click", () => setAuthMode("account"));
+
+    document
+      .getElementById("codeModeButton")
+      ?.addEventListener("click", () => setAuthMode("code"));
+
+    document
+      .getElementById("accountLoginForm")
+      ?.addEventListener("submit", signInWithAccount);
+
+    document
+      .getElementById("adminCodeForm")
+      ?.addEventListener("submit", signInWithAdminCode);
+
+    document
+      .getElementById("signOutButton")
+      ?.addEventListener("click", signOutAdmin);
 
     setupFilters();
     startAdminDashboard();
