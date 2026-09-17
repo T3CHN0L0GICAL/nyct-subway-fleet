@@ -614,8 +614,8 @@
 
             <form id="loginForm" class="account-form" onsubmit="logIn(event)">
                 <div>
-                    <label for="loginEmail">Email</label>
-                    <input id="loginEmail" type="email" autocomplete="email" required>
+                    <label for="loginIdentifier">Username or Email</label>
+                    <input id="loginIdentifier" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required>
                 </div>
 
                 <div>
@@ -2066,23 +2066,144 @@ async function createAccount(event) {
 async function logIn(event) {
     event.preventDefault();
 
-    const email = document.getElementById("loginEmail").value.trim();
-    const password = document.getElementById("loginPassword").value;
+    const identifier =
+        document.getElementById("loginIdentifier").value.trim();
 
-    setAccountMessage("Logging in...");
+    const password =
+        document.getElementById("loginPassword").value;
 
-    const { error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-    });
+    const submitButton = event.submitter;
 
-    if (error) {
-        setAccountMessage(error.message, true);
+    if (!identifier || !password) {
+        setAccountMessage("Enter your username or email and password.", true);
         return;
     }
 
-    document.getElementById("loginForm").reset();
-    setAccountMessage("");
+    setAccountMessage("Logging in...");
+
+    if (submitButton) {
+        submitButton.disabled = true;
+    }
+
+    try {
+        /*
+         * Email addresses can use Supabase Auth directly.
+         * Usernames go through our server-side resolver so
+         * the account email is never exposed to the browser.
+         */
+        if (identifier.includes("@")) {
+            const { error } =
+                await supabaseClient.auth.signInWithPassword({
+                    email: identifier,
+                    password
+                });
+
+            if (error) {
+                console.error("Email login failed:", error);
+                setAccountMessage(
+                    "Invalid username/email or password.",
+                    true
+                );
+                return;
+            }
+        } else {
+            const response = await fetch(
+                `${SUPABASE_URL}/functions/v1/resolve-login-username`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "apikey": SUPABASE_PUBLISHABLE_KEY
+                    },
+                    body: JSON.stringify({
+                        username: identifier,
+                        password
+                    })
+                }
+            );
+
+            let result = {};
+
+            try {
+                result = await response.json();
+            } catch {
+                result = {};
+            }
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    setAccountMessage(
+                        "Invalid username/email or password.",
+                        true
+                    );
+                } else {
+                    console.error(
+                        "Username login service failed:",
+                        response.status,
+                        result
+                    );
+
+                    setAccountMessage(
+                        result.error ||
+                        "Login is temporarily unavailable.",
+                        true
+                    );
+                }
+
+                return;
+            }
+
+            if (!result.access_token || !result.refresh_token) {
+                console.error(
+                    "Username login returned an invalid session."
+                );
+
+                setAccountMessage(
+                    "Login is temporarily unavailable.",
+                    true
+                );
+                return;
+            }
+
+            const {
+                data,
+                error: sessionError
+            } = await supabaseClient.auth.setSession({
+                access_token: result.access_token,
+                refresh_token: result.refresh_token
+            });
+
+            if (sessionError || !data.session) {
+                console.error(
+                    "Could not establish username session:",
+                    sessionError
+                );
+
+                await supabaseClient.auth.signOut();
+
+                setAccountMessage(
+                    "Could not establish your session. Please try again.",
+                    true
+                );
+                return;
+            }
+        }
+
+        document.getElementById("loginForm").reset();
+        setAccountMessage("");
+
+    } catch (error) {
+        console.error("Login error:", error);
+
+        setAccountMessage(
+            "Login is temporarily unavailable.",
+            true
+        );
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+        }
+    }
 }
 
 function setDisplayNameMessage(text, isError = false) {
