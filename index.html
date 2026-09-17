@@ -1430,6 +1430,44 @@ async function logEasterEggEvent(codeLabel) {
         if (error) {
             console.error("Could not log Easter egg event:", error);
         }
+
+        /*
+         * Phase 5:
+         * Notify the designated admin device that an
+         * Easter egg was entered.
+         *
+         * Only the non-secret label is sent. The actual
+         * Easter egg code is never sent to the function.
+         * Notification failure does not affect the Easter
+         * egg experience.
+         */
+        try {
+            const response = await fetch(
+                `${SUPABASE_URL}/functions/v1/easter-egg-event`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "apikey": SUPABASE_PUBLISHABLE_KEY
+                    },
+                    body: JSON.stringify({
+                        code_label: codeLabel
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                console.error(
+                    "Easter egg notification failed:",
+                    response.status
+                );
+            }
+        } catch (notificationError) {
+            console.error(
+                "Could not send Easter egg notification:",
+                notificationError
+            );
+        }
     } catch (error) {
         console.error("Could not log Easter egg event:", error);
     }
