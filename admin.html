@@ -889,6 +889,14 @@
           .getElementById("accountLoginForm")
           .reset();
 
+        /*
+         * Phase 5:
+         * Notify only after an explicit account login has
+         * authenticated and passed the admin=true check.
+         * Restoring an existing session does not trigger this.
+         */
+        await notifyAdminAccountLogin();
+
         await loadAdminData(verification.profile);
 
       } catch (error) {
@@ -1156,6 +1164,58 @@
         );
       } finally {
         await refreshNotificationButton();
+      }
+    }
+
+    async function notifyAdminAccountLogin() {
+      try {
+        const {
+          data: { session },
+          error: sessionError
+        } = await supabaseClient.auth.getSession();
+
+        if (sessionError || !session?.access_token) {
+          console.error(
+            "Could not notify admin account login: no valid session.",
+            sessionError
+          );
+          return;
+        }
+
+        const response = await fetch(
+          `${SUPABASE_URL}/functions/v1/send-admin-push`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": SUPABASE_PUBLISHABLE_KEY,
+              "Authorization": `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+              type: "admin_account_login"
+            })
+          }
+        );
+
+        if (!response.ok) {
+          let result = {};
+          try {
+            result = await response.json();
+          } catch {
+            result = {};
+          }
+
+          console.error(
+            "Admin account login notification failed:",
+            response.status,
+            result
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Could not send admin account login notification:",
+          error
+        );
       }
     }
 
