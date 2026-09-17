@@ -369,8 +369,8 @@
 
         <form id="accountLoginForm" class="auth-form">
           <div>
-            <label for="adminEmail">Email</label>
-            <input id="adminEmail" type="email" autocomplete="email" required>
+            <label for="adminIdentifier">Username or Email</label>
+            <input id="adminIdentifier" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required>
           </div>
 
           <div>
@@ -600,7 +600,7 @@
       if (useCode) {
         document.getElementById("adminCode").focus();
       } else {
-        document.getElementById("adminEmail").focus();
+        document.getElementById("adminIdentifier").focus();
       }
     }
 
@@ -726,12 +726,20 @@
     async function signInWithAccount(event) {
       event.preventDefault();
 
-      const email = document.getElementById("adminEmail").value.trim();
-      const password = document.getElementById("adminPassword").value;
-      const button = document.getElementById("accountLoginButton");
+      const identifier =
+        document.getElementById("adminIdentifier").value.trim();
 
-      if (!email || !password) {
-        setAuthMessage("Enter your email and password.", "error");
+      const password =
+        document.getElementById("adminPassword").value;
+
+      const button =
+        document.getElementById("accountLoginButton");
+
+      if (!identifier || !password) {
+        setAuthMessage(
+          "Enter your username or email and password.",
+          "error"
+        );
         return;
       }
 
@@ -740,33 +748,143 @@
       setAuthMessage("Signing in...");
 
       try {
-        const {
-          data,
-          error
-        } = await supabaseClient.auth.signInWithPassword({
-          email,
-          password
-        });
+        let session = null;
 
-        if (error || !data.session) {
-          console.error("Account sign-in error:", error);
-          setAuthMessage("Email or password is incorrect.", "error");
-          return;
+        /*
+         * Email addresses use Supabase Auth directly.
+         * Usernames use the Phase 4.9.1 server-side resolver.
+         */
+        if (identifier.includes("@")) {
+          const {
+            data,
+            error
+          } = await supabaseClient.auth.signInWithPassword({
+            email: identifier,
+            password
+          });
+
+          if (error || !data.session) {
+            console.error("Account sign-in error:", error);
+            setAuthMessage(
+              "Invalid username/email or password.",
+              "error"
+            );
+            return;
+          }
+
+          session = data.session;
+
+        } else {
+          const response = await fetch(
+            `${SUPABASE_URL}/functions/v1/resolve-login-username`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "apikey": SUPABASE_PUBLISHABLE_KEY
+              },
+              body: JSON.stringify({
+                username: identifier,
+                password
+              })
+            }
+          );
+
+          let result = {};
+
+          try {
+            result = await response.json();
+          } catch {
+            result = {};
+          }
+
+          if (!response.ok) {
+            if (response.status === 401) {
+              setAuthMessage(
+                "Invalid username/email or password.",
+                "error"
+              );
+            } else {
+              console.error(
+                "Username login service failed:",
+                response.status,
+                result
+              );
+
+              setAuthMessage(
+                result.error ||
+                  "Login is temporarily unavailable.",
+                "error"
+              );
+            }
+
+            return;
+          }
+
+          if (!result.access_token || !result.refresh_token) {
+            console.error(
+              "Username login returned an invalid session."
+            );
+
+            setAuthMessage(
+              "Login is temporarily unavailable.",
+              "error"
+            );
+            return;
+          }
+
+          const {
+            data,
+            error: sessionError
+          } = await supabaseClient.auth.setSession({
+            access_token: result.access_token,
+            refresh_token: result.refresh_token
+          });
+
+          if (sessionError || !data.session) {
+            console.error(
+              "Could not establish username session:",
+              sessionError
+            );
+
+            await supabaseClient.auth.signOut();
+
+            setAuthMessage(
+              "Could not establish your session. Please try again.",
+              "error"
+            );
+            return;
+          }
+
+          session = data.session;
         }
 
-        const verification = await verifyAdminSession(data.session);
+        /*
+         * Username and email logins still have to pass the
+         * existing admin=true verification before the
+         * dashboard can be opened.
+         */
+        const verification =
+          await verifyAdminSession(session);
 
         if (!verification.ok) {
           await supabaseClient.auth.signOut();
-          setAuthMessage(verification.message, "error");
+          setAuthMessage(
+            verification.message,
+            "error"
+          );
           return;
         }
 
-        document.getElementById("accountLoginForm").reset();
+        document
+          .getElementById("accountLoginForm")
+          .reset();
+
         await loadAdminData(verification.profile);
 
       } catch (error) {
         console.error("Account sign-in error:", error);
+
         setAuthMessage(
           "Something went wrong while signing in.",
           "error"
