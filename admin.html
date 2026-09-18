@@ -446,6 +446,19 @@
     <!-- Phase 5.4 — Admin Activity -->
     <div class="section">
       <div class="activity-heading"><h2>Activity</h2><button id="refreshActivityButton" class="filter-button" type="button">Refresh</button></div>
+
+      <div class="filters">
+        <input id="activitySearch" type="search" placeholder="Search username or code label">
+        <select id="activityTypeFilter">
+          <option value="">All Activity</option>
+          <option value="admin_code_login">Admin Code</option>
+          <option value="admin_account_login">Account Login</option>
+          <option value="easter_egg">Easter Egg</option>
+        </select>
+        <button id="clearActivityFilters" class="filter-button" type="button">Clear Filters</button>
+      </div>
+
+      <div id="activityResultCount" class="result-count"></div>
       <div id="activityList" class="activity-list"><div class="activity-message">Loading activity...</div></div>
     </div>
 
@@ -1347,12 +1360,70 @@
     }
 
     function renderAdminActivity() {
-      const list=document.getElementById("activityList"); if(!list) return; list.innerHTML="";
-      if(!adminActivity.length){ const x=document.createElement("div"); x.className="activity-message"; x.textContent="No admin activity has been recorded yet."; list.appendChild(x); return; }
-      adminActivity.forEach(e=>{ const p=activityPresentation(e), item=document.createElement("div"); item.className="activity-item";
-        const icon=document.createElement("div"); icon.className="activity-icon"; icon.textContent=p.icon;
-        const body=document.createElement("div"), title=document.createElement("div"), detail=document.createElement("div"); title.className="activity-title"; title.textContent=p.title; detail.className="activity-detail"; detail.textContent=p.detail; body.append(title,detail);
-        const time=document.createElement("div"); time.className="activity-time"; time.textContent=formatActivityTime(e.created_at); item.append(icon,body,time); list.appendChild(item); });
+      const list = document.getElementById("activityList");
+      const count = document.getElementById("activityResultCount");
+      if (!list) return;
+
+      const search = (document.getElementById("activitySearch")?.value || "")
+        .trim().toLowerCase();
+      const typeFilter = document.getElementById("activityTypeFilter")?.value || "";
+
+      const filteredActivity = adminActivity.filter(event => {
+        const p = activityPresentation(event);
+        const haystack = [
+          event.username,
+          event.code_label,
+          event.event_type,
+          p.title,
+          p.detail
+        ].map(v => v ?? "").join(" ").toLowerCase();
+
+        return (!search || haystack.includes(search)) &&
+          (!typeFilter || event.event_type === typeFilter);
+      });
+
+      if (count) {
+        count.textContent =
+          `Showing ${filteredActivity.length} of ${adminActivity.length} ${adminActivity.length === 1 ? "event" : "events"}`;
+      }
+
+      list.innerHTML = "";
+
+      if (!filteredActivity.length) {
+        const empty = document.createElement("div");
+        empty.className = "activity-message";
+        empty.textContent = adminActivity.length
+          ? "No activity matches your filters."
+          : "No admin activity has been recorded yet.";
+        list.appendChild(empty);
+        return;
+      }
+
+      filteredActivity.forEach(event => {
+        const p = activityPresentation(event);
+        const item = document.createElement("div");
+        item.className = "activity-item";
+
+        const icon = document.createElement("div");
+        icon.className = "activity-icon";
+        icon.textContent = p.icon;
+
+        const body = document.createElement("div");
+        const title = document.createElement("div");
+        const detail = document.createElement("div");
+        title.className = "activity-title";
+        detail.className = "activity-detail";
+        title.textContent = p.title;
+        detail.textContent = p.detail;
+        body.append(title, detail);
+
+        const time = document.createElement("div");
+        time.className = "activity-time";
+        time.textContent = formatActivityTime(event.created_at);
+
+        item.append(icon, body, time);
+        list.appendChild(item);
+      });
     }
 
     async function loadAdminActivity(showStatus=false) {
@@ -1763,6 +1834,19 @@
         document.getElementById("adminFilter").value = "";
         loadUsers();
       });
+
+      document.getElementById("activitySearch")
+        ?.addEventListener("input", renderAdminActivity);
+
+      document.getElementById("activityTypeFilter")
+        ?.addEventListener("change", renderAdminActivity);
+
+      document.getElementById("clearActivityFilters")
+        ?.addEventListener("click", () => {
+          document.getElementById("activitySearch").value = "";
+          document.getElementById("activityTypeFilter").value = "";
+          renderAdminActivity();
+        });
     }
 
     document
