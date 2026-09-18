@@ -2390,7 +2390,7 @@ async function logIn(event) {
                     sessionError
                 );
 
-                await supabaseClient.auth.signOut();
+                await supabaseClient.auth.signOut({ scope: "local" });
 
                 setAccountMessage(
                     "Could not establish your session. Please try again.",
@@ -2582,7 +2582,7 @@ async function changePassword(event) {
 }
 
 async function logOut() {
-    const { error } = await supabaseClient.auth.signOut();
+    const { error } = await supabaseClient.auth.signOut({ scope: "local" });
     if (error) {
         alert("Could not log out: " + error.message);
     }

@@ -891,7 +891,7 @@
         const verification = await verifyAdminSession(session);
 
         if (!verification.ok) {
-          await supabaseClient.auth.signOut();
+          await supabaseClient.auth.signOut({ scope: "local" });
           showAuthScreen(verification.message);
           return;
         }
@@ -1030,7 +1030,7 @@
               sessionError
             );
 
-            await supabaseClient.auth.signOut();
+            await supabaseClient.auth.signOut({ scope: "local" });
 
             setAuthMessage(
               "Could not establish your session. Please try again.",
@@ -1051,7 +1051,7 @@
           await verifyAdminSession(session);
 
         if (!verification.ok) {
-          await supabaseClient.auth.signOut();
+          await supabaseClient.auth.signOut({ scope: "local" });
           setAuthMessage(
             verification.message,
             "error"
@@ -1158,7 +1158,7 @@
 
         if (sessionError || !data.session) {
           console.error("Admin Code session error:", sessionError);
-          await supabaseClient.auth.signOut();
+          await supabaseClient.auth.signOut({ scope: "local" });
           setAuthMessage(
             "Could not establish the admin session.",
             "error"
@@ -1169,7 +1169,7 @@
         const verification = await verifyAdminSession(data.session);
 
         if (!verification.ok) {
-          await supabaseClient.auth.signOut();
+          await supabaseClient.auth.signOut({ scope: "local" });
           setAuthMessage(verification.message, "error");
           return;
         }
@@ -1195,7 +1195,7 @@
       button.textContent = "Signing Out...";
 
       try {
-        await supabaseClient.auth.signOut();
+        await supabaseClient.auth.signOut({ scope: "local" });
       } catch (error) {
         console.error("Sign-out error:", error);
       }
