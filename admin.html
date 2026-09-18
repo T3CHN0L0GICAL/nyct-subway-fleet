@@ -350,6 +350,31 @@
     .activity-time { text-align:right; white-space:nowrap; }
     .activity-message { color:#888; padding:8px 0; }
 
+    /* Phase 5 — Session Diagnostics (only shown with ?sessiondebug=1) */
+    .session-diagnostics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .session-diagnostic-label {
+      color: #999;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .session-diagnostic-value {
+      font-size: 16px;
+      overflow-wrap: anywhere;
+    }
+
+    .session-diagnostics-note {
+      color: #999;
+      line-height: 1.45;
+      margin: 0 0 18px;
+    }
+
     @media (max-width: 520px) {
       .auth-choice {
         grid-template-columns: 1fr;
@@ -417,6 +442,23 @@
         <button id="enableNotificationsButton" class="sign-out-button" type="button">Enable Notifications</button>
         <button id="testNotificationButton" class="sign-out-button" type="button">Send Test Notification</button>
         <button id="signOutButton" class="sign-out-button" type="button">Sign Out</button>
+      </div>
+
+      <div id="sessionDiagnosticsSection" class="section hidden">
+        <h2>Session Diagnostics</h2>
+        <p class="session-diagnostics-note">
+          Safe diagnostic information only. Access tokens, refresh tokens, passwords, and codes are never displayed.
+        </p>
+        <div class="session-diagnostics-grid">
+          <div><div class="session-diagnostic-label">Signed in</div><div id="diagSignedIn" class="session-diagnostic-value">Checking…</div></div>
+          <div><div class="session-diagnostic-label">Session stored</div><div id="diagSessionStored" class="session-diagnostic-value">Checking…</div></div>
+          <div><div class="session-diagnostic-label">Token expires</div><div id="diagTokenExpires" class="session-diagnostic-value">Checking…</div></div>
+          <div><div class="session-diagnostic-label">Last auth event</div><div id="diagLastAuthEvent" class="session-diagnostic-value">—</div></div>
+          <div><div class="session-diagnostic-label">Last auth event time</div><div id="diagLastAuthEventTime" class="session-diagnostic-value">—</div></div>
+          <div><div class="session-diagnostic-label">Last session error</div><div id="diagLastSessionError" class="session-diagnostic-value">None recorded</div></div>
+          <div><div class="session-diagnostic-label">Platform</div><div id="diagPlatform" class="session-diagnostic-value">—</div></div>
+        </div>
+        <button id="refreshSessionDiagnosticsButton" class="filter-button" type="button">Refresh Diagnostics</button>
       </div>
 
       <div class="stats">
@@ -551,8 +593,108 @@
 
     const supabaseClient = supabase.createClient(
       SUPABASE_URL,
-      SUPABASE_PUBLISHABLE_KEY
+      SUPABASE_PUBLISHABLE_KEY,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      }
     );
+
+    const SESSION_DEBUG_ENABLED =
+      new URLSearchParams(window.location.search).get("sessiondebug") === "1";
+    const SESSION_DIAGNOSTICS_KEY = "fleetIdentifierAdminSessionDiagnostics";
+    const SUPABASE_AUTH_STORAGE_KEY = "sb-jkgjektucefrtxkcngcw-auth-token";
+
+    function readStoredSessionDiagnosticState() {
+      try {
+        return JSON.parse(localStorage.getItem(SESSION_DIAGNOSTICS_KEY) || "{}") || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveStoredSessionDiagnosticState(patch) {
+      const next = { ...readStoredSessionDiagnosticState(), ...patch };
+      try {
+        localStorage.setItem(SESSION_DIAGNOSTICS_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    }
+
+    function recordSessionDiagnosticError(error) {
+      if (!error) return;
+      const message = error?.message || String(error);
+      saveStoredSessionDiagnosticState({
+        lastError: `${message} — ${new Date().toLocaleString()}`
+      });
+    }
+
+    function setDiagnosticText(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    }
+
+    function adminPlatformLabel() {
+      const standalone =
+        window.matchMedia?.("(display-mode: standalone)")?.matches ||
+        window.navigator.standalone === true;
+      const device = /iPhone/i.test(navigator.userAgent)
+        ? "iPhone"
+        : /iPad/i.test(navigator.userAgent)
+          ? "iPad"
+          : /Android/i.test(navigator.userAgent)
+            ? "Android"
+            : "desktop";
+      return `${standalone ? "PWA" : "web"} / ${device}`;
+    }
+
+    async function refreshSessionDiagnostics() {
+      if (!SESSION_DEBUG_ENABLED) return;
+
+      document.getElementById("sessionDiagnosticsSection")?.classList.remove("hidden");
+      setDiagnosticText("diagPlatform", adminPlatformLabel());
+
+      let session = null;
+      try {
+        const result = await supabaseClient.auth.getSession();
+        if (result.error) {
+          recordSessionDiagnosticError(result.error);
+        }
+        session = result.data?.session || null;
+      } catch (error) {
+        recordSessionDiagnosticError(error);
+      }
+
+      let stored = false;
+      try {
+        stored = Boolean(localStorage.getItem(SUPABASE_AUTH_STORAGE_KEY));
+      } catch {}
+
+      const state = readStoredSessionDiagnosticState();
+      setDiagnosticText("diagSignedIn", session?.user ? "Yes" : "No");
+      setDiagnosticText("diagSessionStored", stored ? "Yes" : "No");
+      setDiagnosticText(
+        "diagTokenExpires",
+        session?.expires_at
+          ? new Date(session.expires_at * 1000).toLocaleString()
+          : "No active session"
+      );
+      setDiagnosticText("diagLastAuthEvent", state.lastAuthEvent || "—");
+      setDiagnosticText("diagLastAuthEventTime", state.lastAuthEventTime || "—");
+      setDiagnosticText("diagLastSessionError", state.lastError || "None recorded");
+    }
+
+    supabaseClient.auth.onAuthStateChange((event) => {
+      if (!SESSION_DEBUG_ENABLED) return;
+      saveStoredSessionDiagnosticState({
+        lastAuthEvent: event || "UNKNOWN",
+        lastAuthEventTime: new Date().toLocaleString()
+      });
+      setTimeout(refreshSessionDiagnostics, 0);
+    });
 
     let sightings = [];
     let profiles = [];
@@ -735,6 +877,7 @@
         } = await supabaseClient.auth.getSession();
 
         if (sessionError) {
+          recordSessionDiagnosticError(sessionError);
           console.error("Session error:", sessionError);
           showAuthScreen("Could not verify your existing session.");
           return;
@@ -1878,6 +2021,15 @@
       ?.addEventListener("click", signOutAdmin);
 
     document.getElementById("refreshActivityButton")?.addEventListener("click", () => loadAdminActivity(true));
+
+    document
+      .getElementById("refreshSessionDiagnosticsButton")
+      ?.addEventListener("click", refreshSessionDiagnostics);
+
+    if (SESSION_DEBUG_ENABLED) {
+      document.getElementById("sessionDiagnosticsSection")?.classList.remove("hidden");
+      refreshSessionDiagnostics();
+    }
 
     setupFilters();
     startAdminDashboard();
