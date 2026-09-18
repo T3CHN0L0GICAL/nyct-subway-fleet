@@ -340,6 +340,16 @@
       margin: -8px 0 18px;
     }
 
+    .activity-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+    .activity-heading h2 { margin:0; }
+    .activity-list { display:grid; gap:10px; }
+    .activity-item { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:center; padding:14px; background:#111; border:1px solid #292929; border-radius:10px; }
+    .activity-icon { font-size:22px; line-height:1; }
+    .activity-title { font-weight:bold; margin-bottom:4px; }
+    .activity-detail, .activity-time { color:#999; font-size:13px; }
+    .activity-time { text-align:right; white-space:nowrap; }
+    .activity-message { color:#888; padding:8px 0; }
+
     @media (max-width: 520px) {
       .auth-choice {
         grid-template-columns: 1fr;
@@ -431,6 +441,12 @@
         <div class="card-value" id="todaySightings">—</div>
       </div>
 
+    </div>
+
+    <!-- Phase 5.4 — Admin Activity -->
+    <div class="section">
+      <div class="activity-heading"><h2>Activity</h2><button id="refreshActivityButton" class="filter-button" type="button">Refresh</button></div>
+      <div id="activityList" class="activity-list"><div class="activity-message">Loading activity...</div></div>
     </div>
 
     <!-- Recent Sightings -->
@@ -527,6 +543,7 @@
 
     let sightings = [];
     let profiles = [];
+    let adminActivity = [];
     let currentAdminProfile = null;
 
     let statusResetTimer = null;
@@ -693,6 +710,7 @@
 
       loadDashboard(profile);
       loadUsers();
+      await loadAdminActivity();
       refreshNotificationButton();
     }
 
@@ -1029,8 +1047,10 @@
       currentAdminProfile = null;
       sightings = [];
       profiles = [];
+      adminActivity = [];
 
       document.getElementById("sightingsTable").innerHTML = "";
+      document.getElementById("activityList").innerHTML = '<div class="activity-message">Loading activity...</div>';
       document.getElementById("usersTable").innerHTML = "";
       document.getElementById("accountLoginForm").reset();
       document.getElementById("adminCodeForm").reset();
@@ -1308,6 +1328,41 @@
         button.disabled = false;
         button.textContent = "Send Test Notification";
       }
+    }
+
+    function activityPresentation(e) {
+      if (e.event_type === "admin_code_login") return { icon:"🔐", title:"Admin Code used", detail:"Successful Admin Code sign-in" };
+      if (e.event_type === "admin_account_login") return { icon:"👤", title:"Admin account login", detail:e.username ? `@${e.username} signed in` : "An administrator signed in" };
+      if (e.event_type === "easter_egg") return { icon:"🥚", title:"Easter egg entered", detail:e.code_label || "Easter egg entered" };
+      return { icon:"•", title:"Admin activity", detail:e.event_type || "Unknown event" };
+    }
+
+    function formatActivityTime(value) {
+      if (!value) return "—";
+      const d = new Date(value), n = new Date();
+      if (Number.isNaN(d.getTime())) return "—";
+      const today = d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
+      if (today) return `Today at ${d.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"})}`;
+      return d.toLocaleString([], {month:"short", day:"numeric", year:d.getFullYear()===n.getFullYear()?undefined:"numeric", hour:"numeric", minute:"2-digit"});
+    }
+
+    function renderAdminActivity() {
+      const list=document.getElementById("activityList"); if(!list) return; list.innerHTML="";
+      if(!adminActivity.length){ const x=document.createElement("div"); x.className="activity-message"; x.textContent="No admin activity has been recorded yet."; list.appendChild(x); return; }
+      adminActivity.forEach(e=>{ const p=activityPresentation(e), item=document.createElement("div"); item.className="activity-item";
+        const icon=document.createElement("div"); icon.className="activity-icon"; icon.textContent=p.icon;
+        const body=document.createElement("div"), title=document.createElement("div"), detail=document.createElement("div"); title.className="activity-title"; title.textContent=p.title; detail.className="activity-detail"; detail.textContent=p.detail; body.append(title,detail);
+        const time=document.createElement("div"); time.className="activity-time"; time.textContent=formatActivityTime(e.created_at); item.append(icon,body,time); list.appendChild(item); });
+    }
+
+    async function loadAdminActivity(showStatus=false) {
+      const list=document.getElementById("activityList"), button=document.getElementById("refreshActivityButton"); if(!currentAdminProfile?.id) return;
+      if(button){button.disabled=true;button.textContent="Refreshing...";} if(!adminActivity.length&&list) list.innerHTML='<div class="activity-message">Loading activity...</div>';
+      try { const {data:{session},error}=await supabaseClient.auth.getSession(); if(error||!session?.access_token) throw new Error("No valid admin session.");
+        const r=await fetch(`${SUPABASE_URL}/functions/v1/admin-activity`,{method:"GET",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${session.access_token}`}}); let result={}; try{result=await r.json();}catch{}
+        if(!r.ok) throw new Error(result.error||"Could not load admin activity."); adminActivity=Array.isArray(result.activity)?result.activity:[]; renderAdminActivity(); if(showStatus)setStatus("Activity refreshed.","success",2500);
+      } catch(error){ console.error("Admin activity error:",error); if(list)list.innerHTML='<div class="activity-message">Could not load admin activity.</div>'; if(showStatus)setStatus("Could not refresh admin activity.","error",4000); }
+      finally { if(button){button.disabled=false;button.textContent="Refresh";} }
     }
 
     function loadDashboard(profile) {
@@ -1737,6 +1792,8 @@
     document
       .getElementById("signOutButton")
       ?.addEventListener("click", signOutAdmin);
+
+    document.getElementById("refreshActivityButton")?.addEventListener("click", () => loadAdminActivity(true));
 
     setupFilters();
     startAdminDashboard();
