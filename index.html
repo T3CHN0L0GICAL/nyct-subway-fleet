@@ -563,6 +563,37 @@
         flex-wrap: wrap;
     }
 
+
+    .session-diagnostics {
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid var(--fi-border);
+    }
+
+    .session-diagnostics-grid {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 8px 12px;
+        margin: 12px 0;
+        font-size: 14px;
+    }
+
+    .session-diagnostics-label {
+        font-weight: bold;
+    }
+
+    .session-diagnostics-value {
+        color: var(--fi-muted);
+        overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 600px) {
+        .session-diagnostics-grid {
+            grid-template-columns: 1fr;
+            gap: 4px;
+        }
+    }
+
 </style>
 </head>
 
@@ -595,6 +626,36 @@
             <option value="light">Light</option>
             <option value="system">System</option>
         </select>
+
+        <section id="sessionDiagnostics" class="session-diagnostics hidden">
+            <h2>Session Diagnostics</h2>
+            <div class="account-small-note">
+                Safe diagnostic information only. Access tokens, refresh tokens, passwords, and codes are never displayed.
+            </div>
+            <div class="session-diagnostics-grid">
+                <div class="session-diagnostics-label">Signed in</div>
+                <div id="diagSignedIn" class="session-diagnostics-value">Checking...</div>
+
+                <div class="session-diagnostics-label">Session stored</div>
+                <div id="diagSessionStored" class="session-diagnostics-value">Checking...</div>
+
+                <div class="session-diagnostics-label">Token expires</div>
+                <div id="diagExpiresAt" class="session-diagnostics-value">Checking...</div>
+
+                <div class="session-diagnostics-label">Last auth event</div>
+                <div id="diagLastAuthEvent" class="session-diagnostics-value">None recorded</div>
+
+                <div class="session-diagnostics-label">Last auth event time</div>
+                <div id="diagLastAuthEventTime" class="session-diagnostics-value">—</div>
+
+                <div class="session-diagnostics-label">Last session error</div>
+                <div id="diagLastSessionError" class="session-diagnostics-value">None recorded</div>
+
+                <div class="session-diagnostics-label">Platform</div>
+                <div id="diagPlatform" class="session-diagnostics-value">—</div>
+            </div>
+            <button type="button" onclick="refreshSessionDiagnostics()">Refresh Diagnostics</button>
+        </section>
 
         <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--fi-border);">
             <button type="button" onclick="toggleAccountPanel()">Account</button>
@@ -1731,7 +1792,119 @@ if ("serviceWorker" in navigator) {
 <script>
 const SUPABASE_URL = "https://jkgjektucefrtxkcngcw.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Prb-Tm0UxZxc_lPG6iWbJQ_maolEsol";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY,
+    {
+        auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+        }
+    }
+);
+
+const SESSION_DIAGNOSTICS_KEY = "fleetIdentifierSessionDiagnostics";
+
+function sessionDiagnosticsEnabled() {
+    return new URLSearchParams(window.location.search).get("sessiondebug") === "1";
+}
+
+function readSessionDiagnosticsLog() {
+    try {
+        return JSON.parse(localStorage.getItem(SESSION_DIAGNOSTICS_KEY) || "{}");
+    } catch {
+        return {};
+    }
+}
+
+function writeSessionDiagnosticsLog(update) {
+    const current = readSessionDiagnosticsLog();
+    const next = { ...current, ...update };
+    localStorage.setItem(SESSION_DIAGNOSTICS_KEY, JSON.stringify(next));
+    return next;
+}
+
+function findSupabaseAuthStorageKey() {
+    return Object.keys(localStorage).find(key =>
+        key.startsWith("sb-") && key.endsWith("-auth-token")
+    ) || "";
+}
+
+function safeDiagnosticError(error) {
+    if (!error) return "";
+    return String(error.message || error).slice(0, 300);
+}
+
+async function refreshSessionDiagnostics() {
+    if (!sessionDiagnosticsEnabled()) return;
+
+    const panel = document.getElementById("sessionDiagnostics");
+    if (!panel) return;
+
+    panel.classList.remove("hidden");
+
+    let session = null;
+    let sessionError = null;
+
+    try {
+        const result = await supabaseClient.auth.getSession();
+        session = result.data?.session || null;
+        sessionError = result.error || null;
+    } catch (error) {
+        sessionError = error;
+    }
+
+    if (sessionError) {
+        writeSessionDiagnosticsLog({
+            lastSessionError: safeDiagnosticError(sessionError),
+            lastSessionErrorAt: new Date().toISOString()
+        });
+    }
+
+    const storedKey = findSupabaseAuthStorageKey();
+    const log = readSessionDiagnosticsLog();
+
+    document.getElementById("diagSignedIn").textContent =
+        session?.user ? "Yes" : "No";
+
+    document.getElementById("diagSessionStored").textContent =
+        storedKey ? "Yes" : "No";
+
+    document.getElementById("diagExpiresAt").textContent =
+        session?.expires_at
+            ? new Date(session.expires_at * 1000).toLocaleString()
+            : "No active session";
+
+    document.getElementById("diagLastAuthEvent").textContent =
+        log.lastAuthEvent || "None recorded";
+
+    document.getElementById("diagLastAuthEventTime").textContent =
+        log.lastAuthEventAt
+            ? new Date(log.lastAuthEventAt).toLocaleString()
+            : "—";
+
+    document.getElementById("diagLastSessionError").textContent =
+        log.lastSessionError
+            ? `${log.lastSessionError}${
+                log.lastSessionErrorAt
+                    ? " — " + new Date(log.lastSessionErrorAt).toLocaleString()
+                    : ""
+              }`
+            : "None recorded";
+
+    document.getElementById("diagPlatform").textContent =
+        `${getFleetIdentifierPlatform()} / ${navigator.userAgent.includes("iPhone") ? "iPhone" : "browser"}`;
+}
+
+function initializeSessionDiagnosticsVisibility() {
+    if (!sessionDiagnosticsEnabled()) return;
+
+    const panel = document.getElementById("sessionDiagnostics");
+    if (panel) panel.classList.remove("hidden");
+
+    refreshSessionDiagnostics();
+}
 
 function updateFocusMode() {
     const settingsOpen = !document.getElementById("settingsPanel").classList.contains("hidden");
@@ -2479,18 +2652,43 @@ async function renderAuthState(session) {
 }
 
 async function initializeAuth() {
-    const { data, error } = await supabaseClient.auth.getSession();
+    let data;
+    let error;
+
+    try {
+        const result = await supabaseClient.auth.getSession();
+        data = result.data;
+        error = result.error;
+    } catch (caughtError) {
+        error = caughtError;
+        data = { session: null };
+    }
 
     if (error) {
         console.error("Could not load Supabase session:", error);
-        return;
+
+        writeSessionDiagnosticsLog({
+            lastSessionError: safeDiagnosticError(error),
+            lastSessionErrorAt: new Date().toISOString()
+        });
     }
 
-    await renderAuthState(data.session);
+    await renderAuthState(data?.session || null);
 
-    supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        writeSessionDiagnosticsLog({
+            lastAuthEvent: event || "UNKNOWN",
+            lastAuthEventAt: new Date().toISOString()
+        });
+
         await renderAuthState(session);
+
+        if (sessionDiagnosticsEnabled()) {
+            setTimeout(refreshSessionDiagnostics, 0);
+        }
     });
+
+    initializeSessionDiagnosticsVisibility();
 }
 
 initializeAuth();
