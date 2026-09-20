@@ -921,6 +921,9 @@
             <div style="margin-top:12px;">
                 <button type="button" onclick="toggleSearchHistoryPanel()">Search History</button>
             </div>
+            <div style="margin-top:12px;">
+                <button type="button" onclick="toggleAchievementsPanel()">Achievements</button>
+            </div>
         </div>
 
     <section id="accountPanel" class="account-panel hidden">
@@ -1121,6 +1124,14 @@
         <div id="mySightingsList"></div>
     </section>
 
+    <section id="achievementsPanel" class="account-panel hidden">
+        <h2>Milestones & Achievements</h2>
+        <div class="account-small-note">Achievements are earned from your synced sightings and keep the date you first unlocked them.</div>
+        <div style="margin-top:14px;"><button type="button" onclick="loadAchievements()">Refresh</button></div>
+        <div id="achievementsStatus" class="status-message">Loading achievements...</div>
+        <div id="achievementsList" class="reports-list"></div>
+    </section>
+
     <section id="searchHistoryPanel" class="account-panel hidden">
         <h2>Search History</h2>
         <div class="account-small-note">Successful fleet searches made while signed in are synced to your account across devices.</div>
@@ -1196,6 +1207,7 @@ function toggleSettings() {
         document.getElementById("mySightingsPanel")?.classList.add("hidden");
         document.getElementById("myReportsPanel")?.classList.add("hidden");
         document.getElementById("searchHistoryPanel")?.classList.add("hidden");
+        document.getElementById("achievementsPanel")?.classList.add("hidden");
     }
 
     updateFocusMode();
@@ -1206,6 +1218,121 @@ window.addEventListener("DOMContentLoaded", function() {
     if (select) select.value = savedTheme;
 });
 
+
+
+const achievementDefinitions = [
+    { key:"first_sighting", title:"First Sighting", description:"Save your first sighting.", type:"total", target:1 },
+    { key:"sightings_10", title:"10 Sightings", description:"Save 10 sightings.", type:"total", target:10 },
+    { key:"sightings_50", title:"50 Sightings", description:"Save 50 sightings.", type:"total", target:50 },
+    { key:"sightings_100", title:"100 Sightings", description:"Save 100 sightings.", type:"total", target:100 },
+    { key:"unique_10", title:"10 Unique Cars", description:"See 10 different car numbers.", type:"unique", target:10 },
+    { key:"unique_50", title:"50 Unique Cars", description:"See 50 different car numbers.", type:"unique", target:50 },
+    { key:"unique_100", title:"100 Unique Cars", description:"See 100 different car numbers.", type:"unique", target:100 },
+    { key:"streak_3", title:"3-Day Streak", description:"Save a sighting on 3 consecutive calendar days.", type:"streak", target:3 },
+    { key:"streak_7", title:"7-Day Streak", description:"Save a sighting on 7 consecutive calendar days.", type:"streak", target:7 },
+    { key:"streak_30", title:"30-Day Streak", description:"Save a sighting on 30 consecutive calendar days.", type:"streak", target:30 }
+];
+
+function achievementLongestStreak(rows) {
+    const dayKeys=[...new Set((rows||[]).map(r=>{
+        if(!r.saved_at) return null;
+        const d=new Date(r.saved_at);
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    }).filter(Boolean))].sort();
+    let longest=0,current=0,previous=null;
+    for(const key of dayKeys){
+        const d=new Date(`${key}T12:00:00`);
+        if(!previous) current=1;
+        else current=Math.round((d-previous)/86400000)===1?current+1:1;
+        longest=Math.max(longest,current);
+        previous=d;
+    }
+    return longest;
+}
+
+function achievementValue(def,stats){
+    if(def.type==="total") return stats.total;
+    if(def.type==="unique") return stats.unique;
+    if(def.type==="streak") return stats.longestStreak;
+    return 0;
+}
+
+async function syncAchievements(user,sightings,earnedRows){
+    const existing=new Set((earnedRows||[]).map(x=>x.achievement_key));
+    const stats={
+        total:(sightings||[]).length,
+        unique:new Set((sightings||[]).map(x=>String(x.car_number||"").trim()).filter(Boolean)).size,
+        longestStreak:achievementLongestStreak(sightings||[])
+    };
+    const rows=achievementDefinitions
+        .filter(def=>!existing.has(def.key)&&achievementValue(def,stats)>=def.target)
+        .map(def=>({user_id:user.id,achievement_key:def.key}));
+    if(!rows.length) return;
+    const {error}=await supabaseClient.from("user_achievements").insert(rows);
+    if(error && !String(error.message||"").toLowerCase().includes("duplicate"))
+        console.warn("Achievement sync failed:",error.message);
+}
+
+async function refreshAchievementEligibility(user){
+    if(!user) return;
+    const [s,a]=await Promise.all([
+        supabaseClient.from("sightings").select("car_number, saved_at").eq("user_id",user.id),
+        supabaseClient.from("user_achievements").select("achievement_key, earned_at").eq("user_id",user.id)
+    ]);
+    if(!s.error&&!a.error) await syncAchievements(user,s.data||[],a.data||[]);
+}
+
+async function toggleAchievementsPanel(){
+    const panel=document.getElementById("achievementsPanel");
+    const opening=panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening?"achievementsPanel":"");
+    panel.classList.toggle("hidden",!opening);
+    if(opening) await loadAchievements();
+}
+
+async function loadAchievements(){
+    const status=document.getElementById("achievementsStatus");
+    const list=document.getElementById("achievementsList");
+    status.textContent="Loading achievements...";
+    list.innerHTML="";
+    const {data:{user}}=await supabaseClient.auth.getUser();
+    if(!user){status.textContent="Log in to view synced achievements.";return;}
+
+    const [s,a]=await Promise.all([
+        supabaseClient.from("sightings").select("car_number, saved_at").eq("user_id",user.id),
+        supabaseClient.from("user_achievements").select("achievement_key, earned_at").eq("user_id",user.id)
+    ]);
+    if(s.error||a.error){status.textContent="Could not load achievements.";return;}
+
+    await syncAchievements(user,s.data||[],a.data||[]);
+    const {data:earned,error}=await supabaseClient.from("user_achievements")
+        .select("achievement_key, earned_at").eq("user_id",user.id);
+    if(error){status.textContent="Could not refresh achievements.";return;}
+
+    const map=new Map((earned||[]).map(x=>[x.achievement_key,x.earned_at]));
+    const stats={
+        total:(s.data||[]).length,
+        unique:new Set((s.data||[]).map(x=>String(x.car_number||"").trim()).filter(Boolean)).size,
+        longestStreak:achievementLongestStreak(s.data||[])
+    };
+    const count=achievementDefinitions.filter(d=>map.has(d.key)).length;
+    status.textContent=`${count} of ${achievementDefinitions.length} achievements earned.`;
+    list.innerHTML=achievementDefinitions.map(def=>{
+        const at=map.get(def.key);
+        const progress=Math.min(achievementValue(def,stats),def.target);
+        return `<div class="report-item">
+            <div class="report-item-heading">
+                <div class="report-item-car">${escapeHTML(def.title)}</div>
+                <div class="report-status-badge">${at?"Earned":"Locked"}</div>
+            </div>
+            <div class="report-item-value">${escapeHTML(def.description)}</div>
+            <div class="report-item-details" style="margin-top:10px;">
+                <div class="report-item-label">${at?"Earned":"Progress"}</div>
+                <div class="report-item-value">${at?escapeHTML(new Date(at).toLocaleString()):`${progress} / ${def.target}`}</div>
+            </div>
+        </div>`;
+    }).join("");
+}
 
 async function toggleSearchHistoryPanel() {
     const panel = document.getElementById("searchHistoryPanel");
@@ -1846,6 +1973,9 @@ async function saveSighting() {
         status.textContent =
             `Saved: car ${pendingSighting.carNumber} on the ${pendingSighting.line} line.`;
     }
+
+    // Check for newly earned achievements after each successful sighting.
+    refreshAchievementEligibility(session.user);
 }
 
 
@@ -2704,7 +2834,7 @@ function updateFocusMode() {
 }
 
 function closeSettingsContentPanels(exceptId = "") {
-    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel"].forEach(id => {
+    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel"].forEach(id => {
         if (id !== exceptId) {
             document.getElementById(id)?.classList.add("hidden");
         }
