@@ -1658,6 +1658,46 @@ function buildFleetShareText(carNumber, fleet, configuration = "") {
     return parts.filter((part, index) => part !== "" || index === parts.length - 2).join("\n");
 }
 
+
+async function copyFleetResult() {
+    const status = document.getElementById("shareResultStatus");
+
+    if (!pendingSighting?.carNumber || !pendingSighting?.fleet) {
+        if (status) status.textContent = "Identify a car first.";
+        return;
+    }
+
+    const text = buildFleetShareText(
+        pendingSighting.carNumber,
+        pendingSighting.fleet,
+        pendingSighting.configuration || ""
+    );
+
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+        } else {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.setAttribute("readonly", "");
+            textarea.style.position = "fixed";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.select();
+
+            const copied = document.execCommand("copy");
+            textarea.remove();
+
+            if (!copied) throw new Error("Clipboard copy was not available.");
+        }
+
+        if (status) status.textContent = "Result copied to clipboard!";
+    } catch (error) {
+        console.error("Could not copy fleet result:", error);
+        if (status) status.textContent = "Could not copy result. Please try again.";
+    }
+}
+
 async function shareFleetResult() {
     const status = document.getElementById("shareResultStatus");
 
@@ -2218,7 +2258,10 @@ async function identify() {
         </div>
 
         <div class="report-box">
-            <button type="button" onclick="shareFleetResult()">Share Result</button>
+            <div class="sighting-actions">
+                <button type="button" onclick="shareFleetResult()">Share Result</button>
+                <button type="button" onclick="copyFleetResult()">Copy to Clipboard</button>
+            </div>
             <div id="shareResultStatus" class="status-message"></div>
         </div>
 
