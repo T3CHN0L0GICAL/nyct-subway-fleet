@@ -594,6 +594,71 @@
         }
     }
 
+
+    /* My Reports */
+    .reports-list {
+        display: grid;
+        gap: 12px;
+        margin-top: 14px;
+    }
+
+    .report-item {
+        border: 1px solid var(--fi-border);
+        border-radius: 10px;
+        padding: 14px;
+    }
+
+    .report-item-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
+    .report-item-car {
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    .report-status-badge {
+        display: inline-block;
+        border: 1px solid var(--fi-border);
+        border-radius: 999px;
+        padding: 5px 9px;
+        font-size: 12px;
+        font-weight: bold;
+        text-transform: capitalize;
+    }
+
+    .report-item-details {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        gap: 7px 10px;
+        font-size: 14px;
+    }
+
+    .report-item-label {
+        font-weight: bold;
+    }
+
+    .report-item-value {
+        color: var(--fi-muted);
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+    }
+
+    @media (max-width: 600px) {
+        .report-item-details {
+            grid-template-columns: 1fr;
+            gap: 3px;
+        }
+        .report-item-value {
+            margin-bottom: 7px;
+        }
+    }
+
 </style>
 </head>
 
@@ -661,6 +726,9 @@
             <button type="button" onclick="toggleAccountPanel()">Account</button>
             <div style="margin-top:12px;">
                 <button type="button" onclick="toggleSightingsPanel()">My Sightings</button>
+            </div>
+            <div style="margin-top:12px;">
+                <button type="button" onclick="toggleReportsPanel()">My Reports</button>
             </div>
         </div>
 
@@ -814,6 +882,18 @@
 
         <div id="mySightingsStatus" class="status-message">Loading sightings...</div>
         <div id="mySightingsList"></div>
+    </section>
+
+    <section id="myReportsPanel" class="account-panel hidden">
+        <h2>My Reports</h2>
+        <div class="account-small-note">
+            Missing-car reports submitted while signed in appear here. Status changes made by an administrator will show automatically the next time this list is opened or refreshed.
+        </div>
+        <div style="margin-top:14px;">
+            <button type="button" onclick="loadMyReports()">Refresh</button>
+        </div>
+        <div id="myReportsStatus" class="status-message">Loading reports...</div>
+        <div id="myReportsList" class="reports-list"></div>
     </section>
     </section>
 
@@ -1948,6 +2028,97 @@ async function toggleSightingsPanel() {
     if (opening) {
         await loadMySightings();
     }
+}
+
+async function toggleReportsPanel() {
+    const panel = document.getElementById("myReportsPanel");
+    const opening = panel.classList.contains("hidden");
+    panel.classList.toggle("hidden", !opening);
+
+    if (opening) {
+        await loadMyReports();
+    }
+}
+
+async function loadMyReports() {
+    const status = document.getElementById("myReportsStatus");
+    const list = document.getElementById("myReportsList");
+    if (!status || !list) return;
+
+    status.textContent = "Loading reports...";
+    list.innerHTML = "";
+
+    const { data: { session }, error: sessionError } =
+        await supabaseClient.auth.getSession();
+
+    if (sessionError || !session?.user) {
+        status.textContent = "Sign in to view your missing-car reports.";
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from("missing_car_reports")
+        .select("id, car_number, fleet_guess, line, notes, status, created_at")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        console.error("Could not load missing car reports:", error);
+        status.textContent = "Could not load your reports. Please try again.";
+        return;
+    }
+
+    const reports = data || [];
+
+    if (!reports.length) {
+        status.textContent = "You haven't submitted any missing-car reports while signed in yet.";
+        return;
+    }
+
+    status.textContent = `${reports.length} ${reports.length === 1 ? "report" : "reports"}`;
+
+    reports.forEach(report => {
+        const item = document.createElement("div");
+        item.className = "report-item";
+
+        const heading = document.createElement("div");
+        heading.className = "report-item-heading";
+
+        const car = document.createElement("div");
+        car.className = "report-item-car";
+        car.textContent = `Car ${report.car_number || "—"}`;
+
+        const badge = document.createElement("span");
+        badge.className = "report-status-badge";
+        badge.textContent = report.status || "pending";
+
+        heading.append(car, badge);
+
+        const details = document.createElement("div");
+        details.className = "report-item-details";
+
+        const fields = [
+            ["Fleet guess", report.fleet_guess || "—"],
+            ["Line", report.line || "—"],
+            ["Submitted", report.created_at ? new Date(report.created_at).toLocaleString() : "—"],
+            ["Notes", report.notes || "—"]
+        ];
+
+        fields.forEach(([labelText, valueText]) => {
+            const label = document.createElement("div");
+            label.className = "report-item-label";
+            label.textContent = labelText;
+
+            const value = document.createElement("div");
+            value.className = "report-item-value";
+            value.textContent = valueText;
+
+            details.append(label, value);
+        });
+
+        item.append(heading, details);
+        list.appendChild(item);
+    });
 }
 
 function escapeHTML(value) {
