@@ -933,6 +933,12 @@
             .profile-stats-secondary { grid-template-columns: 1fr; }
         }
 
+    
+        #profileStatTopLine .route-bullet,
+        #profileStatTopLine .line-bullet {
+            flex: 0 0 auto;
+        }
+
     </style>
 </head>
 
@@ -4556,10 +4562,20 @@ async function loadProfileStats(user) {
     const profileTopLine = profileMostCommon(sightings, "line");
     const profileTopLineEl = document.getElementById("profileStatTopLine");
     if (profileTopLineEl) {
-        profileTopLineEl.innerHTML =
-            profileTopLine === "—"
-                ? "—"
-                : lineDisplayHTML(profileTopLine);
+        if (profileTopLine === "—") {
+            profileTopLineEl.textContent = "—";
+        } else {
+            const matchingLineStat = document.getElementById("statTopLine");
+            const sameLineIsAlreadyRendered =
+                matchingLineStat &&
+                String(matchingLineStat.textContent || "").trim() === profileTopLine;
+
+            if (sameLineIsAlreadyRendered && matchingLineStat.innerHTML.trim()) {
+                profileTopLineEl.innerHTML = matchingLineStat.innerHTML;
+            } else {
+                profileTopLineEl.innerHTML = lineDisplayHTML(profileTopLine);
+            }
+        }
     }
 }
 
