@@ -955,6 +955,22 @@
                 <div class="sightings-stat-label">Most-seen line</div>
                 <div id="statTopLine" class="sightings-stat-value">—</div>
             </div>
+            <div class="sightings-stat">
+                <div class="sightings-stat-label">Most-seen car</div>
+                <div id="statTopCar" class="sightings-stat-value">—</div>
+            </div>
+            <div class="sightings-stat">
+                <div class="sightings-stat-label">Sightings this month</div>
+                <div id="statThisMonth" class="sightings-stat-value">0</div>
+            </div>
+            <div class="sightings-stat">
+                <div class="sightings-stat-label">First sighting</div>
+                <div id="statFirstSighting" class="sightings-stat-value">—</div>
+            </div>
+            <div class="sightings-stat">
+                <div class="sightings-stat-label">Latest sighting</div>
+                <div id="statLatestSighting" class="sightings-stat-value">—</div>
+            </div>
         </div>
 
         <div class="sightings-filters">
@@ -2386,6 +2402,10 @@ function updateSightingsStats() {
     const uniqueEl = document.getElementById("statUniqueCars");
     const fleetEl = document.getElementById("statTopFleet");
     const lineEl = document.getElementById("statTopLine");
+    const topCarEl = document.getElementById("statTopCar");
+    const thisMonthEl = document.getElementById("statThisMonth");
+    const firstEl = document.getElementById("statFirstSighting");
+    const latestEl = document.getElementById("statLatestSighting");
 
     const total = mySightingsData.length;
     const uniqueCars = new Set(
@@ -2400,6 +2420,38 @@ function updateSightingsStats() {
     if (lineEl) {
         const topLine = mostCommonValue(mySightingsData, "line");
         lineEl.innerHTML = topLine === "—" ? "—" : lineDisplayHTML(topLine);
+    }
+
+    if (topCarEl) {
+        const topCar = mostCommonValue(mySightingsData, "car_number");
+        topCarEl.textContent = topCar === "—" ? "—" : `Car ${topCar}`;
+    }
+
+    const validDates = mySightingsData
+        .map(s => new Date(s.saved_at))
+        .filter(d => !Number.isNaN(d.getTime()));
+
+    const now = new Date();
+    const sightingsThisMonth = validDates.filter(d =>
+        d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+    ).length;
+
+    if (thisMonthEl) thisMonthEl.textContent = String(sightingsThisMonth);
+
+    const formatStatDate = date => date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    });
+
+    if (validDates.length) {
+        const firstDate = new Date(Math.min(...validDates.map(d => d.getTime())));
+        const latestDate = new Date(Math.max(...validDates.map(d => d.getTime())));
+        if (firstEl) firstEl.textContent = formatStatDate(firstDate);
+        if (latestEl) latestEl.textContent = formatStatDate(latestDate);
+    } else {
+        if (firstEl) firstEl.textContent = "—";
+        if (latestEl) latestEl.textContent = "—";
     }
 }
 
