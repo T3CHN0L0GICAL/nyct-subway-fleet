@@ -409,6 +409,98 @@
         font-size: 14px;
     }
 
+    .top-account-mini {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-width: 0;
+    }
+
+    .top-account-mini.hidden { display: none; }
+
+    .profile-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid var(--fi-border);
+        background: var(--fi-chip);
+        color: var(--fi-text);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        flex: 0 0 auto;
+        user-select: none;
+    }
+
+    .top-account-name {
+        max-width: 210px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: bold;
+    }
+
+    .account-profile-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding-bottom: 16px;
+        margin-bottom: 4px;
+        border-bottom: 1px solid var(--fi-border);
+    }
+
+    .account-profile-card .profile-avatar {
+        width: 72px;
+        height: 72px;
+        font-size: 24px;
+    }
+
+    .profile-card-text {
+        min-width: 0;
+    }
+
+    .profile-card-name {
+        font-size: 22px;
+        font-weight: bold;
+        overflow-wrap: anywhere;
+    }
+
+    .profile-card-username,
+    .profile-card-member {
+        color: var(--fi-muted);
+        margin-top: 4px;
+        overflow-wrap: anywhere;
+    }
+
+    .avatar-panel {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--fi-border);
+    }
+
+    .avatar-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+
+    .avatar-file-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    @media (max-width: 600px) {
+        .top-account-name { max-width: 125px; }
+        .settings-row { gap: 8px; align-items: center; }
+        .account-profile-card { align-items: flex-start; }
+    }
+
     .account-panel {
         background: var(--fi-bg);
         color: var(--fi-text);
@@ -772,6 +864,10 @@
 
 
     <div id="settingsControls" class="settings-row">
+        <div id="topAccountMini" class="top-account-mini hidden" aria-label="Signed-in account">
+            <div id="topAccountAvatar" class="profile-avatar" aria-hidden="true">FI</div>
+            <div id="topAccountName" class="top-account-name"></div>
+        </div>
         <button type="button" onclick="toggleSettings()" aria-controls="settingsPanel">Settings</button>
     </div>
 
@@ -885,9 +981,33 @@
 
         <div id="signedInView" class="hidden">
             <div class="signed-in-card">
-                <div id="signedInName" class="signed-in-name">Signed in</div>
-                <div id="signedInUsername"></div>
+                <div class="account-profile-card">
+                    <div id="accountProfileAvatar" class="profile-avatar" aria-hidden="true">FI</div>
+                    <div class="profile-card-text">
+                        <div id="signedInName" class="profile-card-name">Signed in</div>
+                        <div id="signedInUsername" class="profile-card-username"></div>
+                        <div id="memberSince" class="profile-card-member"></div>
+                    </div>
+                </div>
+
                 <div id="signedInEmail" class="signed-in-email"></div>
+
+                <div class="avatar-panel">
+                    <strong>Profile Picture</strong>
+                    <div class="account-small-note" style="margin-top:5px;">
+                        Add, replace, or remove your profile picture. Images are resized before upload.
+                    </div>
+                    <div class="avatar-actions">
+                        <button type="button" onclick="openAvatarPicker('camera')">Take Photo</button>
+                        <button type="button" onclick="openAvatarPicker('library')">Photo Library / Gallery</button>
+                        <button type="button" onclick="openAvatarPicker('files')">Choose from Files</button>
+                        <button id="removeAvatarButton" type="button" onclick="removeProfilePhoto()">Remove Photo</button>
+                    </div>
+                    <input id="avatarCameraInput" class="avatar-file-input" type="file" accept="image/*" capture="environment" onchange="handleAvatarFile(this)">
+                    <input id="avatarLibraryInput" class="avatar-file-input" type="file" accept="image/*" onchange="handleAvatarFile(this)">
+                    <input id="avatarFilesInput" class="avatar-file-input" type="file" accept="image/jpeg,image/png,image/webp" onchange="handleAvatarFile(this)">
+                    <div id="avatarMessage" class="account-message"></div>
+                </div>
 
                 <div class="display-name-panel">
                     <button type="button" onclick="toggleDisplayNameForm()">Edit Display Name</button>
@@ -3319,8 +3439,7 @@ async function changeDisplayName(event) {
 
         const profile = await getUserDisplay(session.user);
 
-        document.getElementById("signedInName").textContent =
-            profile.displayName;
+        await renderAuthState(session);
 
         input.value = profile.displayName;
         setDisplayNameMessage("Display name changed successfully.");
@@ -3400,17 +3519,203 @@ async function logOut() {
     }
 }
 
+function profileInitials(displayName, username = "") {
+    const source = String(displayName || username || "FI").trim();
+    const parts = source.split(/\s+/).filter(Boolean);
+    if (!parts.length) return "FI";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function avatarPublicUrl(path) {
+    if (!path) return "";
+    const { data } = supabaseClient.storage.from("avatars").getPublicUrl(path);
+    return data?.publicUrl ? `${data.publicUrl}?v=${Date.now()}` : "";
+}
+
+function renderAvatarElement(element, profile) {
+    if (!element) return;
+
+    const initials = profileInitials(profile?.displayName, profile?.username);
+    const url = avatarPublicUrl(profile?.avatarPath);
+
+    element.replaceChildren();
+
+    if (url) {
+        const image = document.createElement("img");
+        image.src = url;
+        image.alt = "";
+        image.style.width = "100%";
+        image.style.height = "100%";
+        image.style.objectFit = "cover";
+        image.style.borderRadius = "50%";
+        image.onerror = () => {
+            element.replaceChildren();
+            element.textContent = initials;
+        };
+        element.appendChild(image);
+    } else {
+        element.textContent = initials;
+    }
+}
+
+function formatMemberSince(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return `Member since ${date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long"
+    })}`;
+}
+
+function setAvatarMessage(text, isError = false) {
+    const message = document.getElementById("avatarMessage");
+    if (!message) return;
+    message.textContent = text;
+    message.classList.toggle("error-text", isError);
+}
+
+function openAvatarPicker(source) {
+    const ids = {
+        camera: "avatarCameraInput",
+        library: "avatarLibraryInput",
+        files: "avatarFilesInput"
+    };
+    const input = document.getElementById(ids[source]);
+    if (!input) return;
+    input.value = "";
+    input.click();
+}
+
+async function resizeAvatarImage(file) {
+    if (!file?.type?.startsWith("image/")) {
+        throw new Error("Choose an image file.");
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        throw new Error("Profile pictures must be 5 MB or smaller.");
+    }
+
+    const bitmap = await createImageBitmap(file);
+    const maxSize = 512;
+    const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+
+    const blob = await new Promise(resolve =>
+        canvas.toBlob(resolve, "image/webp", 0.86)
+    );
+
+    if (!blob) throw new Error("Could not prepare that image.");
+    return blob;
+}
+
+async function handleAvatarFile(input) {
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    setAvatarMessage("Uploading profile picture...");
+
+    try {
+        const { data: { session }, error: sessionError } =
+            await supabaseClient.auth.getSession();
+
+        if (sessionError || !session?.user) {
+            throw new Error("You need to be signed in.");
+        }
+
+        const blob = await resizeAvatarImage(file);
+        const path = `${session.user.id}/avatar.webp`;
+
+        const { error: uploadError } = await supabaseClient.storage
+            .from("avatars")
+            .upload(path, blob, {
+                contentType: "image/webp",
+                upsert: true,
+                cacheControl: "3600"
+            });
+
+        if (uploadError) throw uploadError;
+
+        const { error: profileError } = await supabaseClient.rpc(
+            "set_my_avatar_path",
+            { new_avatar_path: path }
+        );
+
+        if (profileError) {
+            await supabaseClient.storage.from("avatars").remove([path]);
+            throw profileError;
+        }
+
+        setAvatarMessage("Profile picture updated.");
+        await renderAuthState(session);
+
+    } catch (error) {
+        console.error("Could not update profile picture:", error);
+        setAvatarMessage(error?.message || "Could not update profile picture.", true);
+    } finally {
+        input.value = "";
+    }
+}
+
+async function removeProfilePhoto() {
+    setAvatarMessage("Removing profile picture...");
+
+    try {
+        const { data: { session }, error: sessionError } =
+            await supabaseClient.auth.getSession();
+
+        if (sessionError || !session?.user) {
+            throw new Error("You need to be signed in.");
+        }
+
+        const profile = await getUserDisplay(session.user);
+
+        if (profile.avatarPath) {
+            const { error: removeError } = await supabaseClient.storage
+                .from("avatars")
+                .remove([profile.avatarPath]);
+
+            if (removeError) throw removeError;
+        }
+
+        const { error: profileError } = await supabaseClient.rpc(
+            "set_my_avatar_path",
+            { new_avatar_path: null }
+        );
+
+        if (profileError) throw profileError;
+
+        setAvatarMessage("Profile picture removed.");
+        await renderAuthState(session);
+
+    } catch (error) {
+        console.error("Could not remove profile picture:", error);
+        setAvatarMessage(error?.message || "Could not remove profile picture.", true);
+    }
+}
+
 async function getUserDisplay(user) {
     if (!user) {
         return {
             username: "",
-            displayName: "Fleet Identifier User"
+            displayName: "Fleet Identifier User",
+            avatarPath: "",
+            createdAt: ""
         };
     }
 
     const { data, error } = await supabaseClient
         .from("profiles")
-        .select("username, display_name")
+        .select("username, display_name, avatar_path, created_at")
         .eq("id", user.id)
         .single();
 
@@ -3424,7 +3729,9 @@ async function getUserDisplay(user) {
             displayName:
                 meta.display_name ||
                 meta.username ||
-                "Fleet Identifier User"
+                "Fleet Identifier User",
+            avatarPath: "",
+            createdAt: user.created_at || ""
         };
     }
 
@@ -3433,7 +3740,9 @@ async function getUserDisplay(user) {
         displayName:
             data?.display_name ||
             data?.username ||
-            "Fleet Identifier User"
+            "Fleet Identifier User",
+        avatarPath: data?.avatar_path || "",
+        createdAt: data?.created_at || user.created_at || ""
     };
 }
 
@@ -3441,9 +3750,12 @@ async function renderAuthState(session) {
     const signedOutView = document.getElementById("signedOutView");
     const signedInView = document.getElementById("signedInView");
 
+    const topMini = document.getElementById("topAccountMini");
+
     if (!session?.user) {
         signedOutView.classList.remove("hidden");
         signedInView.classList.add("hidden");
+        topMini?.classList.add("hidden");
         return;
     }
 
@@ -3452,6 +3764,7 @@ async function renderAuthState(session) {
 
     signedOutView.classList.add("hidden");
     signedInView.classList.remove("hidden");
+    topMini?.classList.remove("hidden");
 
     document.getElementById("signedInName").textContent =
         profile.displayName;
@@ -3461,6 +3774,18 @@ async function renderAuthState(session) {
 
     document.getElementById("signedInEmail").textContent =
         user.email || "";
+
+    document.getElementById("memberSince").textContent =
+        formatMemberSince(profile.createdAt);
+
+    document.getElementById("topAccountName").textContent =
+        profile.displayName;
+
+    renderAvatarElement(document.getElementById("topAccountAvatar"), profile);
+    renderAvatarElement(document.getElementById("accountProfileAvatar"), profile);
+
+    const removeButton = document.getElementById("removeAvatarButton");
+    if (removeButton) removeButton.disabled = !profile.avatarPath;
 }
 
 async function initializeAuth() {
