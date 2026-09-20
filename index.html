@@ -1003,7 +1003,7 @@
     <section id="myReportsPanel" class="account-panel hidden">
         <h2>My Reports</h2>
         <div class="account-small-note">
-            Missing-car reports submitted while signed in appear here. Status changes made by an administrator will show automatically the next time this list is opened or refreshed.
+            Missing-car and incorrect-information reports submitted while signed in appear here. Status changes made by an administrator will show automatically the next time this list is opened or refreshed.
         </div>
         <div style="margin-top:14px;">
             <button type="button" onclick="loadMyReports()">Refresh</button>
@@ -2389,30 +2389,68 @@ async function loadMyReports() {
         await supabaseClient.auth.getSession();
 
     if (sessionError || !session?.user) {
-        status.textContent = "Sign in to view your missing-car reports.";
+        status.textContent = "Sign in to view your reports.";
         return;
     }
 
-    const { data, error } = await supabaseClient
-        .from("missing_car_reports")
-        .select("id, car_number, fleet_guess, line, notes, status, created_at")
-        .eq("user_id", session.user.id)
-        .order("created_at", { ascending: false });
+    const [missingResult, incorrectResult] = await Promise.all([
+        supabaseClient
+            .from("missing_car_reports")
+            .select("id, car_number, fleet_guess, line, notes, status, created_at")
+            .eq("user_id", session.user.id)
+            .order("created_at", { ascending: false }),
 
-    if (error) {
-        console.error("Could not load missing car reports:", error);
+        supabaseClient
+            .from("incorrect_information_reports")
+            .select("id, car_number, fleet, field_reported, current_value, suggested_value, notes, status, created_at")
+            .eq("user_id", session.user.id)
+            .order("created_at", { ascending: false })
+    ]);
+
+    if (missingResult.error || incorrectResult.error) {
+        console.error("Could not load reports:", {
+            missingCarReports: missingResult.error,
+            incorrectInformationReports: incorrectResult.error
+        });
         status.textContent = "Could not load your reports. Please try again.";
         return;
     }
 
-    const reports = data || [];
+    const missingReports = (missingResult.data || []).map(report => ({
+        ...report,
+        reportType: "Missing Car"
+    }));
+
+    const incorrectReports = (incorrectResult.data || []).map(report => ({
+        ...report,
+        reportType: "Incorrect Information"
+    }));
+
+    const reports = [...missingReports, ...incorrectReports]
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
     if (!reports.length) {
-        status.textContent = "You haven't submitted any missing-car reports while signed in yet.";
+        status.textContent = "You haven't submitted any reports while signed in yet.";
         return;
     }
 
     status.textContent = `${reports.length} ${reports.length === 1 ? "report" : "reports"}`;
+
+    const incorrectFieldLabels = {
+        fleet: "Fleet",
+        builder: "Builder",
+        years: "Years built",
+        lines: "Lines",
+        division: "Division",
+        factory: "Factory version",
+        passenger: "Passenger version",
+        built: "Fleet size",
+        serviceSpeed: "Maximum service speed",
+        designSpeed: "Design speed",
+        propulsion: "Propulsion",
+        notes: "Notes",
+        other: "Other"
+    };
 
     reports.forEach(report => {
         const item = document.createElement("div");
@@ -2423,7 +2461,7 @@ async function loadMyReports() {
 
         const car = document.createElement("div");
         car.className = "report-item-car";
-        car.textContent = `Car ${report.car_number || "—"}`;
+        car.textContent = `Car ${report.car_number || "—"} · ${report.reportType}`;
 
         const badge = document.createElement("span");
         badge.className = "report-status-badge";
@@ -2434,12 +2472,25 @@ async function loadMyReports() {
         const details = document.createElement("div");
         details.className = "report-item-details";
 
-        const fields = [
-            ["Fleet guess", report.fleet_guess || "—"],
-            ["Line", report.line || "—"],
-            ["Submitted", report.created_at ? new Date(report.created_at).toLocaleString() : "—"],
-            ["Notes", report.notes || "—"]
-        ];
+        let fields;
+
+        if (report.reportType === "Incorrect Information") {
+            fields = [
+                ["Fleet", report.fleet || "—"],
+                ["Field", incorrectFieldLabels[report.field_reported] || report.field_reported || "—"],
+                ["Current value", report.current_value || "—"],
+                ["Suggested value", report.suggested_value || "—"],
+                ["Submitted", report.created_at ? new Date(report.created_at).toLocaleString() : "—"],
+                ["Notes", report.notes || "—"]
+            ];
+        } else {
+            fields = [
+                ["Fleet guess", report.fleet_guess || "—"],
+                ["Line", report.line || "—"],
+                ["Submitted", report.created_at ? new Date(report.created_at).toLocaleString() : "—"],
+                ["Notes", report.notes || "—"]
+            ];
+        }
 
         fields.forEach(([labelText, valueText]) => {
             const label = document.createElement("div");
@@ -2448,6 +2499,7 @@ async function loadMyReports() {
 
             const value = document.createElement("div");
             value.className = "report-item-value";
+
             if (labelText === "Line" && valueText !== "—") {
                 value.innerHTML = lineDisplayHTML(valueText);
             } else {

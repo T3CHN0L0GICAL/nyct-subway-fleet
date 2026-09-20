@@ -572,6 +572,9 @@
 
       <div id="activityResultCount" class="result-count"></div>
       <div id="activityList" class="activity-list"><div class="activity-message">Loading activity...</div></div>
+      <div style="margin-top:14px;">
+        <button id="toggleActivityButton" class="filter-button hidden" type="button">View All</button>
+      </div>
     </div>
 
     <!-- Recent Sightings -->
@@ -913,6 +916,7 @@
     let sightings = [];
     let profiles = [];
     let adminActivity = [];
+    let showAllAdminActivity = false;
     let missingCarReports = [];
     let incorrectInformationReports = [];
     let currentAdminProfile = null;
@@ -1764,7 +1768,17 @@
         return;
       }
 
-      filteredActivity.forEach(event => {
+      const toggleButton = document.getElementById("toggleActivityButton");
+      const visibleActivity = showAllAdminActivity
+        ? filteredActivity
+        : filteredActivity.slice(0, 4);
+
+      if (toggleButton) {
+        toggleButton.classList.toggle("hidden", filteredActivity.length <= 4);
+        toggleButton.textContent = showAllAdminActivity ? "Show Less" : "View All";
+      }
+
+      visibleActivity.forEach(event => {
         const p = activityPresentation(event);
         const item = document.createElement("div");
         item.className = "activity-item";
@@ -2646,6 +2660,17 @@ function adminRouteDropdownHTML(value, text) {
     document.getElementById("clearIncorrectReportFilters")?.addEventListener(
       "click",
       clearIncorrectReportFilters
+    );
+
+
+    function toggleAdminActivityView() {
+      showAllAdminActivity = !showAllAdminActivity;
+      renderAdminActivity();
+    }
+
+    document.getElementById("toggleActivityButton")?.addEventListener(
+      "click",
+      toggleAdminActivityView
     );
 
 </script>
