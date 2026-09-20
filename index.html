@@ -329,27 +329,70 @@
         margin: 8px 0;
     }
 
-    .shuttle-mark {
+    /* NYC Subway route bullets */
+    .route-bullet {
+        --bullet-bg: #808183;
+        --bullet-fg: #fff;
         display: inline-flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: center;
-        min-width: 1.2em;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: var(--bullet-bg);
+        color: var(--bullet-fg);
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 18px;
+        font-weight: 800;
         line-height: 1;
+        vertical-align: middle;
+        flex: 0 0 auto;
     }
 
-    .shuttle-mark .shuttle-s {
-        font-size: 1em;
-        line-height: 1;
-    }
+    .route-bullet.route-123 { --bullet-bg: #EE352E; }
+    .route-bullet.route-456 { --bullet-bg: #00933C; }
+    .route-bullet.route-7 { --bullet-bg: #B933AD; }
+    .route-bullet.route-ace { --bullet-bg: #0039A6; }
+    .route-bullet.route-bdfm { --bullet-bg: #FF6319; }
+    .route-bullet.route-g { --bullet-bg: #6CBE45; }
+    .route-bullet.route-jz { --bullet-bg: #996633; }
+    .route-bullet.route-l { --bullet-bg: #A7A9AC; color: #000; }
+    .route-bullet.route-nqrw { --bullet-bg: #FCCC0A; color: #000; }
+    .route-bullet.route-shuttle { --bullet-bg: #808183; }
+    .route-bullet.route-sir { --bullet-bg: #0039A6; font-size: 11px; letter-spacing: -0.4px; }
 
-    .shuttle-mark .shuttle-suffix {
-        font-size: 0.55em;
+    .route-bullet .shuttle-suffix {
+        font-size: 9px;
         line-height: 1;
-        margin-left: 0.05em;
-        transform: translateY(-0.28em);
-        text-transform: uppercase;
+        margin-left: 1px;
+        transform: translateY(-5px);
         font-weight: 800;
     }
+
+    .route-bullet-list {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        vertical-align: middle;
+    }
+
+    .line-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 54px;
+        padding: 8px;
+    }
+
+    .line-button .route-bullet {
+        width: 34px;
+        height: 34px;
+        font-size: 20px;
+    }
+
+    .line-button .route-bullet.route-sir { font-size: 12px; }
+
 
 
     .account-bar {
@@ -1383,21 +1426,60 @@ function linesForDivision(division) {
     return lineGroups[division] || [];
 }
 
-function lineDisplayHTML(line) {
-    if (line === "42 St S") {
-        return `<span class="shuttle-mark" title="42nd Street Shuttle"><span class="shuttle-s">S</span></span>`;
-    }
-
-    if (line === "Franklin S") {
-        return `<span class="shuttle-mark" title="Franklin Avenue Shuttle"><span class="shuttle-s">S</span><span class="shuttle-suffix">F</span></span>`;
-    }
-
-    if (line === "Rockaway S") {
-        return `<span class="shuttle-mark" title="Rockaway Park Shuttle"><span class="shuttle-s">S</span><span class="shuttle-suffix">R</span></span>`;
-    }
-
-    return line;
+function routeBulletClass(line) {
+    if (["1","2","3"].includes(line)) return "route-123";
+    if (["4","5","6"].includes(line)) return "route-456";
+    if (line === "7") return "route-7";
+    if (["A","C","E"].includes(line)) return "route-ace";
+    if (["B","D","F","M"].includes(line)) return "route-bdfm";
+    if (line === "G") return "route-g";
+    if (["J","Z"].includes(line)) return "route-jz";
+    if (line === "L") return "route-l";
+    if (["N","Q","R","W"].includes(line)) return "route-nqrw";
+    if (["42 St S","Franklin S","Rockaway S"].includes(line)) return "route-shuttle";
+    if (line === "SIR") return "route-sir";
+    return "";
 }
+
+function routeTitle(line) {
+    if (line === "42 St S") return "42nd Street Shuttle";
+    if (line === "Franklin S") return "Franklin Avenue Shuttle";
+    if (line === "Rockaway S") return "Rockaway Park Shuttle";
+    if (line === "SIR") return "Staten Island Railway";
+    return `${line} train`;
+}
+
+function lineDisplayHTML(line) {
+    const safeLine = escapeHTML(line);
+    const bulletClass = routeBulletClass(line);
+    if (!bulletClass) return safeLine;
+
+    let label = safeLine;
+    if (line === "42 St S") label = "S";
+    if (line === "Franklin S") label = `S<span class="shuttle-suffix">F</span>`;
+    if (line === "Rockaway S") label = `S<span class="shuttle-suffix">R</span>`;
+    if (line === "SIR") label = "SIR";
+
+    return `<span class="route-bullet ${bulletClass}" title="${escapeHTML(routeTitle(line))}" aria-label="${escapeHTML(routeTitle(line))}">${label}</span>`;
+}
+
+function fleetLinesDisplayHTML(linesText) {
+    const aliases = {
+        "42nd Street Shuttle": "42 St S",
+        "Franklin Avenue Shuttle": "Franklin S",
+        "Rockaway Park Shuttle": "Rockaway S",
+        "Staten Island Railway": "SIR"
+    };
+
+    const parts = String(linesText || "").split(",").map(part => part.trim()).filter(Boolean);
+    const rendered = parts.map(part => {
+        const line = aliases[part] || part;
+        return routeBulletClass(line) ? lineDisplayHTML(line) : escapeHTML(part);
+    });
+
+    return `<span class="route-bullet-list">${rendered.join("")}</span>`;
+}
+
 
 let pendingSighting = null;
 
@@ -1828,7 +1910,7 @@ function identify() {
             <div>${data.years}</div>
 
             <div class="label">Lines</div>
-            <div>${data.lines}</div>
+            <div>${fleetLinesDisplayHTML(data.lines)}</div>
 
             <div class="label">Division</div>
             <div>${data.division}</div>
@@ -2126,7 +2208,11 @@ async function loadMyReports() {
 
             const value = document.createElement("div");
             value.className = "report-item-value";
-            value.textContent = valueText;
+            if (labelText === "Line" && valueText !== "—") {
+                value.innerHTML = lineDisplayHTML(valueText);
+            } else {
+                value.textContent = valueText;
+            }
 
             details.append(label, value);
         });
@@ -2219,7 +2305,10 @@ function updateSightingsStats() {
     if (totalEl) totalEl.textContent = String(total);
     if (uniqueEl) uniqueEl.textContent = String(uniqueCars);
     if (fleetEl) fleetEl.textContent = mostCommonValue(mySightingsData, "fleet");
-    if (lineEl) lineEl.textContent = mostCommonValue(mySightingsData, "line");
+    if (lineEl) {
+        const topLine = mostCommonValue(mySightingsData, "line");
+        lineEl.innerHTML = topLine === "—" ? "—" : lineDisplayHTML(topLine);
+    }
 }
 
 function clearSightingsFilters() {
@@ -2295,7 +2384,7 @@ function renderMySightings(data) {
         return `
             <div id="sighting-${Number(sighting.id)}" style="padding:14px 0;border-bottom:1px solid var(--fi-border);">
                 <div style="font-size:20px;font-weight:bold;">${escapeHTML(sighting.fleet)} — Car ${escapeHTML(sighting.car_number)}</div>
-                <div style="margin-top:5px;">Line: <strong id="sighting-line-${Number(sighting.id)}">${escapeHTML(sighting.line)}</strong></div>
+                <div style="margin-top:5px;">Line: <strong id="sighting-line-${Number(sighting.id)}">${lineDisplayHTML(sighting.line)}</strong></div>
                 ${sighting.notes ? `<div class="sighting-note-display"><strong>Notes:</strong> ${escapeHTML(sighting.notes)}</div>` : ""}
                 <div class="account-small-note" style="margin-top:5px;">${escapeHTML(date)}</div>
                 <div class="sighting-actions">
@@ -2387,7 +2476,7 @@ async function saveSightingEdit(id) {
 
     const lineDisplay = document.getElementById(`sighting-line-${id}`);
     if (lineDisplay) {
-        lineDisplay.textContent = newLine;
+        lineDisplay.innerHTML = lineDisplayHTML(newLine);
     }
 
     cancelSightingEdit(id);
