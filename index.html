@@ -878,67 +878,6 @@
             .settings-nav-grid { gap: 8px; }
         }
 
-    
-        .profile-stats-panel {
-            margin-top: 18px;
-            padding-top: 18px;
-            border-top: 1px solid var(--fi-border);
-        }
-        .profile-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 10px;
-            margin-top: 12px;
-        }
-        .profile-stat {
-            border: 1px solid var(--fi-border);
-            border-radius: 14px;
-            padding: 14px;
-            min-width: 0;
-        }
-        .profile-stat-label {
-            font-size: 12px;
-            opacity: .75;
-            margin-bottom: 4px;
-        }
-        .profile-stat-value {
-            font-size: 20px;
-            font-weight: 700;
-            overflow-wrap: anywhere;
-        }
-        .profile-stats-secondary {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .profile-stats-secondary > div {
-            border: 1px solid var(--fi-border);
-            border-radius: 14px;
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            min-width: 0;
-        }
-        .profile-stats-secondary span {
-            font-size: 12px;
-            opacity: .75;
-        }
-        .profile-stats-secondary strong {
-            overflow-wrap: anywhere;
-        }
-        @media (max-width: 560px) {
-            .profile-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .profile-stats-secondary { grid-template-columns: 1fr; }
-        }
-
-    
-        #profileStatTopLine .route-bullet,
-        #profileStatTopLine .line-bullet {
-            flex: 0 0 auto;
-        }
-
     </style>
 </head>
 
@@ -1088,40 +1027,6 @@
                 </div>
 
                 <div id="signedInEmail" class="signed-in-email"></div>
-
-                <div class="profile-stats-panel">
-                    <strong>Profile Stats</strong>
-                    <div class="profile-stats-grid">
-                        <div class="profile-stat">
-                            <div class="profile-stat-label">Sightings</div>
-                            <div id="profileStatSightings" class="profile-stat-value">0</div>
-                        </div>
-                        <div class="profile-stat">
-                            <div class="profile-stat-label">Unique Cars</div>
-                            <div id="profileStatUniqueCars" class="profile-stat-value">0</div>
-                        </div>
-                        <div class="profile-stat">
-                            <div class="profile-stat-label">Fleets Seen</div>
-                            <div id="profileStatFleets" class="profile-stat-value">0</div>
-                        </div>
-                        <div class="profile-stat">
-                            <div class="profile-stat-label">Lines Seen</div>
-                            <div id="profileStatLines" class="profile-stat-value">0</div>
-                        </div>
-                        <div class="profile-stat">
-                            <div class="profile-stat-label">Achievements</div>
-                            <div id="profileStatAchievements" class="profile-stat-value">0</div>
-                        </div>
-                        <div class="profile-stat">
-                            <div class="profile-stat-label">Longest Streak</div>
-                            <div id="profileStatLongestStreak" class="profile-stat-value">0 days</div>
-                        </div>
-                    </div>
-                    <div class="profile-stats-secondary">
-                        <div><span>Most-seen fleet</span><strong id="profileStatTopFleet">—</strong></div>
-                        <div><span>Most-seen line</span><strong id="profileStatTopLine">—</strong></div>
-                    </div>
-                </div>
 
                 <div class="avatar-panel">
                     <strong>Profile Picture</strong>
@@ -4494,91 +4399,6 @@ async function getUserDisplay(user) {
     };
 }
 
-
-function profileMostCommon(rows, key) {
-    const counts = new Map();
-    for (const row of (rows || [])) {
-        const value = String(row?.[key] || "").trim();
-        if (!value) continue;
-        counts.set(value, (counts.get(value) || 0) + 1);
-    }
-    let best = "—";
-    let bestCount = 0;
-    for (const [value,count] of counts.entries()) {
-        if (count > bestCount || (count === bestCount && value.localeCompare(best, undefined, {numeric:true}) < 0)) {
-            best = value;
-            bestCount = count;
-        }
-    }
-    return bestCount ? best : "—";
-}
-
-function setProfileStat(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value;
-}
-
-async function loadProfileStats(user) {
-    if (!user) return;
-
-    const [sightingsResult, achievementsResult] = await Promise.all([
-        supabaseClient
-            .from("sightings")
-            .select("car_number, fleet, line, saved_at")
-            .eq("user_id", user.id),
-        supabaseClient
-            .from("user_achievements")
-            .select("achievement_key")
-            .eq("user_id", user.id)
-    ]);
-
-    if (sightingsResult.error) {
-        console.warn("Could not load profile sighting stats:", sightingsResult.error);
-        return;
-    }
-
-    const sightings = sightingsResult.data || [];
-    const achievements = achievementsResult.error ? [] : (achievementsResult.data || []);
-
-    const uniqueCars = new Set(
-        sightings.map(row => String(row.car_number || "").trim()).filter(Boolean)
-    ).size;
-    const fleetsSeen = new Set(
-        sightings.map(row => String(row.fleet || "").trim()).filter(Boolean)
-    ).size;
-    const linesSeen = new Set(
-        sightings.map(row => String(row.line || "").trim()).filter(Boolean)
-    ).size;
-    const longestStreak = achievementLongestStreak(sightings);
-
-    setProfileStat("profileStatSightings", sightings.length);
-    setProfileStat("profileStatUniqueCars", uniqueCars);
-    setProfileStat("profileStatFleets", fleetsSeen);
-    setProfileStat("profileStatLines", linesSeen);
-    setProfileStat("profileStatAchievements", achievements.length);
-    setProfileStat("profileStatLongestStreak", `${longestStreak} day${longestStreak === 1 ? "" : "s"}`);
-    setProfileStat("profileStatTopFleet", profileMostCommon(sightings, "fleet"));
-
-    const profileTopLine = profileMostCommon(sightings, "line");
-    const profileTopLineEl = document.getElementById("profileStatTopLine");
-    if (profileTopLineEl) {
-        if (profileTopLine === "—") {
-            profileTopLineEl.textContent = "—";
-        } else {
-            const matchingLineStat = document.getElementById("statTopLine");
-            const sameLineIsAlreadyRendered =
-                matchingLineStat &&
-                String(matchingLineStat.textContent || "").trim() === profileTopLine;
-
-            if (sameLineIsAlreadyRendered && matchingLineStat.innerHTML.trim()) {
-                profileTopLineEl.innerHTML = matchingLineStat.innerHTML;
-            } else {
-                profileTopLineEl.innerHTML = lineDisplayHTML(profileTopLine);
-            }
-        }
-    }
-}
-
 async function renderAuthState(session) {
     const signedOutView = document.getElementById("signedOutView");
     const signedInView = document.getElementById("signedInView");
@@ -4622,8 +4442,6 @@ async function renderAuthState(session) {
         removeButton.classList.toggle("hidden", !profile.avatarPath);
         removeButton.disabled = !profile.avatarPath;
     }
-
-    loadProfileStats(user);
 }
 
 async function initializeAuth() {
