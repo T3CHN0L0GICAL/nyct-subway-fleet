@@ -646,6 +646,49 @@
       </div>
     </div>
 
+
+    <!-- Incorrect Information Reports -->
+    <div class="section">
+      <div class="activity-heading">
+        <h2>Incorrect Information Reports</h2>
+        <button id="refreshIncorrectReportsButton" class="filter-button" type="button">Refresh</button>
+      </div>
+
+      <div class="filters">
+        <input id="incorrectReportSearch" type="search" placeholder="Search car, fleet, field, value, notes, or platform">
+        <select id="incorrectReportStatusFilter">
+          <option value="">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="reviewed">Reviewed</option>
+          <option value="resolved">Resolved</option>
+        </select>
+        <button id="clearIncorrectReportFilters" class="filter-button" type="button">Clear Filters</button>
+      </div>
+
+      <div id="incorrectReportResultCount" class="result-count"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Car</th>
+              <th>Fleet</th>
+              <th>Field</th>
+              <th>Current Value</th>
+              <th>Suggested Value</th>
+              <th>Notes</th>
+              <th>Platform</th>
+              <th>Submitted</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="incorrectReportsTable">
+            <tr><td colspan="9" class="empty">Loading reports...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- User Management -->
     <div class="section">
       <h2>User Management</h2>
@@ -871,6 +914,7 @@
     let profiles = [];
     let adminActivity = [];
     let missingCarReports = [];
+    let incorrectInformationReports = [];
     let currentAdminProfile = null;
 
     let statusResetTimer = null;
@@ -932,6 +976,7 @@
       sightings = [];
       profiles = [];
       missingCarReports = [];
+      incorrectInformationReports = [];
       showAuthScreen(message);
     }
 
@@ -1040,6 +1085,7 @@
       loadUsers();
       await loadAdminActivity();
       await loadMissingCarReports();
+      await loadIncorrectInformationReports();
       refreshNotificationButton();
     }
 
@@ -1379,6 +1425,7 @@
       profiles = [];
       adminActivity = [];
       missingCarReports = [];
+      incorrectInformationReports = [];
 
       document.getElementById("sightingsTable").innerHTML = "";
       document.getElementById("activityList").innerHTML = '<div class="activity-message">Loading activity...</div>';
@@ -2145,6 +2192,206 @@
       }
     }
 
+
+    function formatIncorrectReportField(value) {
+      const labels = {
+        fleet: "Fleet",
+        builder: "Builder",
+        years: "Years built",
+        lines: "Lines",
+        division: "Division",
+        factory: "Factory version",
+        passenger: "Passenger version",
+        built: "Fleet size",
+        serviceSpeed: "Maximum service speed",
+        designSpeed: "Design speed",
+        propulsion: "Propulsion",
+        notes: "Notes",
+        other: "Other"
+      };
+      return labels[value] || value || "—";
+    }
+
+    function renderIncorrectInformationReports() {
+      const table = document.getElementById("incorrectReportsTable");
+      const count = document.getElementById("incorrectReportResultCount");
+      if (!table) return;
+
+      const search = (document.getElementById("incorrectReportSearch")?.value || "")
+        .trim().toLowerCase();
+      const statusFilter =
+        document.getElementById("incorrectReportStatusFilter")?.value || "";
+
+      const filtered = incorrectInformationReports.filter(report => {
+        const haystack = [
+          report.car_number,
+          report.fleet,
+          formatIncorrectReportField(report.field_reported),
+          report.field_reported,
+          report.current_value,
+          report.suggested_value,
+          report.notes,
+          report.platform,
+          report.status
+        ].map(v => v ?? "").join(" ").toLowerCase();
+
+        return (!search || haystack.includes(search)) &&
+          (!statusFilter || report.status === statusFilter);
+      });
+
+      if (count) {
+        count.textContent =
+          `Showing ${filtered.length} of ${incorrectInformationReports.length} ${incorrectInformationReports.length === 1 ? "report" : "reports"}`;
+      }
+
+      table.innerHTML = "";
+
+      if (!filtered.length) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 9;
+        cell.className = "empty";
+        cell.textContent = incorrectInformationReports.length
+          ? "No incorrect-information reports match your filters."
+          : "No incorrect-information reports have been submitted yet.";
+        row.appendChild(cell);
+        table.appendChild(row);
+        return;
+      }
+
+      filtered.forEach(report => {
+        const row = document.createElement("tr");
+
+        const values = [
+          report.car_number || "—",
+          report.fleet || "—",
+          formatIncorrectReportField(report.field_reported),
+          report.current_value || "—",
+          report.suggested_value || "—",
+          report.notes || "—",
+          report.platform || "—",
+          report.created_at ? new Date(report.created_at).toLocaleString() : "—"
+        ];
+
+        values.forEach(value => {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.appendChild(cell);
+        });
+
+        const statusCell = document.createElement("td");
+        const select = document.createElement("select");
+        select.className = "report-status-select";
+
+        ["pending", "reviewed", "resolved"].forEach(status => {
+          const option = document.createElement("option");
+          option.value = status;
+          option.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+          option.selected = report.status === status;
+          select.appendChild(option);
+        });
+
+        select.addEventListener("change", () =>
+          updateIncorrectInformationReportStatus(report.id, select.value, select)
+        );
+
+        statusCell.appendChild(select);
+        row.appendChild(statusCell);
+        table.appendChild(row);
+      });
+    }
+
+    async function loadIncorrectInformationReports(showStatus = false) {
+      const table = document.getElementById("incorrectReportsTable");
+      const button = document.getElementById("refreshIncorrectReportsButton");
+      if (!currentAdminProfile?.id) return;
+
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Refreshing...";
+      }
+
+      if (!incorrectInformationReports.length && table) {
+        table.innerHTML =
+          '<tr><td colspan="9" class="empty">Loading reports...</td></tr>';
+      }
+
+      try {
+        const { data, error } = await supabaseClient
+          .from("incorrect_information_reports")
+          .select("id, created_at, user_id, car_number, fleet, field_reported, current_value, suggested_value, notes, status, platform")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        incorrectInformationReports = data || [];
+        renderIncorrectInformationReports();
+
+        if (showStatus) {
+          setStatus("Incorrect-information reports refreshed.", "success", 2500);
+        }
+      } catch (error) {
+        console.error("Incorrect information reports error:", error);
+        if (table) {
+          table.innerHTML =
+            '<tr><td colspan="9" class="empty">Could not load reports.</td></tr>';
+        }
+        if (showStatus) {
+          setStatus("Could not refresh incorrect-information reports.", "error", 4000);
+        }
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = "Refresh";
+        }
+      }
+    }
+
+    async function updateIncorrectInformationReportStatus(id, status, select) {
+      if (!currentAdminProfile?.id) return;
+
+      const report = incorrectInformationReports.find(item => item.id === id);
+      const previousStatus = report?.status || "pending";
+
+      if (select) select.disabled = true;
+
+      try {
+        const { error } = await supabaseClient
+          .from("incorrect_information_reports")
+          .update({ status })
+          .eq("id", id);
+
+        if (error) throw error;
+
+        if (report) report.status = status;
+        renderIncorrectInformationReports();
+        setStatus(
+          `Incorrect-information report marked ${status}.`,
+          "success",
+          3000
+        );
+      } catch (error) {
+        console.error("Incorrect information report update error:", error);
+        if (select) {
+          select.value = previousStatus;
+          select.disabled = false;
+        }
+        setStatus(
+          "Could not update the incorrect-information report.",
+          "error",
+          4000
+        );
+      }
+    }
+
+    function clearIncorrectReportFilters() {
+      const search = document.getElementById("incorrectReportSearch");
+      const status = document.getElementById("incorrectReportStatusFilter");
+      if (search) search.value = "";
+      if (status) status.value = "";
+      renderIncorrectInformationReports();
+    }
+
     function loadUsers() {
       const table =
         document.getElementById("usersTable");
@@ -2382,6 +2629,24 @@ function adminRouteDropdownHTML(value, text) {
     }
     function initializeAdminRouteDropdowns(){enhanceAdminRouteSelect(document.getElementById("lineFilter"));document.addEventListener("click",e=>{if(!e.target.closest(".route-dropdown")){document.querySelectorAll(".route-dropdown-menu").forEach(m=>m.classList.add("hidden"));}});}
     document.addEventListener("DOMContentLoaded",initializeAdminRouteDropdowns);
+
+
+    document.getElementById("refreshIncorrectReportsButton")?.addEventListener(
+      "click",
+      () => loadIncorrectInformationReports(true)
+    );
+    document.getElementById("incorrectReportSearch")?.addEventListener(
+      "input",
+      renderIncorrectInformationReports
+    );
+    document.getElementById("incorrectReportStatusFilter")?.addEventListener(
+      "change",
+      renderIncorrectInformationReports
+    );
+    document.getElementById("clearIncorrectReportFilters")?.addEventListener(
+      "click",
+      clearIncorrectReportFilters
+    );
 
 </script>
 
