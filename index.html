@@ -1045,6 +1045,43 @@
             margin: 0;
         }
 
+    
+        /* Main search mode tabs */
+        .search-mode-tabs {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 9px;
+        }
+        .search-mode-tab {
+            appearance: none;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            color: var(--fi-muted);
+            padding: 0 0 4px;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+            position: relative;
+        }
+        .search-mode-tab:hover {
+            background: transparent;
+            color: var(--fi-text);
+        }
+        .search-mode-tab.active {
+            color: var(--fi-text);
+        }
+        .search-mode-tab.active::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 2px;
+            background: var(--fi-text);
+        }
+
     </style>
 </head>
 
@@ -1056,7 +1093,7 @@
         <h1>NYCT Subway Fleet Identifier</h1>
     </div>
 
-    <p>Enter a subway car number to identify its fleet.</p>
+    <p id="searchModeDescription">Enter a subway car number to identify its fleet.</p>
 </header>
 
 <main>
@@ -1421,16 +1458,23 @@
 
     <section class="search-box">
 
-        <label for="carNumber">Car Number or Fleet</label>
+        <div class="search-mode-tabs" role="tablist" aria-label="Search type">
+            <button id="searchModeCar" class="search-mode-tab active" type="button" role="tab"
+                    aria-selected="true" onclick="setSearchMode('car')">Car Number</button>
+            <button id="searchModeFleet" class="search-mode-tab" type="button" role="tab"
+                    aria-selected="false" onclick="setSearchMode('fleet')">Fleet</button>
+        </div>
 
         <div class="input-row">
 
             <input
                 id="carNumber"
                 type="text"
-                inputmode="text"
-                placeholder="Example: 4045 or R211A"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                placeholder="Example: 4045"
                 autocomplete="off"
+                aria-label="Car Number"
             >
 
             <button onclick="identify()">Search</button>
@@ -3636,6 +3680,74 @@ async function getRepeatSightingNotice(carNumber) {
 }
 
 
+
+let searchMode = "car";
+
+function setSearchMode(mode) {
+    if (!["car", "fleet"].includes(mode)) return;
+
+    searchMode = mode;
+
+    const input = document.getElementById("carNumber");
+    const carTab = document.getElementById("searchModeCar");
+    const fleetTab = document.getElementById("searchModeFleet");
+    const resultBox = document.getElementById("result");
+    const description = document.getElementById("searchModeDescription");
+
+    const isCar = mode === "car";
+
+    if (description) {
+        description.textContent = isCar
+            ? "Enter a subway car number to identify its fleet."
+            : "Enter a subway fleet to learn more about it.";
+    }
+
+    carTab?.classList.toggle("active", isCar);
+    fleetTab?.classList.toggle("active", !isCar);
+    carTab?.setAttribute("aria-selected", isCar ? "true" : "false");
+    fleetTab?.setAttribute("aria-selected", isCar ? "false" : "true");
+
+    if (input) {
+        input.value = "";
+        input.placeholder = isCar ? "Example: 4045" : "Example: R211T";
+        input.inputMode = isCar ? "numeric" : "text";
+        input.setAttribute("aria-label", isCar ? "Car Number" : "Fleet");
+
+        if (isCar) {
+            input.setAttribute("pattern", "[0-9]*");
+        } else {
+            input.removeAttribute("pattern");
+        }
+
+        input.focus();
+    }
+
+    pendingSighting = null;
+    if (resultBox) {
+        resultBox.className = "result hidden";
+        resultBox.innerHTML = "";
+    }
+}
+
+function enforceMainSearchModeInput() {
+    const input = document.getElementById("carNumber");
+    if (!input) return;
+
+    input.addEventListener("input", () => {
+        if (searchMode === "car") {
+            const digitsOnly = input.value.replace(/\D+/g, "");
+            if (input.value !== digitsOnly) input.value = digitsOnly;
+        } else {
+            // Fleet mode accepts letters and numbers. Keep common separators
+            // because fleet normalization already handles spaces, hyphens, etc.
+            const fleetCharsOnly = input.value.replace(/[^a-zA-Z0-9 _-]+/g, "");
+            if (input.value !== fleetCharsOnly) input.value = fleetCharsOnly;
+        }
+    });
+}
+
+window.addEventListener("DOMContentLoaded", enforceMainSearchModeInput);
+
 function normalizeFleetSearch(value) {
     return String(value || "")
         .toUpperCase()
@@ -3782,8 +3894,8 @@ async function identify() {
         document.getElementById("result");
 
 
-    // Test car — can be logged only on the TEST line.
-    if (input === "0000") {
+    // Test car — available only in Car Number mode.
+    if (searchMode === "car" && input === "0000") {
         pendingSighting = {
             carNumber: "0000",
             fleet: "TEST",
@@ -3831,8 +3943,9 @@ async function identify() {
 
     // Secret access code
     if (
-        input === "16244142715659" ||
-        input === "239555766"
+        searchMode === "car" &&
+        (input === "16244142715659" ||
+         input === "239555766")
     ) {
         const codeLabel = input === "16244142715659"
             ? "owner-code-1"
@@ -3854,33 +3967,40 @@ async function identify() {
     }
 
 
-    // Fleet-family search. Broad family names such as R211 and R160
-    // open a chooser instead of being rejected or guessing a subtype.
-    const fleetFamilyMatches = getFleetFamilyMatches(input);
-    if (fleetFamilyMatches.length > 1) {
-        showFleetFamilyPicker(input, fleetFamilyMatches);
-        return;
-    }
+    if (searchMode === "fleet") {
+        // Broad family names such as R211 and R160 open a chooser instead
+        // of being rejected or guessing a subtype.
+        const fleetFamilyMatches = getFleetFamilyMatches(input);
+        if (fleetFamilyMatches.length > 1) {
+            showFleetFamilyPicker(input, fleetFamilyMatches);
+            return;
+        }
 
-    // Exact fleet-name search
-    const fleetSearchMatch = findFleetBySearch(input);
-    if (fleetSearchMatch) {
-        showFleetSearchResult(fleetSearchMatch);
-        return;
-    }
-
-    // Check input
-    if (!/^\d+$/.test(input)) {
+        const fleetSearchMatch = findFleetBySearch(input);
+        if (fleetSearchMatch) {
+            showFleetSearchResult(fleetSearchMatch);
+            return;
+        }
 
         resultBox.className = "result";
-
         resultBox.innerHTML = `
             <div class="error">
-                <strong>Fleet or car not found.</strong><br>
-                Enter a valid subway car number or an exact fleet name such as R211A.
+                <strong>Fleet not found.</strong><br>
+                Enter a fleet name such as R211T or a fleet family such as R211.
             </div>
         `;
+        return;
+    }
 
+    // Car Number mode accepts numbers only.
+    if (!/^\d+$/.test(input)) {
+        resultBox.className = "result";
+        resultBox.innerHTML = `
+            <div class="error">
+                <strong>Car number not found.</strong><br>
+                Enter a valid subway car number such as 4045.
+            </div>
+        `;
         return;
     }
 
