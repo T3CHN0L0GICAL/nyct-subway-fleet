@@ -878,6 +878,63 @@
             .settings-nav-grid { gap: 8px; }
         }
 
+
+
+    /* Fleet Comparison */
+    .fleet-compare-controls {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        gap: 10px;
+        align-items: end;
+        margin-top: 16px;
+    }
+    .fleet-compare-controls select {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        border: 1px solid var(--fi-border);
+        border-radius: 9px;
+        background: #fff;
+        color: #000;
+    }
+    .fleet-compare-swap { min-width: 52px; }
+    .fleet-compare-table {
+        margin-top: 16px;
+        border: 1px solid var(--fi-border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .fleet-compare-row {
+        display: grid;
+        grid-template-columns: 145px minmax(0, 1fr) minmax(0, 1fr);
+        border-bottom: 1px solid var(--fi-border);
+    }
+    .fleet-compare-row:last-child { border-bottom: 0; }
+    .fleet-compare-cell {
+        padding: 12px;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+    .fleet-compare-cell + .fleet-compare-cell { border-left: 1px solid var(--fi-border); }
+    .fleet-compare-label {
+        color: var(--fi-muted);
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .fleet-compare-heading {
+        font-size: 21px;
+        font-weight: 800;
+    }
+    .fleet-compare-lines .route-bullet-list { display: flex; }
+    @media (max-width: 600px) {
+        .fleet-compare-controls { grid-template-columns: 1fr 1fr; }
+        .fleet-compare-swap { grid-column: 1 / -1; grid-row: 2; }
+        .fleet-compare-row { grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1fr); }
+        .fleet-compare-cell { padding: 9px 7px; font-size: 13px; }
+        .fleet-compare-heading { font-size: 17px; }
+        .fleet-compare-label { font-size: 11px; }
+    }
+
     </style>
 </head>
 
@@ -954,6 +1011,7 @@
             <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
             <button type="button" onclick="toggleSightingCalendarPanel()">Sighting Calendar</button>
             <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
+            <button type="button" onclick="toggleFleetComparisonPanel()">Fleet Comparison</button>
         </div>
 
     <section id="accountPanel" class="account-panel hidden">
@@ -1162,6 +1220,26 @@
         <div id="fleetBreakdownChart"></div>
     </section>
 
+    <section id="fleetComparisonPanel" class="account-panel hidden">
+        <h2>Fleet Comparison</h2>
+        <div class="account-small-note">Choose any two fleets to compare their specifications side by side.</div>
+
+        <div class="fleet-compare-controls">
+            <div>
+                <label for="fleetCompareLeft">Fleet 1</label>
+                <select id="fleetCompareLeft" onchange="renderFleetComparison()"></select>
+            </div>
+            <button class="fleet-compare-swap" type="button" onclick="swapFleetComparison()" title="Swap fleets" aria-label="Swap fleets">⇄</button>
+            <div>
+                <label for="fleetCompareRight">Fleet 2</label>
+                <select id="fleetCompareRight" onchange="renderFleetComparison()"></select>
+            </div>
+        </div>
+
+        <div id="fleetComparisonStatus" class="status-message"></div>
+        <div id="fleetComparisonTable" class="fleet-compare-table"></div>
+    </section>
+
     <section id="sightingCalendarPanel" class="account-panel hidden">
         <h2>Sighting Calendar</h2>
         <div class="account-small-note">
@@ -1276,6 +1354,7 @@ function toggleSettings() {
         document.getElementById("fleetCollectionPanel")?.classList.add("hidden");
         document.getElementById("sightingCalendarPanel")?.classList.add("hidden");
         document.getElementById("fleetBreakdownPanel")?.classList.add("hidden");
+        document.getElementById("fleetComparisonPanel")?.classList.add("hidden");
     }
 
     updateFocusMode();
@@ -1290,6 +1369,132 @@ window.addEventListener("DOMContentLoaded", function() {
 
 
 
+
+
+function fleetComparisonRangeText(fleet) {
+    if (!fleet) return "—";
+    const parts = (fleet.ranges || []).map(range => {
+        if (!Array.isArray(range) || range.length < 2) return "";
+        return Number(range[0]) === Number(range[1])
+            ? String(range[0])
+            : `${range[0]}–${range[1]}`;
+    }).filter(Boolean);
+
+    if (Array.isArray(fleet.specialEven) && fleet.specialEven.length >= 2) {
+        parts.push(`${fleet.specialEven[0]}–${fleet.specialEven[1]} (even numbers only)`);
+    }
+    return parts.join(", ") || "—";
+}
+
+function fleetComparisonValue(value) {
+    const text = String(value ?? "").trim();
+    return text ? escapeHTML(text) : "—";
+}
+
+function populateFleetComparisonSelectors() {
+    const left = document.getElementById("fleetCompareLeft");
+    const right = document.getElementById("fleetCompareRight");
+    if (!left || !right || typeof fleetData === "undefined") return;
+
+    const names = Object.keys(fleetData);
+    const passenger = names.filter(name => fleetData[name]?.division !== "Work Equipment");
+    const work = names.filter(name => fleetData[name]?.division === "Work Equipment");
+
+    const options = [
+        `<optgroup label="Passenger Fleets">${passenger.map(name => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join("")}</optgroup>`,
+        work.length ? `<optgroup label="Work Equipment">${work.map(name => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join("")}</optgroup>` : ""
+    ].join("");
+
+    left.innerHTML = options;
+    right.innerHTML = options;
+
+    left.value = fleetData.R211A ? "R211A" : (passenger[0] || names[0] || "");
+    right.value = fleetData.R211T ? "R211T" : (passenger[1] || names[1] || names[0] || "");
+}
+
+function toggleFleetComparisonPanel() {
+    const panel = document.getElementById("fleetComparisonPanel");
+    if (!panel) return;
+    const opening = panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening ? "fleetComparisonPanel" : "");
+    panel.classList.toggle("hidden", !opening);
+
+    if (opening) {
+        const left = document.getElementById("fleetCompareLeft");
+        if (!left?.options?.length) populateFleetComparisonSelectors();
+        renderFleetComparison();
+    }
+}
+
+function swapFleetComparison() {
+    const left = document.getElementById("fleetCompareLeft");
+    const right = document.getElementById("fleetCompareRight");
+    if (!left || !right) return;
+    const oldLeft = left.value;
+    left.value = right.value;
+    right.value = oldLeft;
+    renderFleetComparison();
+}
+
+function renderFleetComparison() {
+    const leftSelect = document.getElementById("fleetCompareLeft");
+    const rightSelect = document.getElementById("fleetCompareRight");
+    const status = document.getElementById("fleetComparisonStatus");
+    const table = document.getElementById("fleetComparisonTable");
+    if (!leftSelect || !rightSelect || !status || !table || typeof fleetData === "undefined") return;
+
+    const leftName = leftSelect.value;
+    const rightName = rightSelect.value;
+    const left = fleetData[leftName];
+    const right = fleetData[rightName];
+
+    if (!left || !right) {
+        status.textContent = "Choose two fleets to compare.";
+        table.innerHTML = "";
+        return;
+    }
+
+    status.textContent = leftName === rightName
+        ? `Comparing ${leftName} with itself.`
+        : `${leftName} vs. ${rightName}`;
+
+    const rows = [
+        ["Car numbers", fleetComparisonRangeText(left), fleetComparisonRangeText(right), false],
+        ["Builder", left.builder, right.builder, false],
+        ["Years built", left.years, right.years, false],
+        ["Lines commonly used", left.lines, right.lines, true],
+        ["Division", left.division, right.division, false],
+        ["Factory version", left.factory, right.factory, false],
+        ["Passenger version", left.passenger, right.passenger, false],
+        ["Fleet size", left.built, right.built, false],
+        ["Maximum service speed", left.serviceSpeed, right.serviceSpeed, false],
+        ["Design speed", left.designSpeed, right.designSpeed, false],
+        ["Propulsion", left.propulsion, right.propulsion, false],
+        ["Notes", left.notes, right.notes, false]
+    ];
+
+    const valueHTML = (value, isLines) => {
+        const text = String(value ?? "").trim();
+        if (!text) return "—";
+        if (isLines && text !== "Systemwide") return `<div class="fleet-compare-lines">${fleetLinesDisplayHTML(text)}</div>`;
+        return fleetComparisonValue(text);
+    };
+
+    table.innerHTML = `
+        <div class="fleet-compare-row">
+            <div class="fleet-compare-cell fleet-compare-label">Specification</div>
+            <div class="fleet-compare-cell fleet-compare-heading">${escapeHTML(leftName)}</div>
+            <div class="fleet-compare-cell fleet-compare-heading">${escapeHTML(rightName)}</div>
+        </div>
+        ${rows.map(([label, leftValue, rightValue, isLines]) => `
+            <div class="fleet-compare-row">
+                <div class="fleet-compare-cell fleet-compare-label">${escapeHTML(label)}</div>
+                <div class="fleet-compare-cell">${valueHTML(leftValue, isLines)}</div>
+                <div class="fleet-compare-cell">${valueHTML(rightValue, isLines)}</div>
+            </div>
+        `).join("")}
+    `;
+}
 
 async function toggleFleetBreakdownPanel() {
     const panel=document.getElementById("fleetBreakdownPanel");
@@ -3241,7 +3446,7 @@ function updateFocusMode() {
 }
 
 function closeSettingsContentPanels(exceptId = "") {
-    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel", "sightingCalendarPanel", "fleetBreakdownPanel"].forEach(id => {
+    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel", "sightingCalendarPanel", "fleetBreakdownPanel", "fleetComparisonPanel"].forEach(id => {
         if (id !== exceptId) {
             document.getElementById(id)?.classList.add("hidden");
         }
