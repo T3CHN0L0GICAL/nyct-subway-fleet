@@ -843,7 +843,42 @@
     .route-dropdown-option:hover, .route-dropdown-option:focus, .route-dropdown-option.selected { background: #292929; outline: none; }
     .route-dropdown-option-text { color: #ddd; }
 
-  </style>
+  
+        .settings-nav-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .settings-nav-grid button {
+            width: 100%;
+            min-width: 0;
+            min-height: 44px;
+        }
+        .fleet-breakdown-row { margin-top: 14px; }
+        .fleet-breakdown-heading {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+        .fleet-breakdown-bar {
+            height: 10px;
+            border: 1px solid currentColor;
+            overflow: hidden;
+        }
+        .fleet-breakdown-fill {
+            height: 100%;
+            background: currentColor;
+        }
+        @media (min-width: 900px) {
+            .settings-nav-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+        @media (max-width: 420px) {
+            .settings-nav-grid { gap: 8px; }
+        }
+
+    </style>
 </head>
 
 <body>
@@ -910,26 +945,15 @@
             <button type="button" onclick="refreshSessionDiagnostics()">Refresh Diagnostics</button>
         </section>
 
-        <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--fi-border);">
+        <div class="settings-nav-grid" style="margin-top:18px;padding-top:18px;border-top:1px solid var(--fi-border);">
             <button type="button" onclick="toggleAccountPanel()">Account</button>
-            <div style="margin-top:12px;">
-                <button type="button" onclick="toggleSightingsPanel()">My Sightings</button>
-            </div>
-            <div style="margin-top:12px;">
-                <button type="button" onclick="toggleReportsPanel()">My Reports</button>
-            </div>
-            <div style="margin-top:12px;">
-                <button type="button" onclick="toggleSearchHistoryPanel()">Search History</button>
-            </div>
-            <div style="margin-top:12px;">
-                <button type="button" onclick="toggleAchievementsPanel()">Achievements</button>
-            </div>
-            <div style="margin-top:12px;">
-                <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
-            </div>
-            <div style="margin-top:12px;">
-                <button type="button" onclick="toggleSightingCalendarPanel()">Sighting Calendar</button>
-            </div>
+            <button type="button" onclick="toggleSightingsPanel()">My Sightings</button>
+            <button type="button" onclick="toggleReportsPanel()">My Reports</button>
+            <button type="button" onclick="toggleSearchHistoryPanel()">Search History</button>
+            <button type="button" onclick="toggleAchievementsPanel()">Achievements</button>
+            <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
+            <button type="button" onclick="toggleSightingCalendarPanel()">Sighting Calendar</button>
+            <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
         </div>
 
     <section id="accountPanel" class="account-panel hidden">
@@ -1130,6 +1154,14 @@
         <div id="mySightingsList"></div>
     </section>
 
+    <section id="fleetBreakdownPanel" class="account-panel hidden">
+        <h2>Fleet Breakdown</h2>
+        <div class="account-small-note">See how your saved sightings are distributed across the fleets you have spotted.</div>
+        <div style="margin-top:14px;"><button type="button" onclick="loadFleetBreakdown()">Refresh</button></div>
+        <div id="fleetBreakdownStatus" class="status-message">Loading fleet breakdown...</div>
+        <div id="fleetBreakdownChart"></div>
+    </section>
+
     <section id="sightingCalendarPanel" class="account-panel hidden">
         <h2>Sighting Calendar</h2>
         <div class="account-small-note">
@@ -1243,6 +1275,7 @@ function toggleSettings() {
         document.getElementById("achievementsPanel")?.classList.add("hidden");
         document.getElementById("fleetCollectionPanel")?.classList.add("hidden");
         document.getElementById("sightingCalendarPanel")?.classList.add("hidden");
+        document.getElementById("fleetBreakdownPanel")?.classList.add("hidden");
     }
 
     updateFocusMode();
@@ -1256,6 +1289,55 @@ window.addEventListener("DOMContentLoaded", function() {
 
 
 
+
+
+async function toggleFleetBreakdownPanel() {
+    const panel=document.getElementById("fleetBreakdownPanel");
+    if(!panel) return;
+    const opening=panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening?"fleetBreakdownPanel":"");
+    panel.classList.toggle("hidden",!opening);
+    if(opening) await loadFleetBreakdown();
+}
+
+async function loadFleetBreakdown() {
+    const status=document.getElementById("fleetBreakdownStatus");
+    const chart=document.getElementById("fleetBreakdownChart");
+    status.textContent="Loading fleet breakdown...";
+    chart.innerHTML="";
+
+    const {data:{user}}=await supabaseClient.auth.getUser();
+    if(!user){status.textContent="Log in to view your fleet breakdown.";return;}
+
+    const {data,error}=await supabaseClient.from("sightings").select("fleet").eq("user_id",user.id);
+    if(error){console.error("Could not load fleet breakdown:",error);status.textContent="Could not load your fleet breakdown.";return;}
+
+    const rows=data||[];
+    if(!rows.length){status.textContent="No sightings yet.";return;}
+
+    const counts=new Map();
+    rows.forEach(row=>{
+        const fleet=String(row.fleet||"Unknown").trim()||"Unknown";
+        counts.set(fleet,(counts.get(fleet)||0)+1);
+    });
+
+    const breakdown=[...counts.entries()].map(([fleet,count])=>({
+        fleet,count,percent:(count/rows.length)*100
+    })).sort((a,b)=>b.count-a.count||a.fleet.localeCompare(b.fleet,undefined,{numeric:true}));
+
+    status.textContent=`${rows.length} total sighting${rows.length===1?"":"s"} across ${breakdown.length} fleet${breakdown.length===1?"":"s"}.`;
+    chart.innerHTML=breakdown.map(item=>`
+        <div class="fleet-breakdown-row">
+            <div class="fleet-breakdown-heading">
+                <strong>${escapeHTML(item.fleet)}</strong>
+                <span>${item.count} · ${item.percent.toFixed(1)}%</span>
+            </div>
+            <div class="fleet-breakdown-bar">
+                <div class="fleet-breakdown-fill" style="width:${item.percent.toFixed(2)}%;"></div>
+            </div>
+        </div>
+    `).join("");
+}
 
 let sightingCalendarRows = [];
 let sightingCalendarDate = new Date();
@@ -3159,7 +3241,7 @@ function updateFocusMode() {
 }
 
 function closeSettingsContentPanels(exceptId = "") {
-    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel", "sightingCalendarPanel"].forEach(id => {
+    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel", "sightingCalendarPanel", "fleetBreakdownPanel"].forEach(id => {
         if (id !== exceptId) {
             document.getElementById(id)?.classList.add("hidden");
         }
