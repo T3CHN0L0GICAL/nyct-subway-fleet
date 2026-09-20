@@ -394,6 +394,29 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* NYC Subway route bullets */
+    .route-bullet {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 50%;
+      color: #fff; font-weight: 800; font-size: 17px; line-height: 1;
+      font-family: Arial, Helvetica, sans-serif; vertical-align: middle;
+      flex: 0 0 28px; letter-spacing: -0.02em;
+    }
+    .route-bullet.route-sir { font-size: 10px; letter-spacing: -0.04em; }
+    .route-bullet.route-123 { background: #EE352E; }
+    .route-bullet.route-456 { background: #00933C; }
+    .route-bullet.route-7 { background: #B933AD; }
+    .route-bullet.route-ace { background: #0039A6; }
+    .route-bullet.route-bdfm { background: #FF6319; }
+    .route-bullet.route-g { background: #6CBE45; }
+    .route-bullet.route-jz { background: #996633; }
+    .route-bullet.route-l { background: #A7A9AC; color: #000; }
+    .route-bullet.route-nqrw { background: #FCCC0A; color: #000; }
+    .route-bullet.route-shuttle { background: #808183; }
+    .route-bullet.route-sir { background: #0039A6; }
+    .route-cell { display: inline-flex; align-items: center; gap: 8px; }
+
   </style>
 </head>
 
@@ -749,6 +772,67 @@
       });
       setTimeout(refreshSessionDiagnostics, 0);
     });
+
+
+
+    function normalizeRouteLine(line) {
+      return String(line ?? "").trim();
+    }
+
+    function routeBulletClass(line) {
+      const value = normalizeRouteLine(line);
+      if (["1","2","3"].includes(value)) return "route-123";
+      if (["4","5","6"].includes(value)) return "route-456";
+      if (value === "7") return "route-7";
+      if (["A","C","E"].includes(value)) return "route-ace";
+      if (["B","D","F","M"].includes(value)) return "route-bdfm";
+      if (value === "G") return "route-g";
+      if (["J","Z"].includes(value)) return "route-jz";
+      if (value === "L") return "route-l";
+      if (["N","Q","R","W"].includes(value)) return "route-nqrw";
+      if (["42 St S","42nd Street Shuttle","Franklin S","Franklin Avenue Shuttle","Rockaway S","Rockaway Park Shuttle"].includes(value)) return "route-shuttle";
+      if (["SIR","Staten Island Railway"].includes(value)) return "route-sir";
+      return "";
+    }
+
+    function routeBulletLabel(line) {
+      const value = normalizeRouteLine(line);
+      if (["42 St S","42nd Street Shuttle","Franklin S","Franklin Avenue Shuttle","Rockaway S","Rockaway Park Shuttle"].includes(value)) return "S";
+      if (["SIR","Staten Island Railway"].includes(value)) return "SIR";
+      return value;
+    }
+
+    function routeBulletTitle(line) {
+      const value = normalizeRouteLine(line);
+      if (["42 St S","42nd Street Shuttle"].includes(value)) return "42nd Street Shuttle";
+      if (["Franklin S","Franklin Avenue Shuttle"].includes(value)) return "Franklin Avenue Shuttle";
+      if (["Rockaway S","Rockaway Park Shuttle"].includes(value)) return "Rockaway Park Shuttle";
+      if (["SIR","Staten Island Railway"].includes(value)) return "Staten Island Railway";
+      return `${value} train`;
+    }
+
+    function createRouteBullet(line) {
+      const cls = routeBulletClass(line);
+      if (!cls) return null;
+      const bullet = document.createElement("span");
+      bullet.className = `route-bullet ${cls}`;
+      bullet.textContent = routeBulletLabel(line);
+      bullet.title = routeBulletTitle(line);
+      bullet.setAttribute("aria-label", routeBulletTitle(line));
+      return bullet;
+    }
+
+    function setRouteCell(cell, line) {
+      const bullet = createRouteBullet(line);
+      if (!bullet) {
+        cell.textContent = line ?? "—";
+        return;
+      }
+      const wrap = document.createElement("span");
+      wrap.className = "route-cell";
+      wrap.appendChild(bullet);
+      cell.replaceChildren(wrap);
+    }
 
     let sightings = [];
     let profiles = [];
@@ -1682,9 +1766,13 @@
           report.created_at ? new Date(report.created_at).toLocaleString() : "—"
         ];
 
-        values.forEach(value => {
+        values.forEach((value, index) => {
           const cell = document.createElement("td");
-          cell.textContent = value;
+          if (index === 2) {
+            setRouteCell(cell, report.line);
+          } else {
+            cell.textContent = value;
+          }
           row.appendChild(cell);
         });
 
@@ -1849,11 +1937,15 @@
               sighting.notes ?? "—"
             ];
 
-            values.forEach(value => {
+            values.forEach((value, index) => {
               const cell =
                 document.createElement("td");
 
-              cell.textContent = value;
+              if (index === 2) {
+                setRouteCell(cell, sighting.line);
+              } else {
+                cell.textContent = value;
+              }
               row.appendChild(cell);
             });
 
