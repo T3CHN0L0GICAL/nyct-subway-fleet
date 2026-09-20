@@ -176,6 +176,20 @@
       cursor: not-allowed;
     }
 
+    .report-status-select {
+      background: #111;
+      color: white;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 7px 9px;
+      font: inherit;
+    }
+
+    .report-status-select:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
     .you-label {
       color: #777;
       font-size: 12px;
@@ -536,6 +550,46 @@
       </div>
     </div>
 
+    <!-- Missing Car Reports -->
+    <div class="section">
+      <div class="activity-heading">
+        <h2>Missing Car Reports</h2>
+        <button id="refreshMissingReportsButton" class="filter-button" type="button">Refresh</button>
+      </div>
+
+      <div class="filters">
+        <input id="missingReportSearch" type="search" placeholder="Search car, fleet, line, notes, or platform">
+        <select id="missingReportStatusFilter">
+          <option value="">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="reviewed">Reviewed</option>
+          <option value="resolved">Resolved</option>
+        </select>
+        <button id="clearMissingReportFilters" class="filter-button" type="button">Clear Filters</button>
+      </div>
+
+      <div id="missingReportResultCount" class="result-count"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Car</th>
+              <th>Fleet Guess</th>
+              <th>Line</th>
+              <th>Notes</th>
+              <th>Platform</th>
+              <th>Submitted</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="missingReportsTable">
+            <tr><td colspan="7" class="empty">Loading reports...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- User Management -->
     <div class="section">
       <h2>User Management</h2>
@@ -699,6 +753,7 @@
     let sightings = [];
     let profiles = [];
     let adminActivity = [];
+    let missingCarReports = [];
     let currentAdminProfile = null;
 
     let statusResetTimer = null;
@@ -759,6 +814,7 @@
       currentAdminProfile = null;
       sightings = [];
       profiles = [];
+      missingCarReports = [];
       showAuthScreen(message);
     }
 
@@ -866,6 +922,7 @@
       loadDashboard(profile);
       loadUsers();
       await loadAdminActivity();
+      await loadMissingCarReports();
       refreshNotificationButton();
     }
 
@@ -1204,6 +1261,7 @@
       sightings = [];
       profiles = [];
       adminActivity = [];
+      missingCarReports = [];
 
       document.getElementById("sightingsTable").innerHTML = "";
       document.getElementById("activityList").innerHTML = '<div class="activity-message">Loading activity...</div>';
@@ -1577,6 +1635,129 @@
         if(!r.ok) throw new Error(result.error||"Could not load admin activity."); adminActivity=Array.isArray(result.activity)?result.activity:[]; renderAdminActivity(); if(showStatus)setStatus("Activity refreshed.","success",2500);
       } catch(error){ console.error("Admin activity error:",error); if(list)list.innerHTML='<div class="activity-message">Could not load admin activity.</div>'; if(showStatus)setStatus("Could not refresh admin activity.","error",4000); }
       finally { if(button){button.disabled=false;button.textContent="Refresh";} }
+    }
+
+    function renderMissingCarReports() {
+      const table = document.getElementById("missingReportsTable");
+      const count = document.getElementById("missingReportResultCount");
+      if (!table) return;
+
+      const search = (document.getElementById("missingReportSearch")?.value || "").trim().toLowerCase();
+      const statusFilter = document.getElementById("missingReportStatusFilter")?.value || "";
+
+      const filtered = missingCarReports.filter(report => {
+        const haystack = [report.car_number, report.fleet_guess, report.line, report.notes, report.platform, report.status]
+          .map(v => v ?? "")
+          .join(" ")
+          .toLowerCase();
+        return (!search || haystack.includes(search)) &&
+          (!statusFilter || report.status === statusFilter);
+      });
+
+      if (count) {
+        count.textContent = `Showing ${filtered.length} of ${missingCarReports.length} ${missingCarReports.length === 1 ? "report" : "reports"}`;
+      }
+
+      table.innerHTML = "";
+
+      if (!filtered.length) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 7;
+        cell.className = "empty";
+        cell.textContent = missingCarReports.length ? "No reports match your filters." : "No missing car reports have been submitted yet.";
+        row.appendChild(cell);
+        table.appendChild(row);
+        return;
+      }
+
+      filtered.forEach(report => {
+        const row = document.createElement("tr");
+        const values = [
+          report.car_number ?? "—",
+          report.fleet_guess ?? "—",
+          report.line ?? "—",
+          report.notes ?? "—",
+          report.platform ?? "—",
+          report.created_at ? new Date(report.created_at).toLocaleString() : "—"
+        ];
+
+        values.forEach(value => {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          row.appendChild(cell);
+        });
+
+        const statusCell = document.createElement("td");
+        const select = document.createElement("select");
+        select.className = "report-status-select";
+        ["pending", "reviewed", "resolved"].forEach(value => {
+          const option = new Option(value.charAt(0).toUpperCase() + value.slice(1), value);
+          select.add(option);
+        });
+        select.value = report.status || "pending";
+        select.addEventListener("change", () => updateMissingReportStatus(report, select.value, select));
+        statusCell.appendChild(select);
+        row.appendChild(statusCell);
+        table.appendChild(row);
+      });
+    }
+
+    async function loadMissingCarReports(showStatus = false) {
+      const table = document.getElementById("missingReportsTable");
+      const button = document.getElementById("refreshMissingReportsButton");
+      if (!currentAdminProfile?.id) return;
+
+      if (button) { button.disabled = true; button.textContent = "Refreshing..."; }
+      if (!missingCarReports.length && table) {
+        table.innerHTML = '<tr><td colspan="7" class="empty">Loading reports...</td></tr>';
+      }
+
+      try {
+        const { data, error } = await supabaseClient
+          .from("missing_car_reports")
+          .select("id, created_at, user_id, car_number, fleet_guess, line, notes, platform, status")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        missingCarReports = data || [];
+        renderMissingCarReports();
+        if (showStatus) setStatus("Missing car reports refreshed.", "success", 2500);
+      } catch (error) {
+        console.error("Missing car reports error:", error);
+        if (table) table.innerHTML = '<tr><td colspan="7" class="empty">Could not load missing car reports.</td></tr>';
+        if (showStatus) setStatus("Could not refresh missing car reports.", "error", 4000);
+      } finally {
+        if (button) { button.disabled = false; button.textContent = "Refresh"; }
+      }
+    }
+
+    async function updateMissingReportStatus(report, newStatus, select) {
+      if (!report?.id || !["pending", "reviewed", "resolved"].includes(newStatus)) {
+        renderMissingCarReports();
+        return;
+      }
+
+      const oldStatus = report.status || "pending";
+      select.disabled = true;
+
+      try {
+        const { error } = await supabaseClient
+          .from("missing_car_reports")
+          .update({ status: newStatus })
+          .eq("id", report.id);
+
+        if (error) throw error;
+        report.status = newStatus;
+        setStatus(`Car ${report.car_number ?? "report"} marked ${newStatus}.`, "success", 3000);
+        renderMissingCarReports();
+      } catch (error) {
+        console.error("Missing report status update error:", error);
+        report.status = oldStatus;
+        select.value = oldStatus;
+        select.disabled = false;
+        setStatus("Could not update this report's status.", "error", 4000);
+      }
     }
 
     function loadDashboard(profile) {
@@ -1990,6 +2171,19 @@
           document.getElementById("activityTypeFilter").value = "";
           renderAdminActivity();
         });
+
+      document.getElementById("missingReportSearch")
+        ?.addEventListener("input", renderMissingCarReports);
+
+      document.getElementById("missingReportStatusFilter")
+        ?.addEventListener("change", renderMissingCarReports);
+
+      document.getElementById("clearMissingReportFilters")
+        ?.addEventListener("click", () => {
+          document.getElementById("missingReportSearch").value = "";
+          document.getElementById("missingReportStatusFilter").value = "";
+          renderMissingCarReports();
+        });
     }
 
     document
@@ -2021,6 +2215,7 @@
       ?.addEventListener("click", signOutAdmin);
 
     document.getElementById("refreshActivityButton")?.addEventListener("click", () => loadAdminActivity(true));
+    document.getElementById("refreshMissingReportsButton")?.addEventListener("click", () => loadMissingCarReports(true));
 
     document
       .getElementById("refreshSessionDiagnosticsButton")
