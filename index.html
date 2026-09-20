@@ -1315,20 +1315,27 @@ async function loadAchievements(){
         unique:new Set((s.data||[]).map(x=>String(x.car_number||"").trim()).filter(Boolean)).size,
         longestStreak:achievementLongestStreak(s.data||[])
     };
-    const count=achievementDefinitions.filter(d=>map.has(d.key)).length;
-    status.textContent=`${count} of ${achievementDefinitions.length} achievements earned.`;
-    list.innerHTML=achievementDefinitions.map(def=>{
+    const earnedDefinitions=achievementDefinitions.filter(def=>map.has(def.key));
+    const count=earnedDefinitions.length;
+
+    if(!count){
+        status.textContent="No achievements earned yet. Keep logging sightings to unlock them.";
+        list.innerHTML="";
+        return;
+    }
+
+    status.textContent=`${count} achievement${count===1?"":"s"} earned.`;
+    list.innerHTML=earnedDefinitions.map(def=>{
         const at=map.get(def.key);
-        const progress=Math.min(achievementValue(def,stats),def.target);
         return `<div class="report-item">
             <div class="report-item-heading">
                 <div class="report-item-car">${escapeHTML(def.title)}</div>
-                <div class="report-status-badge">${at?"Earned":"Locked"}</div>
+                <div class="report-status-badge">Earned</div>
             </div>
             <div class="report-item-value">${escapeHTML(def.description)}</div>
             <div class="report-item-details" style="margin-top:10px;">
-                <div class="report-item-label">${at?"Earned":"Progress"}</div>
-                <div class="report-item-value">${at?escapeHTML(new Date(at).toLocaleString()):`${progress} / ${def.target}`}</div>
+                <div class="report-item-label">Earned</div>
+                <div class="report-item-value">${escapeHTML(new Date(at).toLocaleString())}</div>
             </div>
         </div>`;
     }).join("");
