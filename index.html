@@ -1626,6 +1626,81 @@ async function saveSighting() {
     }
 }
 
+
+function buildFleetShareText(carNumber, fleet, configuration = "") {
+    const data = fleetData[fleet];
+    if (!data) return "";
+
+    const lines = String(data.lines || "")
+        .split(",")
+        .map(line => line.trim())
+        .filter(Boolean)
+        .join(", ");
+
+    const parts = [
+        `${fleet} — Car ${carNumber}`,
+        configuration ? `Configuration / Subtype: ${configuration}` : "",
+        `Builder: ${data.builder}`,
+        `Years built: ${data.years}`,
+        `Lines: ${lines}`,
+        `Division: ${data.division}`,
+        `Factory version: ${data.factory}`,
+        `Passenger version: ${data.passenger}`,
+        `Fleet size: ${data.built}`,
+        data.serviceSpeed ? `Maximum service speed: ${data.serviceSpeed}` : "",
+        data.designSpeed ? `Design speed: ${data.designSpeed}` : "",
+        data.propulsion ? `Propulsion: ${data.propulsion}` : "",
+        data.notes ? `Notes: ${data.notes}` : "",
+        "",
+        "Fleet Identifier"
+    ];
+
+    return parts.filter((part, index) => part !== "" || index === parts.length - 2).join("\n");
+}
+
+async function shareFleetResult(carNumber, fleet, configuration = "") {
+    const status = document.getElementById("shareResultStatus");
+    const text = buildFleetShareText(carNumber, fleet, configuration);
+    const title = `${fleet} — Car ${carNumber}`;
+
+    if (status) status.textContent = "";
+
+    try {
+        if (navigator.share) {
+            await navigator.share({ title, text });
+            if (status) status.textContent = "Result shared.";
+            return;
+        }
+
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+            if (status) status.textContent = "Result copied!";
+            return;
+        }
+
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand("copy");
+        textarea.remove();
+
+        if (!copied) throw new Error("Clipboard copy was not available.");
+        if (status) status.textContent = "Result copied!";
+    } catch (error) {
+        if (error?.name === "AbortError") {
+            if (status) status.textContent = "";
+            return;
+        }
+
+        console.error("Could not share fleet result:", error);
+        if (status) status.textContent = "Could not share result. Please try again.";
+    }
+}
+
 function toggleIncorrectInformationReport() {
     const panel = document.getElementById("incorrectInformationReport");
     if (!panel) return;
@@ -2130,6 +2205,11 @@ async function identify() {
             <div class="label">Notes</div>
             <div>${data.notes}</div>
 
+        </div>
+
+        <div class="report-box">
+            <button type="button" onclick="shareFleetResult('${input}', '${fleet}', ${JSON.stringify(configuration || "")})">Share Result</button>
+            <div id="shareResultStatus" class="status-message"></div>
         </div>
 
         <div class="report-box">
