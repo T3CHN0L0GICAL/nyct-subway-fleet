@@ -1389,25 +1389,50 @@ async function saveSighting() {
     }
 }
 
-function reportMissingCar(carNumber) {
+async function reportMissingCar(carNumber) {
     const fleetGuess = document.getElementById("reportFleetGuess")?.value.trim() || "";
     const line = document.getElementById("reportLine")?.value || "";
     const notes = document.getElementById("reportNotes")?.value.trim() || "";
-
-    const reports = JSON.parse(localStorage.getItem("fleetIdentifierMissingReports") || "[]");
-    reports.unshift({
-        carNumber,
-        fleetGuess,
-        line,
-        notes,
-        reportedAt: new Date().toISOString(),
-        syncStatus: "local-only"
-    });
-    localStorage.setItem("fleetIdentifierMissingReports", JSON.stringify(reports));
-
     const status = document.getElementById("reportStatus");
+
     if (status) {
-        status.textContent = "Report saved on this device. Online submission will be enabled when accounts/sync are added.";
+        status.textContent = "Submitting report...";
+    }
+
+    try {
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+
+        if (sessionError) {
+            console.error("Could not read session for missing car report:", sessionError);
+        }
+
+        const { error } = await supabaseClient
+            .from("missing_car_reports")
+            .insert({
+                user_id: session?.user?.id || null,
+                car_number: carNumber,
+                fleet_guess: fleetGuess || null,
+                line: line || null,
+                notes: notes || null,
+                platform: getFleetIdentifierPlatform()
+            });
+
+        if (error) {
+            console.error("Could not submit missing car report:", error);
+            if (status) {
+                status.textContent = "Could not submit report. Please try again.";
+            }
+            return;
+        }
+
+        if (status) {
+            status.textContent = "Report submitted. Thank you for helping improve Fleet Identifier.";
+        }
+    } catch (error) {
+        console.error("Could not submit missing car report:", error);
+        if (status) {
+            status.textContent = "Could not submit report. Please try again.";
+        }
     }
 }
 
