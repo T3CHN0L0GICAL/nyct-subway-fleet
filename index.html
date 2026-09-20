@@ -610,7 +610,7 @@
         margin-top: 6px;
     }
 
-    .sighting-notes, .sighting-edit-box textarea {
+    .sighting-notes, .sighting-station, .sighting-edit-box textarea, .sighting-edit-box input {
         width: 100%;
         min-height: 80px;
         resize: vertical;
@@ -1100,7 +1100,7 @@
         </div>
 
         <div class="sightings-filters">
-            <input id="sightingsSearch" type="search" placeholder="Search car, fleet, or notes" autocomplete="off" oninput="applySightingsFilters()">
+            <input id="sightingsSearch" type="search" placeholder="Search car, fleet, station, or notes" autocomplete="off" oninput="applySightingsFilters()">
             <select id="sightingsLineFilter" onchange="applySightingsFilters()"><option value="">All lines</option></select>
             <select id="sightingsSort" onchange="applySightingsFilters()">
                 <option value="newest">Newest first</option>
@@ -1718,6 +1718,7 @@ async function saveSighting() {
     }
 
     const notes = document.getElementById("sightingNotes")?.value.trim() || "";
+    const station = document.getElementById("sightingStation")?.value.trim() || "";
 
     const { error } = await supabaseClient
         .from("sightings")
@@ -1726,6 +1727,7 @@ async function saveSighting() {
             car_number: pendingSighting.carNumber,
             fleet: pendingSighting.fleet,
             line: pendingSighting.line,
+            station: station || null,
             notes: notes || null
         });
 
@@ -2202,6 +2204,9 @@ async function identify() {
                     <button type="button" class="line-button" data-line="TEST" onclick="chooseLine('TEST')">TEST</button>
                 </div>
 
+                <label for="sightingStation" style="margin-top:12px;">Station (optional)</label>
+                <input id="sightingStation" class="sighting-station" type="text" maxlength="100" autocomplete="off" placeholder="Example: Broadway Junction">
+
                 <label for="sightingNotes" style="margin-top:12px;">Notes (optional)</label>
                 <textarea id="sightingNotes" class="sighting-notes" maxlength="1000" placeholder="Add notes about this sighting."></textarea>
 
@@ -2428,6 +2433,9 @@ async function identify() {
             <h3>Log this sighting</h3>
             <div>Which line did you see car <strong>${input}</strong> on?</div>
             <div class="line-grid">${lineButtonsHTML(data.division)}</div>
+
+            <label for="sightingStation" style="margin-top:12px;">Station (optional)</label>
+            <input id="sightingStation" class="sighting-station" type="text" maxlength="100" autocomplete="off" placeholder="Example: Broadway Junction">
 
             <label for="sightingNotes" style="margin-top:12px;">Notes (optional)</label>
             <textarea id="sightingNotes" class="sighting-notes" maxlength="1000" placeholder="Add notes about this sighting."></textarea>
@@ -2791,7 +2799,7 @@ async function loadMySightings() {
 
     const { data, error } = await supabaseClient
         .from("sightings")
-        .select("id, car_number, fleet, line, notes, saved_at")
+        .select("id, car_number, fleet, line, station, notes, saved_at")
         .eq("user_id", session.user.id)
         .order("saved_at", { ascending: false });
 
@@ -2974,6 +2982,7 @@ function applySightingsFilters() {
         const matchesSearch = !search ||
             String(s.car_number || "").toLowerCase().includes(search) ||
             String(s.fleet || "").toLowerCase().includes(search) ||
+            String(s.station || "").toLowerCase().includes(search) ||
             String(s.notes || "").toLowerCase().includes(search);
         const matchesLine = !line || s.line === line;
         return matchesSearch && matchesLine;
@@ -3015,10 +3024,11 @@ function renderMySightings(data) {
             <div id="sighting-${Number(sighting.id)}" style="padding:14px 0;border-bottom:1px solid var(--fi-border);">
                 <div style="font-size:20px;font-weight:bold;">${escapeHTML(sighting.fleet)} — Car ${escapeHTML(sighting.car_number)}</div>
                 <div style="margin-top:5px;">Line: <strong id="sighting-line-${Number(sighting.id)}">${lineDisplayHTML(sighting.line)}</strong></div>
+                ${sighting.station ? `<div style="margin-top:5px;"><strong>Station:</strong> ${escapeHTML(sighting.station)}</div>` : ""}
                 ${sighting.notes ? `<div class="sighting-note-display"><strong>Notes:</strong> ${escapeHTML(sighting.notes)}</div>` : ""}
                 <div class="account-small-note" style="margin-top:5px;">${escapeHTML(date)}</div>
                 <div class="sighting-actions">
-                    <button type="button" onclick='openEditSighting(${Number(sighting.id)}, ${JSON.stringify(sighting.fleet)}, ${JSON.stringify(sighting.line)}, ${JSON.stringify(sighting.notes || "")})'>Edit</button>
+                    <button type="button" onclick='openEditSighting(${Number(sighting.id)}, ${JSON.stringify(sighting.fleet)}, ${JSON.stringify(sighting.line)}, ${JSON.stringify(sighting.station || "")}, ${JSON.stringify(sighting.notes || "")})'>Edit</button>
                     <button type="button" onclick="deleteSighting(${Number(sighting.id)})">Delete</button>
                 </div>
                 <div id="edit-sighting-${Number(sighting.id)}" class="sighting-edit-box hidden"></div>
@@ -3046,7 +3056,7 @@ function editLineOptionsHTML(fleet, currentLine) {
     `).join("");
 }
 
-function openEditSighting(id, fleet, currentLine, currentNotes = "") {
+function openEditSighting(id, fleet, currentLine, currentStation = "", currentNotes = "") {
     const box = document.getElementById(`edit-sighting-${id}`);
     if (!box) return;
 
@@ -3056,6 +3066,9 @@ function openEditSighting(id, fleet, currentLine, currentNotes = "") {
         <select id="edit-line-${id}">
             ${editLineOptionsHTML(fleet, currentLine)}
         </select>
+
+        <label for="edit-station-${id}" style="margin-top:12px;">Station (optional)</label>
+        <input id="edit-station-${id}" type="text" maxlength="100" autocomplete="off" placeholder="Example: Broadway Junction" value="${escapeHTML(currentStation)}">
 
         <label for="edit-notes-${id}" style="margin-top:12px;">Notes (optional)</label>
         <textarea id="edit-notes-${id}" maxlength="1000" placeholder="Add notes about this sighting.">${escapeHTML(currentNotes)}</textarea>
@@ -3078,12 +3091,14 @@ function cancelSightingEdit(id) {
 
 async function saveSightingEdit(id) {
     const select = document.getElementById(`edit-line-${id}`);
+    const stationInput = document.getElementById(`edit-station-${id}`);
     const notesInput = document.getElementById(`edit-notes-${id}`);
     const status = document.getElementById(`edit-status-${id}`);
 
     if (!select) return;
 
     const newLine = select.value;
+    const newStation = stationInput?.value.trim() || "";
     const newNotes = notesInput?.value.trim() || "";
 
     if (status) {
@@ -3092,7 +3107,7 @@ async function saveSightingEdit(id) {
 
     const { error } = await supabaseClient
         .from("sightings")
-        .update({ line: newLine, notes: newNotes || null })
+        .update({ line: newLine, station: newStation || null, notes: newNotes || null })
         .eq("id", Number(id));
 
     if (error) {
