@@ -892,7 +892,8 @@
         }
         .profile-stat {
             border: 1px solid var(--fi-border);
-            padding: 10px;
+            border-radius: 14px;
+            padding: 14px;
             min-width: 0;
         }
         .profile-stat-label {
@@ -913,7 +914,8 @@
         }
         .profile-stats-secondary > div {
             border: 1px solid var(--fi-border);
-            padding: 10px;
+            border-radius: 14px;
+            padding: 14px;
             display: flex;
             flex-direction: column;
             gap: 4px;
@@ -4550,7 +4552,15 @@ async function loadProfileStats(user) {
     setProfileStat("profileStatAchievements", achievements.length);
     setProfileStat("profileStatLongestStreak", `${longestStreak} day${longestStreak === 1 ? "" : "s"}`);
     setProfileStat("profileStatTopFleet", profileMostCommon(sightings, "fleet"));
-    setProfileStat("profileStatTopLine", profileMostCommon(sightings, "line"));
+
+    const profileTopLine = profileMostCommon(sightings, "line");
+    const profileTopLineEl = document.getElementById("profileStatTopLine");
+    if (profileTopLineEl) {
+        profileTopLineEl.innerHTML =
+            profileTopLine === "—"
+                ? "—"
+                : renderLineWithBullet(profileTopLine);
+    }
 }
 
 async function renderAuthState(session) {
