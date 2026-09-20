@@ -999,13 +999,11 @@
                     </div>
                     <div class="avatar-actions">
                         <button type="button" onclick="openAvatarPicker('camera')">Take Photo</button>
-                        <button type="button" onclick="openAvatarPicker('library')">Photo Library / Gallery</button>
-                        <button type="button" onclick="openAvatarPicker('files')">Choose from Files</button>
-                        <button id="removeAvatarButton" type="button" onclick="removeProfilePhoto()">Remove Photo</button>
+                        <button type="button" onclick="openAvatarPicker('choose')">Choose Photo</button>
+                        <button id="removeAvatarButton" class="hidden" type="button" onclick="removeProfilePhoto()">Remove Photo</button>
                     </div>
                     <input id="avatarCameraInput" class="avatar-file-input" type="file" accept="image/*" capture="environment" onchange="handleAvatarFile(this)">
-                    <input id="avatarLibraryInput" class="avatar-file-input" type="file" accept="image/*" onchange="handleAvatarFile(this)">
-                    <input id="avatarFilesInput" class="avatar-file-input" type="file" accept="image/jpeg,image/png,image/webp" onchange="handleAvatarFile(this)">
+                    <input id="avatarChooseInput" class="avatar-file-input" type="file" accept="image/*" onchange="handleAvatarFile(this)">
                     <div id="avatarMessage" class="account-message"></div>
                 </div>
 
@@ -3579,8 +3577,7 @@ function setAvatarMessage(text, isError = false) {
 function openAvatarPicker(source) {
     const ids = {
         camera: "avatarCameraInput",
-        library: "avatarLibraryInput",
-        files: "avatarFilesInput"
+        choose: "avatarChooseInput"
     };
     const input = document.getElementById(ids[source]);
     if (!input) return;
@@ -3785,7 +3782,10 @@ async function renderAuthState(session) {
     renderAvatarElement(document.getElementById("accountProfileAvatar"), profile);
 
     const removeButton = document.getElementById("removeAvatarButton");
-    if (removeButton) removeButton.disabled = !profile.avatarPath;
+    if (removeButton) {
+        removeButton.classList.toggle("hidden", !profile.avatarPath);
+        removeButton.disabled = !profile.avatarPath;
+    }
 }
 
 async function initializeAuth() {
