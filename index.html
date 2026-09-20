@@ -1658,8 +1658,17 @@ function buildFleetShareText(carNumber, fleet, configuration = "") {
     return parts.filter((part, index) => part !== "" || index === parts.length - 2).join("\n");
 }
 
-async function shareFleetResult(carNumber, fleet, configuration = "") {
+async function shareFleetResult() {
     const status = document.getElementById("shareResultStatus");
+
+    if (!pendingSighting?.carNumber || !pendingSighting?.fleet) {
+        if (status) status.textContent = "Identify a car first.";
+        return;
+    }
+
+    const carNumber = pendingSighting.carNumber;
+    const fleet = pendingSighting.fleet;
+    const configuration = pendingSighting.configuration || "";
     const text = buildFleetShareText(carNumber, fleet, configuration);
     const title = `${fleet} — Car ${carNumber}`;
 
@@ -2138,6 +2147,7 @@ async function identify() {
     pendingSighting = {
         carNumber: input,
         fleet: fleet,
+        configuration: configuration || "",
         line: null
     };
 
@@ -2208,7 +2218,7 @@ async function identify() {
         </div>
 
         <div class="report-box">
-            <button type="button" onclick="shareFleetResult('${input}', '${fleet}', ${JSON.stringify(configuration || "")})">Share Result</button>
+            <button type="button" onclick="shareFleetResult()">Share Result</button>
             <div id="shareResultStatus" class="status-message"></div>
         </div>
 
