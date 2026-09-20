@@ -935,6 +935,116 @@
         .fleet-compare-label { font-size: 11px; }
     }
 
+
+    /* Standardized station picker */
+    .station-picker { position: relative; width: 100%; }
+    .station-picker .sighting-station { min-height: 0; resize: none; }
+    .station-picker-menu {
+        position: absolute; z-index: 1200; left: 0; right: 0; top: calc(100% + 5px);
+        max-height: 300px; overflow-y: auto; padding: 6px;
+        background: #181818; border: 1px solid #333; border-radius: 10px;
+        box-shadow: 0 10px 28px rgba(0,0,0,.45);
+    }
+    .station-picker-menu.hidden { display: none !important; }
+    .station-picker-option {
+        width: 100%; display: block; padding: 9px 10px; border: 0; border-radius: 7px;
+        background: transparent; color: #fff; text-align: left; cursor: pointer; font: inherit;
+    }
+    .station-picker-option:hover, .station-picker-option:focus, .station-picker-option.active { background: #292929; outline: none; }
+    .station-picker-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 700; }
+    .station-picker-meta { margin-top: 4px; color: #aaa; font-size: 12px; }
+    .station-picker-empty { padding: 11px; color: #aaa; font-size: 13px; }
+    .station-picker-loading { margin-top: 6px; color: var(--fi-muted); font-size: 12px; }
+    html[data-theme="light"] .station-picker-menu { background: #fff; border-color: #ccc; box-shadow: 0 10px 28px rgba(0,0,0,.18); }
+    html[data-theme="light"] .station-picker-option { color: #000; }
+    html[data-theme="light"] .station-picker-option:hover,
+    html[data-theme="light"] .station-picker-option:focus,
+    html[data-theme="light"] .station-picker-option.active { background: #eee; }
+    html[data-theme="light"] .station-picker-meta,
+    html[data-theme="light"] .station-picker-empty { color: #555; }
+
+    
+        /* Line Stats */
+        .line-stats-summary { margin-top: 14px; font-weight: 700; }
+        .line-stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+        .line-stat-card { border: 1px solid var(--fi-border); border-radius: 12px; padding: 14px; background: var(--fi-surface); }
+        .line-stat-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+        .line-stat-card-title { display:flex; align-items:center; gap:9px; min-width:0; font-weight:800; }
+        .line-stat-count { font-weight:800; white-space:nowrap; }
+        .line-stat-details { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; font-size:14px; }
+        .line-stat-detail-label { opacity:.72; font-size:12px; display:block; margin-bottom:2px; }
+        .line-stat-bar { height:8px; border:1px solid var(--fi-border); border-radius:999px; overflow:hidden; margin-top:12px; }
+        .line-stat-bar-fill { height:100%; background:currentColor; }
+        @media (max-width: 650px) { .line-stats-grid { grid-template-columns:1fr; } }
+
+
+        .collection-milestones {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .collection-milestone {
+            border: 1px solid var(--fi-border);
+            padding: 7px 10px;
+            font-size: 0.86rem;
+            font-weight: 700;
+            opacity: 0.48;
+        }
+        .collection-milestone.earned {
+            opacity: 1;
+            background: var(--fi-text);
+            color: var(--fi-bg);
+        }
+        .collection-next-milestone {
+            margin-top: 9px;
+            line-height: 1.45;
+        }
+
+    
+        .fleet-family-picker {
+            margin-top: 14px;
+            border: 1px solid var(--fi-border);
+        }
+        .fleet-family-option {
+            width: 100%;
+            margin: 0;
+            padding: 13px 14px;
+            border: 0;
+            border-bottom: 1px solid var(--fi-border);
+            border-radius: 0;
+            background: var(--fi-bg);
+            color: var(--fi-text);
+            text-align: left;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 52px;
+        }
+        .fleet-family-option:last-child {
+            border-bottom: 0;
+        }
+        .fleet-family-option:hover,
+        .fleet-family-option:focus-visible {
+            background: var(--fi-text);
+            color: var(--fi-bg);
+        }
+        .fleet-family-option-name {
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .fleet-family-option-lines {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .fleet-family-option-lines .route-bullet {
+            margin: 0;
+        }
+
     </style>
 </head>
 
@@ -1011,6 +1121,7 @@
             <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
             <button type="button" onclick="toggleSightingCalendarPanel()">Sighting Calendar</button>
             <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
+            <button type="button" onclick="toggleLineStatsPanel()">Line Stats</button>
             <button type="button" onclick="toggleFleetComparisonPanel()">Fleet Comparison</button>
         </div>
 
@@ -1212,6 +1323,15 @@
         <div id="mySightingsList"></div>
     </section>
 
+
+    <section id="lineStatsPanel" class="account-panel hidden">
+        <h2>Line Stats</h2>
+        <div class="account-small-note">See how your saved sightings break down by the line you spotted them on.</div>
+        <div style="margin-top:14px;"><button type="button" onclick="loadLineStats()">Refresh</button></div>
+        <div id="lineStatsStatus" class="status-message">Loading line stats...</div>
+        <div id="lineStatsGrid" class="line-stats-grid"></div>
+    </section>
+
     <section id="fleetBreakdownPanel" class="account-panel hidden">
         <h2>Fleet Breakdown</h2>
         <div class="account-small-note">See how your saved sightings are distributed across the fleets you have spotted.</div>
@@ -1301,19 +1421,19 @@
 
     <section class="search-box">
 
-        <label for="carNumber">Car Number</label>
+        <label for="carNumber">Car Number or Fleet</label>
 
         <div class="input-row">
 
             <input
                 id="carNumber"
                 type="text"
-                inputmode="numeric"
-                placeholder="Example: 4045"
+                inputmode="text"
+                placeholder="Example: 4045 or R211A"
                 autocomplete="off"
             >
 
-            <button onclick="identify()">Identify</button>
+            <button onclick="identify()">Search</button>
 
         </div>
 
@@ -1354,6 +1474,7 @@ function toggleSettings() {
         document.getElementById("fleetCollectionPanel")?.classList.add("hidden");
         document.getElementById("sightingCalendarPanel")?.classList.add("hidden");
         document.getElementById("fleetBreakdownPanel")?.classList.add("hidden");
+        document.getElementById("lineStatsPanel")?.classList.add("hidden");
         document.getElementById("fleetComparisonPanel")?.classList.add("hidden");
     }
 
@@ -1370,6 +1491,346 @@ window.addEventListener("DOMContentLoaded", function() {
 
 
 
+
+
+const STATION_DATA_URL = "https://data.ny.gov/resource/39hk-dx4f.json?$select=gtfs_stop_id,station_id,complex_id,division,line,stop_name,borough,daytime_routes,gtfs_latitude,gtfs_longitude&$limit=1000";
+const STATION_COMPLEX_DATA_URL = "https://data.ny.gov/resource/5f5g-n3cz.json?$select=complex_id,stop_name,display_name,constituent_station_names,station_ids,gtfs_stop_ids,borough,daytime_routes,latitude,longitude&$limit=1000";
+let standardizedStations = [];
+let standardizedStationsPromise = null;
+let standardizedComplexes = new Map();
+
+const STATION_WORD_ALIASES = {
+    "bway": "broadway", "bdwy": "broadway",
+    "junc": "junction", "jct": "junction",
+    "av": "avenue", "ave": "avenue", "aves": "avenues", "avs": "avenues",
+    "st": "street", "sts": "streets",
+    "blvd": "boulevard", "pkwy": "parkway",
+    "sq": "square", "ctr": "center",
+    "hts": "heights", "plz": "plaza",
+    "ft": "fort", "pk": "park",
+    "1st": "1", "2nd": "2", "3rd": "3", "4th": "4", "5th": "5", "6th": "6", "7th": "7", "8th": "8", "9th": "9", "10th": "10", "11th": "11", "12th": "12"
+};
+
+const STATION_SPECIAL_ALIASES = {
+    "Broadway Junction": ["bway junc", "bway junction", "broadway jct"],
+    "Atlantic Av-Barclays Ctr": ["atlantic barclays", "atl barclays", "barclays", "barclays center"],
+    "Times Sq-42 St": ["times square", "times sq", "42 times sq", "42 tsq", "tsq", "42nd times square"],
+    "42 St-Port Authority Bus Terminal": ["42 pabt", "pabt", "port authority", "port authority bus terminal", "times square", "times sq", "42 tsq"],
+    "Jay St-MetroTech": ["jay st", "jay street", "metrotech", "metro tech"],
+    "Hoyt-Schermerhorn Sts": ["hoyt schermerhorn", "hoyt sch", "schermerhorn"],
+    "Canarsie-Rockaway Pkwy": ["rockaway pkwy", "canarsie rockaway", "rockaway parkway"],
+    "74 St-Broadway": ["74 bway", "74 broadway"],
+    "Court Sq": ["court square"],
+    "Grand Central-42 St": ["grand central", "gct", "grand central 42"],
+    "34 St-Herald Sq": ["herald square", "herald sq"],
+    "34 St-Penn Station": ["penn station", "penn", "34 penn"],
+    "World Trade Center": ["wtc", "world trade", "world trade center", "chambers wtc"],
+    "WTC Cortlandt": ["wtc", "world trade", "world trade center", "cortlandt", "wtc cortlandt"],
+    "Chambers St": ["wtc", "world trade", "world trade center", "chambers wtc"],
+    "Cortlandt St": ["wtc", "world trade", "world trade center", "cortlandt wtc"],
+    "W 4 St-Wash Sq": ["west 4", "w 4", "washington square", "wash sq"]
+};
+
+function normalizeStationSearch(value) {
+    return String(value || "")
+        .toLowerCase()
+        .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[–—-]/g, " ")
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/).filter(Boolean)
+        .map(word => STATION_WORD_ALIASES[word] || word)
+        .join(" ")
+        .replace(/\s+/g, " ").trim();
+}
+
+function stationAliases(station) {
+    return [
+        ...(STATION_SPECIAL_ALIASES[station.stopName] || []),
+        ...(STATION_SPECIAL_ALIASES[station.complexName] || [])
+    ];
+}
+
+function stationSearchText(station) {
+    return normalizeStationSearch([
+        station.stopName,
+        station.complexName,
+        station.complexDisplayName,
+        station.constituentNames,
+        station.line,
+        station.routes,
+        station.borough,
+        ...stationAliases(station)
+    ].filter(Boolean).join(" "));
+}
+
+function stationRouteValues(routes) {
+    const aliases = { GS: "42 St S", FS: "Franklin S", H: "Rockaway S", SI: "SIR", SIR: "SIR" };
+    return String(routes || "").split(/[ ,]+/).map(x => x.trim()).filter(Boolean).map(x => aliases[x] || x);
+}
+
+function stationRoutesHTML(routes) {
+    const values = stationRouteValues(routes);
+    if (!values.length) return "";
+    return `<span class="route-bullet-list">${values.map(line => routeBulletClass(line) ? lineDisplayHTML(line) : `<span>${escapeHTML(line)}</span>`).join("")}</span>`;
+}
+
+async function loadStandardizedStations() {
+    if (standardizedStations.length) return standardizedStations;
+    if (standardizedStationsPromise) return standardizedStationsPromise;
+    standardizedStationsPromise = (async () => {
+        const [stationResponse, complexResponse] = await Promise.all([
+            fetch(STATION_DATA_URL, { headers: { "Accept": "application/json" } }),
+            fetch(STATION_COMPLEX_DATA_URL, { headers: { "Accept": "application/json" } })
+        ]);
+        if (!stationResponse.ok) throw new Error(`Station data request failed (${stationResponse.status})`);
+        if (!complexResponse.ok) throw new Error(`Station complex request failed (${complexResponse.status})`);
+        const [rows, complexRows] = await Promise.all([stationResponse.json(), complexResponse.json()]);
+
+        standardizedComplexes = new Map(complexRows.map(row => [String(row.complex_id || "").trim(), {
+            complexId: String(row.complex_id || "").trim(),
+            stopName: String(row.stop_name || "").trim(),
+            displayName: String(row.display_name || "").trim(),
+            constituentNames: String(row.constituent_station_names || "").trim(),
+            stationIds: String(row.station_ids || "").trim(),
+            gtfsStopIds: String(row.gtfs_stop_ids || "").trim(),
+            borough: String(row.borough || "").trim(),
+            routes: String(row.daytime_routes || "").trim(),
+            lat: row.latitude == null ? null : Number(row.latitude),
+            lon: row.longitude == null ? null : Number(row.longitude)
+        }]));
+
+        const seen = new Set();
+        standardizedStations = rows.map(row => {
+            const complexId = String(row.complex_id || "").trim();
+            const complex = standardizedComplexes.get(complexId) || {};
+            return {
+                id: String(row.gtfs_stop_id || row.station_id || "").trim(),
+                stationId: String(row.station_id || "").trim(),
+                complexId,
+                stopName: String(row.stop_name || "").trim(),
+                complexName: String(complex.stopName || "").trim(),
+                complexDisplayName: String(complex.displayName || "").trim(),
+                constituentNames: String(complex.constituentNames || "").trim(),
+                line: String(row.line || "").trim(),
+                borough: String(row.borough || complex.borough || "").trim(),
+                routes: String(row.daytime_routes || "").trim(),
+                complexRoutes: String(complex.routes || "").trim(),
+                lat: row.gtfs_latitude == null ? null : Number(row.gtfs_latitude),
+                lon: row.gtfs_longitude == null ? null : Number(row.gtfs_longitude)
+            };
+        }).filter(station => {
+            if (!station.stopName || !station.id) return false;
+            const key = `${station.id}|${station.stopName}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+        return standardizedStations;
+    })().catch(error => {
+        standardizedStationsPromise = null;
+        console.error("Could not load standardized station list:", error);
+        throw error;
+    });
+    return standardizedStationsPromise;
+}
+
+function numberedStationStreetQuery(rawQuery) {
+    const query = normalizeStationSearch(rawQuery);
+    // Once a rider has typed a complete numbered-street phrase such as
+    // "14 st", treat that street number as exact. This prevents 14 St
+    // from matching 145 St, 148 St, 149 St, etc. Extra terms such as
+    // "14 st 8 av" are still allowed to narrow the correct 14 St results.
+    const match = query.match(/(?:^|\s)(\d{1,3})\s+(street|st)(?=\s|$)/);
+    return match ? match[1] : "";
+}
+
+function stationStreetNumbers(station) {
+    const fields = [
+        station.stopName,
+        station.complexName,
+        station.complexDisplayName,
+        station.constituentNames,
+        ...stationAliases(station)
+    ];
+    const numbers = new Set();
+    fields.forEach(value => {
+        const normalized = normalizeStationSearch(value);
+        for (const match of normalized.matchAll(/(?:^|\s)(\d{1,3})\s+(?:street|st)(?=\s|$)/g)) {
+            numbers.add(match[1]);
+        }
+    });
+    return numbers;
+}
+
+function stationMatchScore(station, rawQuery) {
+    const query = normalizeStationSearch(rawQuery);
+    if (!query) return 9999;
+
+    const exactStreetNumber = numberedStationStreetQuery(rawQuery);
+    if (exactStreetNumber) {
+        const stationNumbers = stationStreetNumbers(station);
+        if (!stationNumbers.has(exactStreetNumber)) return 9999;
+    }
+
+    const name = normalizeStationSearch(station.stopName);
+    const complex = normalizeStationSearch(station.complexName);
+    const aliases = normalizeStationSearch(stationAliases(station).join(" "));
+    const haystack = stationSearchText(station);
+    if (name === query) return 0;
+    if (complex && complex === query) return 1;
+    if (aliases.split(" ").length && stationAliases(station).some(alias => normalizeStationSearch(alias) === query)) return 1;
+    if (name.startsWith(query)) return 2;
+    if (name.includes(query)) return 3;
+    const tokens = query.split(" ");
+    if (tokens.every(token => haystack.includes(token))) return 4;
+    return 9999;
+}
+
+function stationMatches(rawQuery, limit = 24) {
+    return standardizedStations
+        .map(station => ({ station, score: stationMatchScore(station, rawQuery) }))
+        .filter(item => item.score < 9999)
+        .sort((a, b) => a.score - b.score || a.station.stopName.localeCompare(b.station.stopName) || a.station.line.localeCompare(b.station.line) || a.station.routes.localeCompare(b.station.routes))
+        .slice(0, limit)
+        .map(item => item.station);
+}
+
+function stationMetaHTML(station) {
+    const parts = [];
+    if (station.line) parts.push(station.line);
+    if (station.borough) parts.push(station.borough);
+    const sameName = normalizeStationSearch(station.complexName) === normalizeStationSearch(station.stopName);
+    if (station.complexName && !sameName) parts.push(`${station.complexName} complex`);
+    return escapeHTML(parts.join(" · "));
+}
+
+function enhanceStationInput(input) {
+    if (!input || input.dataset.stationPickerEnhanced === "1") return;
+    input.dataset.stationPickerEnhanced = "1";
+    input.classList.add("sighting-station");
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-expanded", "false");
+    input.placeholder = "Search station (example: bway junc)";
+
+    const wrap = document.createElement("div");
+    wrap.className = "station-picker";
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+
+    const menu = document.createElement("div");
+    menu.className = "station-picker-menu hidden";
+    menu.setAttribute("role", "listbox");
+    wrap.appendChild(menu);
+
+    const note = document.createElement("div");
+    note.className = "station-picker-loading";
+    note.textContent = "Type a station name, complex name, or nickname.";
+    wrap.appendChild(note);
+
+    let selectedStation = null;
+    let activeIndex = -1;
+    let currentMatches = [];
+
+    function close() {
+        menu.classList.add("hidden");
+        input.setAttribute("aria-expanded", "false");
+        activeIndex = -1;
+    }
+
+    function choose(station) {
+        selectedStation = station;
+        // Save the constituent/platform name, not a generic complex label.
+        input.value = station.stopName;
+        input.dataset.stationId = station.id;
+        input.dataset.stationMasterId = station.stationId;
+        input.dataset.stationComplexId = station.complexId;
+        input.dataset.stationComplexName = station.complexName || "";
+        input.dataset.stationLine = station.line || "";
+        input.dataset.stationRoutes = station.routes || "";
+        input.dataset.stationLat = station.lat ?? "";
+        input.dataset.stationLon = station.lon ?? "";
+        const complexText = station.complexName && normalizeStationSearch(station.complexName) !== normalizeStationSearch(station.stopName)
+            ? ` · ${station.complexName} complex`
+            : "";
+        note.textContent = `${station.line || "NYC Subway"}${station.routes ? ` · ${station.routes}` : ""}${complexText}`;
+        close();
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    function render(matches) {
+        currentMatches = matches;
+        activeIndex = -1;
+        if (!matches.length) {
+            menu.innerHTML = `<div class="station-picker-empty">No matching stations.</div>`;
+        } else {
+            menu.innerHTML = matches.map((station, index) => `
+                <button type="button" class="station-picker-option" role="option" data-index="${index}">
+                    <span class="station-picker-name">${escapeHTML(station.stopName)} ${stationRoutesHTML(station.routes)}</span>
+                    <span class="station-picker-meta">${stationMetaHTML(station)}</span>
+                </button>
+            `).join("");
+            menu.querySelectorAll(".station-picker-option").forEach(button => {
+                button.addEventListener("mousedown", event => event.preventDefault());
+                button.addEventListener("click", () => choose(matches[Number(button.dataset.index)]));
+            });
+        }
+        menu.classList.remove("hidden");
+        input.setAttribute("aria-expanded", "true");
+    }
+
+    async function search() {
+        const raw = input.value.trim();
+        if (selectedStation && raw !== selectedStation.stopName) selectedStation = null;
+        delete input.dataset.stationId;
+        delete input.dataset.stationMasterId;
+        delete input.dataset.stationComplexId;
+        delete input.dataset.stationComplexName;
+        delete input.dataset.stationLine;
+        delete input.dataset.stationRoutes;
+        delete input.dataset.stationLat;
+        delete input.dataset.stationLon;
+        if (!raw) { note.textContent = "Type a station name, complex name, or nickname."; close(); return; }
+        note.textContent = "Searching stations...";
+        try {
+            await loadStandardizedStations();
+            const matches = stationMatches(raw);
+            note.textContent = matches.length ? `${matches.length} match${matches.length === 1 ? "" : "es"}` : "No matching stations.";
+            render(matches);
+        } catch {
+            note.textContent = "Station list could not be loaded. Check your connection and try again.";
+            close();
+        }
+    }
+
+    input.addEventListener("input", search);
+    input.addEventListener("focus", () => { if (input.value.trim() && standardizedStations.length) render(stationMatches(input.value)); });
+    input.addEventListener("keydown", event => {
+        const options = [...menu.querySelectorAll(".station-picker-option")];
+        if (menu.classList.contains("hidden") || !options.length) return;
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            activeIndex = event.key === "ArrowDown" ? Math.min(activeIndex + 1, options.length - 1) : Math.max(activeIndex - 1, 0);
+            options.forEach((option, i) => option.classList.toggle("active", i === activeIndex));
+            options[activeIndex]?.scrollIntoView({ block: "nearest" });
+        } else if (event.key === "Enter" && activeIndex >= 0) {
+            event.preventDefault(); choose(currentMatches[activeIndex]);
+        } else if (event.key === "Escape") close();
+    });
+    input.addEventListener("blur", () => setTimeout(close, 120));
+
+    // Existing sightings may contain legacy free text. Keep it visible/editable, but only picker selections get station identity metadata.
+    if (input.value.trim()) note.textContent = "Existing station text — search and select a station to standardize it.";
+    loadStandardizedStations().catch(() => {});
+}
+
+function initializeStationPickers() {
+    const apply = () => document.querySelectorAll("#sightingStation, input[id^='edit-station-']").forEach(enhanceStationInput);
+    apply();
+    new MutationObserver(apply).observe(document.body, { childList: true, subtree: true });
+}
+
+document.addEventListener("DOMContentLoaded", initializeStationPickers);
 
 function fleetComparisonRangeText(fleet) {
     if (!fleet) return "—";
@@ -1494,6 +1955,93 @@ function renderFleetComparison() {
             </div>
         `).join("")}
     `;
+}
+
+
+async function toggleLineStatsPanel() {
+    const panel = document.getElementById("lineStatsPanel");
+    if (!panel) return;
+    const opening = panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening ? "lineStatsPanel" : "");
+    panel.classList.toggle("hidden", !opening);
+    if (opening) await loadLineStats();
+}
+
+async function loadLineStats() {
+    const status = document.getElementById("lineStatsStatus");
+    const grid = document.getElementById("lineStatsGrid");
+    if (!status || !grid) return;
+    status.textContent = "Loading line stats...";
+    grid.innerHTML = "";
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+        status.textContent = "Log in to view your line stats.";
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from("sightings")
+        .select("car_number, fleet, line, station, saved_at")
+        .eq("user_id", user.id);
+
+    if (error) {
+        console.error("Could not load line stats:", error);
+        status.textContent = "Could not load your line stats.";
+        return;
+    }
+
+    const rows = (data || []).filter(row => String(row.line || "").trim());
+    if (!rows.length) {
+        status.textContent = "No line sightings yet.";
+        return;
+    }
+
+    const byLine = new Map();
+    rows.forEach(row => {
+        const line = String(row.line || "").trim();
+        if (!byLine.has(line)) byLine.set(line, []);
+        byLine.get(line).push(row);
+    });
+
+    const stats = [...byLine.entries()].map(([line, lineRows]) => {
+        const uniqueCars = new Set(lineRows.map(r => String(r.car_number || "").trim()).filter(Boolean));
+        const fleets = new Set(lineRows.map(r => String(r.fleet || "").trim()).filter(Boolean));
+        const fleetCounts = new Map();
+        lineRows.forEach(r => {
+            const fleet = String(r.fleet || "").trim();
+            if (fleet) fleetCounts.set(fleet, (fleetCounts.get(fleet) || 0) + 1);
+        });
+        const mostSeenFleet = [...fleetCounts.entries()].sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0], undefined, {numeric:true}))[0]?.[0] || "—";
+        const latest = lineRows.reduce((best, r) => !best || new Date(r.saved_at) > new Date(best.saved_at) ? r : best, null);
+        return { line, count: lineRows.length, uniqueCars: uniqueCars.size, fleets: fleets.size, mostSeenFleet, latest };
+    }).sort((a,b) => b.count-a.count || a.line.localeCompare(b.line, undefined, {numeric:true}));
+
+    const maxCount = Math.max(...stats.map(s => s.count), 1);
+    status.textContent = `${rows.length} total line sighting${rows.length === 1 ? "" : "s"} across ${stats.length} line${stats.length === 1 ? "" : "s"}.`;
+
+    grid.innerHTML = stats.map(item => {
+        const title = routeBulletClass(item.line)
+            ? `${lineDisplayHTML(item.line)}<span>${escapeHTML(routeTitle(item.line))}</span>`
+            : `<span>${escapeHTML(item.line)}</span>`;
+        const latestDate = item.latest?.saved_at ? new Date(item.latest.saved_at).toLocaleDateString() : "—";
+        const latestStation = String(item.latest?.station || "").trim();
+        return `
+            <div class="line-stat-card">
+                <div class="line-stat-card-head">
+                    <div class="line-stat-card-title">${title}</div>
+                    <div class="line-stat-count">${item.count} sighting${item.count === 1 ? "" : "s"}</div>
+                </div>
+                <div class="line-stat-details">
+                    <div><span class="line-stat-detail-label">Unique cars</span><strong>${item.uniqueCars}</strong></div>
+                    <div><span class="line-stat-detail-label">Fleets seen</span><strong>${item.fleets}</strong></div>
+                    <div><span class="line-stat-detail-label">Most-seen fleet</span><strong>${escapeHTML(item.mostSeenFleet)}</strong></div>
+                    <div><span class="line-stat-detail-label">Latest sighting</span><strong>${escapeHTML(latestDate)}</strong></div>
+                </div>
+                ${latestStation ? `<div class="account-small-note" style="margin-top:10px;">Latest station: ${escapeHTML(latestStation)}</div>` : ""}
+                <div class="line-stat-bar" aria-hidden="true"><div class="line-stat-bar-fill" style="width:${((item.count/maxCount)*100).toFixed(2)}%;"></div></div>
+            </div>`;
+    }).join("");
 }
 
 async function toggleFleetBreakdownPanel() {
@@ -1778,7 +2326,7 @@ async function loadFleetCollection() {
 
     const { data: sightings, error } = await supabaseClient
         .from("sightings")
-        .select("car_number, fleet")
+        .select("car_number, fleet, saved_at")
         .eq("user_id", user.id);
 
     if (error) {
@@ -1788,12 +2336,15 @@ async function loadFleetCollection() {
     }
 
     const uniqueByFleet = new Map();
+    const rowsByFleet = new Map();
     for (const row of (sightings || [])) {
         const fleet = String(row.fleet || "").trim();
         const car = String(row.car_number || "").trim();
         if (!fleet || !car || !passengerFleetCollectionNames.includes(fleet)) continue;
         if (!uniqueByFleet.has(fleet)) uniqueByFleet.set(fleet, new Set());
+        if (!rowsByFleet.has(fleet)) rowsByFleet.set(fleet, []);
         uniqueByFleet.get(fleet).add(car);
+        rowsByFleet.get(fleet).push(row);
     }
 
     const cards = passengerFleetCollectionNames.map(name => {
@@ -1806,28 +2357,106 @@ async function loadFleetCollection() {
         const seen = validSeen.length;
         const total = validCars.size;
         const percent = total ? Math.min(100, (seen / total) * 100) : 0;
+        const fleetRows = (rowsByFleet.get(name) || [])
+            .filter(row => validCars.has(String(row.car_number || "").trim()))
+            .sort((a, b) => new Date(a.saved_at || 0) - new Date(b.saved_at || 0));
+        const sortedSeenCars = validSeen.sort((a, b) => Number(a) - Number(b));
+        const missingCars = [...validCars]
+            .filter(car => !seenCars.has(car))
+            .sort((a, b) => Number(a) - Number(b));
 
-        return { name, seen, total, percent };
+        const milestonePercents = [10, 25, 50, 75, 100];
+        const milestones = milestonePercents.map(targetPercent => {
+            const targetCars = Math.ceil(total * (targetPercent / 100));
+            return {
+                percent: targetPercent,
+                targetCars,
+                earned: seen >= targetCars
+            };
+        });
+        const nextMilestone = milestones.find(m => !m.earned) || null;
+
+        return {
+            name, seen, total, percent,
+            sightings: fleetRows.length,
+            sortedSeenCars,
+            missingCars,
+            firstSeen: fleetRows[0]?.saved_at || "",
+            latestSeen: fleetRows[fleetRows.length - 1]?.saved_at || "",
+            milestones,
+            nextMilestone
+        };
     }).filter(Boolean);
 
     const totalSeen = cards.reduce((sum, item) => sum + item.seen, 0);
     const totalCars = cards.reduce((sum, item) => sum + item.total, 0);
     const overallPercent = totalCars ? (totalSeen / totalCars) * 100 : 0;
 
-    status.textContent = `Overall collection: ${totalSeen} of ${totalCars} cars (${overallPercent.toFixed(1)}%).`;
+    status.textContent = `Overall collection: ${totalSeen} of ${totalCars} cars (${overallPercent.toFixed(1)}%). Tap a fleet for details.`;
 
-    list.innerHTML = cards.map(item => `
+    const dateText = value => value
+        ? new Date(value).toLocaleDateString([], { year:"numeric", month:"short", day:"numeric" })
+        : "—";
+
+    list.innerHTML = cards.map((item, index) => {
+        const collectedText = item.sortedSeenCars.length
+            ? item.sortedSeenCars.map(escapeHTML).join(", ")
+            : "None yet";
+        const missingPreview = item.missingCars.slice(0, 40);
+        const missingText = missingPreview.length
+            ? `${missingPreview.map(escapeHTML).join(", ")}${item.missingCars.length > missingPreview.length ? ` … +${item.missingCars.length - missingPreview.length} more` : ""}`
+            : "Collection complete";
+        return `
         <div class="report-item">
-            <div class="report-item-heading">
-                <div class="report-item-car">${escapeHTML(item.name)}</div>
-                <div>${item.seen} / ${item.total}</div>
+            <button type="button" onclick="toggleCollectionDetails(${index})" aria-expanded="false" id="collectionDetailsButton-${index}" style="width:100%;text-align:left;background:transparent;color:inherit;border:0;padding:0;box-shadow:none;">
+                <div class="report-item-heading">
+                    <div class="report-item-car">${escapeHTML(item.name)}</div>
+                    <div>${item.seen} / ${item.total}</div>
+                </div>
+                <div class="report-item-value">${item.percent.toFixed(1)}% collected · ${item.sightings} sighting${item.sightings === 1 ? "" : "s"}</div>
+                <div style="height:8px;border:1px solid currentColor;margin-top:10px;overflow:hidden;">
+                    <div style="height:100%;width:${item.percent.toFixed(2)}%;background:currentColor;"></div>
+                </div>
+                <div class="account-small-note" style="margin-top:8px;">Tap for collection details</div>
+            </button>
+            <div id="collectionDetails-${index}" class="hidden" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--fi-border);">
+                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+                    <div><strong>Collected</strong><br>${item.seen}</div>
+                    <div><strong>Remaining</strong><br>${Math.max(0, item.total - item.seen)}</div>
+                    <div><strong>First sighting</strong><br>${escapeHTML(dateText(item.firstSeen))}</div>
+                    <div><strong>Latest sighting</strong><br>${escapeHTML(dateText(item.latestSeen))}</div>
+                </div>
+                <div style="margin-top:14px;"><strong>Collection milestones</strong></div>
+                <div class="collection-milestones">
+                    ${item.milestones.map(m => `
+                        <div class="collection-milestone ${m.earned ? "earned" : ""}" title="${m.targetCars} of ${item.total} cars">
+                            ${m.percent}%
+                        </div>
+                    `).join("")}
+                </div>
+                <div class="account-small-note collection-next-milestone">
+                    ${item.nextMilestone
+                        ? `Next milestone: ${item.nextMilestone.percent}% · ${Math.max(0, item.nextMilestone.targetCars - item.seen)} more car${Math.max(0, item.nextMilestone.targetCars - item.seen) === 1 ? "" : "s"} needed (${item.nextMilestone.targetCars} of ${item.total})`
+                        : "All collection milestones earned · 100% complete"}
+                </div>
+                <div style="margin-top:14px;"><strong>Cars collected</strong></div>
+                <div class="account-small-note" style="margin-top:5px;line-height:1.6;overflow-wrap:anywhere;">${collectedText}</div>
+                <div style="margin-top:14px;"><strong>Cars remaining</strong></div>
+                <div class="account-small-note" style="margin-top:5px;line-height:1.6;overflow-wrap:anywhere;">${missingText}</div>
             </div>
-            <div class="report-item-value">${item.percent.toFixed(1)}% collected</div>
-            <div style="height:8px;border:1px solid currentColor;margin-top:10px;overflow:hidden;">
-                <div style="height:100%;width:${item.percent.toFixed(2)}%;background:currentColor;"></div>
-            </div>
-        </div>
-    `).join("");
+        </div>`;
+    }).join("");
+}
+
+function toggleCollectionDetails(index) {
+    const details = document.getElementById(`collectionDetails-${index}`);
+    const button = document.getElementById(`collectionDetailsButton-${index}`);
+    if (!details || !button) return;
+    const opening = details.classList.contains("hidden");
+    details.classList.toggle("hidden", !opening);
+    button.setAttribute("aria-expanded", opening ? "true" : "false");
+    const note = button.querySelector(".account-small-note");
+    if (note) note.textContent = opening ? "Tap to hide collection details" : "Tap for collection details";
 }
 
 const achievementDefinitions = [
@@ -3006,6 +3635,144 @@ async function getRepeatSightingNotice(carNumber) {
     }
 }
 
+
+function normalizeFleetSearch(value) {
+    return String(value || "")
+        .toUpperCase()
+        .replace(/[\s_-]+/g, "")
+        .trim();
+}
+
+function getFleetFamilyMatches(value) {
+    const normalized = normalizeFleetSearch(value);
+    if (!normalized) return [];
+
+    const familyRules = {
+        "R211": ["R211A", "R211T", "R211S"],
+        "R160": ["R160A", "R160B"],
+        "R142": ["R142", "R142A"],
+        "R68": ["R68", "R68A"],
+        "R62": ["R62", "R62A"]
+    };
+
+    const family = familyRules[normalized];
+    if (!family) return [];
+
+    return family.filter(name => fleetData[name]);
+}
+
+function findFleetBySearch(value) {
+    const normalized = normalizeFleetSearch(value);
+    if (!normalized) return "";
+
+    // A family search such as R211 or R160 is intentionally handled by the
+    // chooser instead of being treated as invalid or guessing a subtype.
+    if (getFleetFamilyMatches(value).length > 1) return "";
+
+    return Object.keys(fleetData).find(name =>
+        normalizeFleetSearch(name) === normalized
+    ) || "";
+}
+
+function showFleetFamilyPicker(query, matches) {
+    const resultBox = document.getElementById("result");
+    if (!resultBox || !matches.length) return;
+
+    pendingSighting = null;
+    resultBox.className = "result";
+
+    resultBox.innerHTML = `
+        <div class="fleet-title">${escapeHTML(String(query).toUpperCase())}</div>
+        <div class="car-number">Choose a fleet</div>
+        <div class="status-message" style="margin-top:12px;">
+            More than one fleet matches this family. Select the one you mean.
+        </div>
+        <div class="fleet-family-picker">
+            ${matches.map(name => {
+                const data = fleetData[name] || {};
+                return `
+                    <button type="button" class="fleet-family-option" data-fleet="${escapeHTML(name)}">
+                        <span class="fleet-family-option-name">${escapeHTML(name)}</span>
+                        <span class="fleet-family-option-lines">${fleetLinesDisplayHTML(data.lines || "")}</span>
+                    </button>
+                `;
+            }).join("")}
+        </div>
+    `;
+
+    resultBox.querySelectorAll(".fleet-family-option").forEach(button => {
+        button.addEventListener("click", () => {
+            const fleet = button.dataset.fleet || "";
+            if (fleetData[fleet]) {
+                const input = document.getElementById("carNumber");
+                if (input) input.value = fleet;
+                showFleetSearchResult(fleet);
+            }
+        });
+    });
+}
+
+function fleetRangesDisplay(ranges) {
+    if (!Array.isArray(ranges) || !ranges.length) return "Unknown";
+    return ranges.map(range => {
+        if (!Array.isArray(range) || range.length < 2) return "";
+        const [start, end] = range;
+        return Number(start) === Number(end)
+            ? String(start)
+            : `${start}–${end}`;
+    }).filter(Boolean).join(", ") || "Unknown";
+}
+
+function showFleetSearchResult(fleet) {
+    const resultBox = document.getElementById("result");
+    const data = fleetData[fleet];
+    if (!resultBox || !data) return;
+
+    pendingSighting = null;
+    resultBox.className = "result";
+    resultBox.innerHTML = `
+        <div class="fleet-title">${escapeHTML(fleet)}</div>
+        <div class="car-number">Fleet search</div>
+
+        <div class="info">
+            <div class="label">Car number ranges</div>
+            <div>${escapeHTML(fleetRangesDisplay(data.ranges))}</div>
+
+            <div class="label">Builder</div>
+            <div>${escapeHTML(data.builder || "Unknown")}</div>
+
+            <div class="label">Years built</div>
+            <div>${escapeHTML(data.years || "Unknown")}</div>
+
+            <div class="label">Lines</div>
+            <div>${fleetLinesDisplayHTML(data.lines || "")}</div>
+
+            <div class="label">Division</div>
+            <div>${escapeHTML(data.division || "Unknown")}</div>
+
+            <div class="label">Factory version</div>
+            <div>${escapeHTML(data.factory || "Unknown")}</div>
+
+            <div class="label">Passenger version</div>
+            <div>${escapeHTML(data.passenger || "Unknown")}</div>
+
+            <div class="label">Fleet size</div>
+            <div>${escapeHTML(data.built || "Unknown")}</div>
+
+            ${data.serviceSpeed ? `<div class="label">Maximum service speed</div><div>${escapeHTML(data.serviceSpeed)}</div>` : ""}
+            ${data.designSpeed ? `<div class="label">Design speed</div><div class="${data.designSpeed === "Unknown" ? "unknown-value" : ""}">${escapeHTML(data.designSpeed)}</div>` : ""}
+            ${data.propulsion ? `<div class="label">Propulsion</div><div>${escapeHTML(data.propulsion)}</div>` : ""}
+
+            <div class="label">Notes</div>
+            <div>${escapeHTML(data.notes || "None")}</div>
+        </div>
+
+        <div class="status-message" style="margin-top:14px;">
+            Enter a specific car number to log a sighting for this fleet.
+        </div>
+    `;
+}
+
 async function identify() {
 
     const input =
@@ -3087,6 +3854,21 @@ async function identify() {
     }
 
 
+    // Fleet-family search. Broad family names such as R211 and R160
+    // open a chooser instead of being rejected or guessing a subtype.
+    const fleetFamilyMatches = getFleetFamilyMatches(input);
+    if (fleetFamilyMatches.length > 1) {
+        showFleetFamilyPicker(input, fleetFamilyMatches);
+        return;
+    }
+
+    // Exact fleet-name search
+    const fleetSearchMatch = findFleetBySearch(input);
+    if (fleetSearchMatch) {
+        showFleetSearchResult(fleetSearchMatch);
+        return;
+    }
+
     // Check input
     if (!/^\d+$/.test(input)) {
 
@@ -3094,8 +3876,8 @@ async function identify() {
 
         resultBox.innerHTML = `
             <div class="error">
-                <strong>Invalid entry.</strong><br>
-                Please enter a numeric subway car number.
+                <strong>Fleet or car not found.</strong><br>
+                Enter a valid subway car number or an exact fleet name such as R211A.
             </div>
         `;
 
@@ -3446,7 +4228,7 @@ function updateFocusMode() {
 }
 
 function closeSettingsContentPanels(exceptId = "") {
-    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel", "sightingCalendarPanel", "fleetBreakdownPanel", "fleetComparisonPanel"].forEach(id => {
+    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel", "sightingCalendarPanel", "fleetBreakdownPanel", "lineStatsPanel", "fleetComparisonPanel"].forEach(id => {
         if (id !== exceptId) {
             document.getElementById(id)?.classList.add("hidden");
         }
