@@ -1405,11 +1405,11 @@ function populateFleetComparisonSelectors() {
         work.length ? `<optgroup label="Work Equipment">${work.map(name => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join("")}</optgroup>` : ""
     ].join("");
 
-    left.innerHTML = options;
-    right.innerHTML = options;
+    left.innerHTML = `<option value="" selected>Choose Fleet 1</option>${options}`;
+    right.innerHTML = `<option value="" selected>Choose Fleet 2</option>${options}`;
 
-    left.value = fleetData.R211A ? "R211A" : (passenger[0] || names[0] || "");
-    right.value = fleetData.R211T ? "R211T" : (passenger[1] || names[1] || names[0] || "");
+    left.value = "";
+    right.value = "";
 }
 
 function toggleFleetComparisonPanel() {
