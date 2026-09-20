@@ -971,6 +971,14 @@
                 <div class="sightings-stat-label">Latest sighting</div>
                 <div id="statLatestSighting" class="sightings-stat-value">—</div>
             </div>
+            <div class="sightings-stat">
+                <div class="sightings-stat-label">Current streak</div>
+                <div id="statCurrentStreak" class="sightings-stat-value">0 days</div>
+            </div>
+            <div class="sightings-stat">
+                <div class="sightings-stat-label">Longest streak</div>
+                <div id="statLongestStreak" class="sightings-stat-value">0 days</div>
+            </div>
         </div>
 
         <div class="sightings-filters">
@@ -2406,6 +2414,8 @@ function updateSightingsStats() {
     const thisMonthEl = document.getElementById("statThisMonth");
     const firstEl = document.getElementById("statFirstSighting");
     const latestEl = document.getElementById("statLatestSighting");
+    const currentStreakEl = document.getElementById("statCurrentStreak");
+    const longestStreakEl = document.getElementById("statLongestStreak");
 
     const total = mySightingsData.length;
     const uniqueCars = new Set(
@@ -2453,6 +2463,55 @@ function updateSightingsStats() {
         if (firstEl) firstEl.textContent = "—";
         if (latestEl) latestEl.textContent = "—";
     }
+
+    // A streak counts consecutive local calendar days with at least one saved sighting.
+    // Multiple sightings on the same day count as one streak day.
+    const dayKeys = [...new Set(validDates.map(d => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+    }))].sort();
+
+    const dayNumber = key => {
+        const [y, m, d] = key.split("-").map(Number);
+        return Math.floor(Date.UTC(y, m - 1, d) / 86400000);
+    };
+
+    let longestStreak = 0;
+    let runningStreak = 0;
+    let previousDayNumber = null;
+
+    for (const key of dayKeys) {
+        const currentDayNumber = dayNumber(key);
+        runningStreak = previousDayNumber !== null && currentDayNumber === previousDayNumber + 1
+            ? runningStreak + 1
+            : 1;
+        longestStreak = Math.max(longestStreak, runningStreak);
+        previousDayNumber = currentDayNumber;
+    }
+
+    let currentStreak = 0;
+    if (dayKeys.length) {
+        const today = new Date();
+        const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+        const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+        const lastKey = dayKeys[dayKeys.length - 1];
+
+        // Keep the streak alive through today if the most recent sighting was today or yesterday.
+        if (lastKey === todayKey || lastKey === yesterdayKey) {
+            currentStreak = 1;
+            for (let i = dayKeys.length - 1; i > 0; i--) {
+                if (dayNumber(dayKeys[i]) === dayNumber(dayKeys[i - 1]) + 1) currentStreak++;
+                else break;
+            }
+        }
+    }
+
+    const streakLabel = count => `${count} ${count === 1 ? "day" : "days"}`;
+    if (currentStreakEl) currentStreakEl.textContent = streakLabel(currentStreak);
+    if (longestStreakEl) longestStreakEl.textContent = streakLabel(longestStreak);
 }
 
 function clearSightingsFilters() {
