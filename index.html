@@ -944,7 +944,9 @@ function toggleSettings() {
     settingsPanel.classList.toggle("hidden", !opening);
 
     if (!opening) {
-        document.getElementById("accountPanel").classList.add("hidden");
+        document.getElementById("accountPanel")?.classList.add("hidden");
+        document.getElementById("mySightingsPanel")?.classList.add("hidden");
+        document.getElementById("myReportsPanel")?.classList.add("hidden");
     }
 
     updateFocusMode();
@@ -2016,13 +2018,25 @@ function updateFocusMode() {
     document.body.classList.toggle("focus-mode", settingsOpen);
 }
 
+function closeSettingsContentPanels(exceptId = "") {
+    ["accountPanel", "mySightingsPanel", "myReportsPanel"].forEach(id => {
+        if (id !== exceptId) {
+            document.getElementById(id)?.classList.add("hidden");
+        }
+    });
+}
+
 function toggleAccountPanel() {
-    document.getElementById("accountPanel").classList.toggle("hidden");
+    const panel = document.getElementById("accountPanel");
+    const opening = panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening ? "accountPanel" : "");
+    panel.classList.toggle("hidden", !opening);
 }
 
 async function toggleSightingsPanel() {
     const panel = document.getElementById("mySightingsPanel");
     const opening = panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening ? "mySightingsPanel" : "");
     panel.classList.toggle("hidden", !opening);
 
     if (opening) {
@@ -2033,6 +2047,7 @@ async function toggleSightingsPanel() {
 async function toggleReportsPanel() {
     const panel = document.getElementById("myReportsPanel");
     const opening = panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening ? "myReportsPanel" : "");
     panel.classList.toggle("hidden", !opening);
 
     if (opening) {
