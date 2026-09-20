@@ -704,6 +704,22 @@
 
 
 
+    /* Repeat sighting notice */
+    .repeat-sighting-notice {
+        margin: 14px 0 4px;
+        padding: 12px 14px;
+        border: 1px solid var(--fi-border);
+        border-radius: 10px;
+        background: var(--fi-chip);
+        color: var(--fi-text);
+        line-height: 1.45;
+    }
+
+    .repeat-sighting-notice strong {
+        display: block;
+        margin-bottom: 3px;
+    }
+
     /* Custom route dropdowns — allows real route bullets inside menus */
     select.route-select-enhanced {
       position: absolute !important;
@@ -1756,7 +1772,46 @@ async function logEasterEggEvent(codeLabel) {
     }
 }
 
-function identify() {
+async function getRepeatSightingNotice(carNumber) {
+    try {
+        const { data: { session }, error: sessionError } =
+            await supabaseClient.auth.getSession();
+
+        if (sessionError || !session?.user) return "";
+
+        const { data, error } = await supabaseClient
+            .from("sightings")
+            .select("saved_at")
+            .eq("user_id", session.user.id)
+            .eq("car_number", String(carNumber))
+            .order("saved_at", { ascending: false });
+
+        if (error) {
+            console.error("Could not check previous sightings:", error);
+            return "";
+        }
+
+        const previous = data || [];
+        if (!previous.length) return "";
+
+        const count = previous.length;
+        const lastSeen = previous[0]?.saved_at
+            ? new Date(previous[0].saved_at).toLocaleString()
+            : "an earlier date";
+
+        return `
+            <div class="repeat-sighting-notice">
+                <strong>You’ve seen car ${escapeHTML(carNumber)} before.</strong>
+                ${count} previous sighting${count === 1 ? "" : "s"} · Last seen ${escapeHTML(lastSeen)}
+            </div>
+        `;
+    } catch (error) {
+        console.error("Could not check previous sightings:", error);
+        return "";
+    }
+}
+
+async function identify() {
 
     const input =
         document.getElementById("carNumber").value.trim();
@@ -1904,6 +1959,8 @@ function identify() {
         line: null
     };
 
+    const repeatSightingNotice = await getRepeatSightingNotice(input);
+
 
     let html = `
 
@@ -1914,6 +1971,8 @@ function identify() {
         <div class="car-number">
             Car number: <strong>${input}</strong>
         </div>
+
+        ${repeatSightingNotice}
 
     `;
 
