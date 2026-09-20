@@ -927,6 +927,9 @@
             <div style="margin-top:12px;">
                 <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
             </div>
+            <div style="margin-top:12px;">
+                <button type="button" onclick="toggleSightingCalendarPanel()">Sighting Calendar</button>
+            </div>
         </div>
 
     <section id="accountPanel" class="account-panel hidden">
@@ -1127,6 +1130,23 @@
         <div id="mySightingsList"></div>
     </section>
 
+    <section id="sightingCalendarPanel" class="account-panel hidden">
+        <h2>Sighting Calendar</h2>
+        <div class="account-small-note">
+            See which days you logged sightings and how many you saved each day.
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;">
+            <button type="button" onclick="changeSightingCalendarMonth(-1)" aria-label="Previous month">←</button>
+            <strong id="sightingCalendarMonthLabel"></strong>
+            <button type="button" onclick="changeSightingCalendarMonth(1)" aria-label="Next month">→</button>
+        </div>
+
+        <div id="sightingCalendarStatus" class="status-message">Loading calendar...</div>
+        <div id="sightingCalendarGrid" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:12px;"></div>
+        <div id="sightingCalendarDayDetails" class="reports-list" style="margin-top:14px;"></div>
+    </section>
+
     <section id="fleetCollectionPanel" class="account-panel hidden">
         <h2>Fleet Collection</h2>
         <div class="account-small-note">
@@ -1222,6 +1242,7 @@ function toggleSettings() {
         document.getElementById("searchHistoryPanel")?.classList.add("hidden");
         document.getElementById("achievementsPanel")?.classList.add("hidden");
         document.getElementById("fleetCollectionPanel")?.classList.add("hidden");
+        document.getElementById("sightingCalendarPanel")?.classList.add("hidden");
     }
 
     updateFocusMode();
@@ -1234,6 +1255,199 @@ window.addEventListener("DOMContentLoaded", function() {
 
 
 
+
+
+let sightingCalendarRows = [];
+let sightingCalendarDate = new Date();
+sightingCalendarDate = new Date(
+    sightingCalendarDate.getFullYear(),
+    sightingCalendarDate.getMonth(),
+    1
+);
+
+function sightingCalendarDateKey(value) {
+    const d = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+async function toggleSightingCalendarPanel() {
+    const panel = document.getElementById("sightingCalendarPanel");
+    if (!panel) return;
+
+    const opening = panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening ? "sightingCalendarPanel" : "");
+    panel.classList.toggle("hidden", !opening);
+
+    if (opening) {
+        const now = new Date();
+        sightingCalendarDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        await loadSightingCalendar();
+    }
+}
+
+async function loadSightingCalendar() {
+    const status = document.getElementById("sightingCalendarStatus");
+    const details = document.getElementById("sightingCalendarDayDetails");
+    if (!status) return;
+
+    status.textContent = "Loading calendar...";
+    if (details) details.innerHTML = "";
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+        sightingCalendarRows = [];
+        status.textContent = "Log in to view your sighting calendar.";
+        renderSightingCalendar();
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from("sightings")
+        .select("id, car_number, fleet, line, station, saved_at")
+        .eq("user_id", user.id)
+        .order("saved_at", { ascending: true });
+
+    if (error) {
+        console.error("Could not load sighting calendar:", error);
+        status.textContent = "Could not load your sighting calendar.";
+        return;
+    }
+
+    sightingCalendarRows = data || [];
+    renderSightingCalendar();
+}
+
+function changeSightingCalendarMonth(offset) {
+    sightingCalendarDate = new Date(
+        sightingCalendarDate.getFullYear(),
+        sightingCalendarDate.getMonth() + offset,
+        1
+    );
+    renderSightingCalendar();
+}
+
+function renderSightingCalendar() {
+    const label = document.getElementById("sightingCalendarMonthLabel");
+    const grid = document.getElementById("sightingCalendarGrid");
+    const status = document.getElementById("sightingCalendarStatus");
+    const details = document.getElementById("sightingCalendarDayDetails");
+    if (!label || !grid || !status) return;
+
+    const year = sightingCalendarDate.getFullYear();
+    const month = sightingCalendarDate.getMonth();
+    label.textContent = sightingCalendarDate.toLocaleDateString(undefined, {
+        month: "long",
+        year: "numeric"
+    });
+
+    const counts = new Map();
+    for (const row of sightingCalendarRows) {
+        const key = sightingCalendarDateKey(row.saved_at);
+        if (!key) continue;
+        counts.set(key, (counts.get(key) || 0) + 1);
+    }
+
+    const headers = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    let markup = headers.map(day =>
+        `<div style="text-align:center;font-size:12px;font-weight:700;padding:4px 0;">${day}</div>`
+    ).join("");
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    for (let i = 0; i < firstDay; i++) {
+        markup += `<div aria-hidden="true"></div>`;
+    }
+
+    let monthTotal = 0;
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const key = sightingCalendarDateKey(date);
+        const count = counts.get(key) || 0;
+        monthTotal += count;
+
+        const title = count
+            ? `${count} sighting${count === 1 ? "" : "s"}`
+            : "No sightings";
+
+        markup += `
+            <button
+                type="button"
+                onclick="showSightingCalendarDay('${key}')"
+                title="${title}"
+                style="
+                    min-width:0;
+                    min-height:54px;
+                    padding:6px 3px;
+                    border:1px solid currentColor;
+                    background:transparent;
+                    color:inherit;
+                    display:flex;
+                    flex-direction:column;
+                    align-items:center;
+                    justify-content:center;
+                    gap:3px;
+                "
+            >
+                <span>${day}</span>
+                ${count ? `<strong style="font-size:11px;">${count}</strong>` : ""}
+            </button>
+        `;
+    }
+
+    grid.innerHTML = markup;
+    status.textContent = `${monthTotal} sighting${monthTotal === 1 ? "" : "s"} logged this month.`;
+    if (details) details.innerHTML = "";
+}
+
+function showSightingCalendarDay(dateKey) {
+    const details = document.getElementById("sightingCalendarDayDetails");
+    if (!details) return;
+
+    const rows = sightingCalendarRows
+        .filter(row => sightingCalendarDateKey(row.saved_at) === dateKey)
+        .sort((a,b) => new Date(a.saved_at) - new Date(b.saved_at));
+
+    const date = new Date(`${dateKey}T12:00:00`);
+    const heading = date.toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    });
+
+    if (!rows.length) {
+        details.innerHTML = `
+            <div class="report-item">
+                <div class="report-item-car">${escapeHTML(heading)}</div>
+                <div class="report-item-value">No sightings logged.</div>
+            </div>
+        `;
+        return;
+    }
+
+    details.innerHTML = `
+        <div class="report-item">
+            <div class="report-item-car">${escapeHTML(heading)}</div>
+            <div class="report-item-value">${rows.length} sighting${rows.length === 1 ? "" : "s"}</div>
+        </div>
+        ${rows.map(row => `
+            <div class="report-item">
+                <div class="report-item-heading">
+                    <div class="report-item-car">Car ${escapeHTML(row.car_number || "—")}</div>
+                    <div>${escapeHTML(row.fleet || "Unknown fleet")}</div>
+                </div>
+                <div class="report-item-value">
+                    ${escapeHTML(new Date(row.saved_at).toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}))}
+                    ${row.line ? ` · ${escapeHTML(row.line)} line` : ""}
+                    ${row.station ? ` · ${escapeHTML(row.station)}` : ""}
+                </div>
+            </div>
+        `).join("")}
+    `;
+}
 
 const passengerFleetCollectionNames = [
     "R62", "R62A", "R142", "R142A", "R188",
@@ -2945,7 +3159,7 @@ function updateFocusMode() {
 }
 
 function closeSettingsContentPanels(exceptId = "") {
-    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel"].forEach(id => {
+    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel", "sightingCalendarPanel"].forEach(id => {
         if (id !== exceptId) {
             document.getElementById(id)?.classList.add("hidden");
         }
