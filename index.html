@@ -702,7 +702,40 @@
         }
     }
 
-</style>
+
+
+    /* Custom route dropdowns — allows real route bullets inside menus */
+    select.route-select-enhanced {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    .route-dropdown { position: relative; display: inline-block; min-width: 150px; font-size: 14px; }
+    .route-dropdown.full-width { display: block; width: 100%; }
+    .route-dropdown-button {
+      width: 100%; min-height: 40px; display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; background: #111; color: #fff; border: 1px solid #333; border-radius: 8px;
+      padding: 8px 11px; font: inherit; cursor: pointer; text-align: left;
+    }
+    .route-dropdown-button:disabled { opacity: .55; cursor: not-allowed; }
+    .route-dropdown-button::after { content: "▾"; color: #999; font-size: 12px; flex: 0 0 auto; }
+    .route-dropdown-value { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .route-dropdown-menu {
+      position: absolute; z-index: 1000; left: 0; right: 0; top: calc(100% + 5px); max-height: 260px;
+      overflow-y: auto; padding: 6px; background: #181818; border: 1px solid #333; border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.45);
+    }
+    .route-dropdown-menu.hidden { display: none !important; }
+    .route-dropdown-option {
+      width: 100%; display: flex; align-items: center; gap: 9px; min-height: 40px; padding: 7px 9px;
+      border: 0; border-radius: 7px; background: transparent; color: #fff; font: inherit; text-align: left; cursor: pointer;
+    }
+    .route-dropdown-option:hover, .route-dropdown-option:focus, .route-dropdown-option.selected { background: #292929; outline: none; }
+    .route-dropdown-option-text { color: #ddd; }
+
+  </style>
 </head>
 
 <body>
@@ -2992,6 +3025,89 @@ async function initializeAuth() {
 }
 
 initializeAuth();
+
+
+
+// Custom route dropdown enhancement. The original <select> remains the source of truth,
+// so existing filtering, editing, reporting, and Supabase values stay unchanged.
+function routeDropdownDisplayHTML(value, text) {
+    if (!value) return `<span class="route-dropdown-option-text">${escapeHTML(text || "Select line")}</span>`;
+    return routeBulletClass(value)
+        ? `${lineDisplayHTML(value)}<span class="route-dropdown-option-text">${escapeHTML(routeTitle(value))}</span>`
+        : `<span class="route-dropdown-option-text">${escapeHTML(text || value)}</span>`;
+}
+
+function enhanceRouteSelect(select) {
+    if (!select || select.dataset.routeDropdownEnhanced === "1") return;
+    select.dataset.routeDropdownEnhanced = "1";
+    select.classList.add("route-select-enhanced");
+
+    const wrap = document.createElement("div");
+    wrap.className = "route-dropdown" + (select.id === "reportLine" || select.id.startsWith("edit-line-") ? " full-width" : "");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "route-dropdown-button";
+    button.setAttribute("aria-haspopup", "listbox");
+    button.setAttribute("aria-expanded", "false");
+    const valueBox = document.createElement("span");
+    valueBox.className = "route-dropdown-value";
+    button.appendChild(valueBox);
+    const menu = document.createElement("div");
+    menu.className = "route-dropdown-menu hidden";
+    menu.setAttribute("role", "listbox");
+    wrap.append(button, menu);
+    select.insertAdjacentElement("afterend", wrap);
+
+    function close() { menu.classList.add("hidden"); button.setAttribute("aria-expanded", "false"); }
+    function refresh() {
+        const selected = select.options[select.selectedIndex];
+        valueBox.innerHTML = routeDropdownDisplayHTML(select.value, selected?.textContent?.trim() || "Select line");
+        button.disabled = select.disabled;
+        menu.innerHTML = "";
+        [...select.options].forEach(option => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "route-dropdown-option" + (option.value === select.value ? " selected" : "");
+            item.setAttribute("role", "option");
+            item.setAttribute("aria-selected", option.value === select.value ? "true" : "false");
+            item.innerHTML = routeDropdownDisplayHTML(option.value, option.textContent.trim());
+            item.addEventListener("click", () => {
+                select.value = option.value;
+                select.dispatchEvent(new Event("change", { bubbles: true }));
+                refresh();
+                close();
+                button.focus();
+            });
+            menu.appendChild(item);
+        });
+    }
+    button.addEventListener("click", () => {
+        if (button.disabled) return;
+        document.querySelectorAll(".route-dropdown-menu").forEach(m => { if (m !== menu) m.classList.add("hidden"); });
+        const opening = menu.classList.contains("hidden");
+        menu.classList.toggle("hidden");
+        button.setAttribute("aria-expanded", opening ? "true" : "false");
+        if (opening) menu.querySelector(".selected")?.focus();
+    });
+    select.addEventListener("change", refresh);
+    new MutationObserver(refresh).observe(select, { childList: true, subtree: true, attributes: true });
+    refresh();
+}
+
+function initializeRouteDropdowns() {
+    document.querySelectorAll("#sightingsLineFilter, #reportLine, select[id^='edit-line-']").forEach(enhanceRouteSelect);
+    new MutationObserver(() => {
+        document.querySelectorAll("#sightingsLineFilter, #reportLine, select[id^='edit-line-']").forEach(enhanceRouteSelect);
+    }).observe(document.body, { childList: true, subtree: true });
+    document.addEventListener("click", event => {
+        if (!event.target.closest(".route-dropdown")) {
+            document.querySelectorAll(".route-dropdown-menu").forEach(menu => menu.classList.add("hidden"));
+            document.querySelectorAll(".route-dropdown-button").forEach(btn => btn.setAttribute("aria-expanded", "false"));
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", initializeRouteDropdowns);
 
 </script>
 
