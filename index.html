@@ -1626,6 +1626,89 @@ async function saveSighting() {
     }
 }
 
+function toggleIncorrectInformationReport() {
+    const panel = document.getElementById("incorrectInformationReport");
+    if (!panel) return;
+    panel.classList.toggle("hidden");
+}
+
+function getIncorrectReportCurrentValue(field) {
+    if (!pendingSighting) return "";
+    const data = fleetData[pendingSighting.fleet];
+    if (!data) return "";
+
+    if (field === "fleet") return pendingSighting.fleet;
+    if (field === "other") return "";
+    return data[field] ?? "";
+}
+
+function updateIncorrectCurrentValue() {
+    const field = document.getElementById("incorrectField")?.value || "";
+    const wrap = document.getElementById("incorrectCurrentValueWrap");
+    const value = document.getElementById("incorrectCurrentValue");
+    if (!wrap || !value) return;
+
+    const currentValue = getIncorrectReportCurrentValue(field);
+    const shouldShow = Boolean(field && field !== "other" && currentValue !== "");
+    wrap.classList.toggle("hidden", !shouldShow);
+    value.textContent = shouldShow ? String(currentValue) : "";
+}
+
+async function submitIncorrectInformationReport() {
+    const status = document.getElementById("incorrectReportStatus");
+    const field = document.getElementById("incorrectField")?.value || "";
+    const suggestedValue = document.getElementById("incorrectSuggestedValue")?.value.trim() || "";
+    const notes = document.getElementById("incorrectNotes")?.value.trim() || "";
+
+    if (!pendingSighting) return;
+
+    if (!field) {
+        if (status) status.textContent = "Choose what information is incorrect first.";
+        return;
+    }
+
+    if (!suggestedValue) {
+        if (status) status.textContent = "Enter the corrected information first.";
+        return;
+    }
+
+    if (status) status.textContent = "Submitting report...";
+
+    try {
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError) console.error("Could not read session for incorrect information report:", sessionError);
+
+        const currentValue = getIncorrectReportCurrentValue(field);
+        const { error } = await supabaseClient
+            .from("incorrect_information_reports")
+            .insert({
+                user_id: session?.user?.id || null,
+                car_number: pendingSighting.carNumber,
+                fleet: pendingSighting.fleet,
+                field_reported: field,
+                current_value: currentValue ? String(currentValue) : null,
+                suggested_value: suggestedValue,
+                notes: notes || null,
+                platform: getFleetIdentifierPlatform()
+            });
+
+        if (error) {
+            console.error("Could not submit incorrect information report:", error);
+            if (status) status.textContent = "Could not submit report. Please try again.";
+            return;
+        }
+
+        if (status) status.textContent = "Report submitted. Thank you for helping improve Fleet Identifier.";
+        const suggested = document.getElementById("incorrectSuggestedValue");
+        const notesBox = document.getElementById("incorrectNotes");
+        if (suggested) suggested.value = "";
+        if (notesBox) notesBox.value = "";
+    } catch (error) {
+        console.error("Could not submit incorrect information report:", error);
+        if (status) status.textContent = "Could not submit report. Please try again.";
+    }
+}
+
 async function reportMissingCar(carNumber) {
     const fleetGuess = document.getElementById("reportFleetGuess")?.value.trim() || "";
     const line = document.getElementById("reportLine")?.value || "";
@@ -2047,6 +2130,47 @@ async function identify() {
             <div class="label">Notes</div>
             <div>${data.notes}</div>
 
+        </div>
+
+        <div class="report-box">
+            <button type="button" onclick="toggleIncorrectInformationReport()">Report Incorrect Information</button>
+
+            <div id="incorrectInformationReport" class="hidden" style="margin-top:14px;">
+                <h3>Report Incorrect Information</h3>
+                <div class="account-small-note">Tell us which part of the information for car <strong>${input}</strong> is incorrect.</div>
+
+                <label for="incorrectField" style="margin-top:12px;">What is incorrect?</label>
+                <select id="incorrectField" onchange="updateIncorrectCurrentValue()" style="width:100%;padding:12px;font-size:16px;border-radius:9px;">
+                    <option value="">Select information</option>
+                    <option value="fleet">Fleet</option>
+                    <option value="builder">Builder</option>
+                    <option value="years">Years built</option>
+                    <option value="lines">Lines</option>
+                    <option value="division">Division</option>
+                    <option value="factory">Factory version</option>
+                    <option value="passenger">Passenger version</option>
+                    <option value="built">Fleet size</option>
+                    <option value="serviceSpeed">Maximum service speed</option>
+                    <option value="designSpeed">Design speed</option>
+                    <option value="propulsion">Propulsion</option>
+                    <option value="notes">Notes</option>
+                    <option value="other">Other</option>
+                </select>
+
+                <div id="incorrectCurrentValueWrap" class="hidden" style="margin-top:12px;">
+                    <div style="font-weight:bold;margin-bottom:6px;">Current value</div>
+                    <div id="incorrectCurrentValue" class="account-small-note"></div>
+                </div>
+
+                <label for="incorrectSuggestedValue" style="margin-top:12px;">What should it say?</label>
+                <textarea id="incorrectSuggestedValue" maxlength="1500" placeholder="Enter the corrected information."></textarea>
+
+                <label for="incorrectNotes" style="margin-top:12px;">Additional notes (optional)</label>
+                <textarea id="incorrectNotes" maxlength="1500" placeholder="Anything else that could help verify the correction."></textarea>
+
+                <button type="button" onclick="submitIncorrectInformationReport()">Submit Report</button>
+                <div id="incorrectReportStatus" class="status-message"></div>
+            </div>
         </div>
 
         <div class="sighting-panel">
