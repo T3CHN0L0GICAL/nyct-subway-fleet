@@ -924,6 +924,9 @@
             <div style="margin-top:12px;">
                 <button type="button" onclick="toggleAchievementsPanel()">Achievements</button>
             </div>
+            <div style="margin-top:12px;">
+                <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
+            </div>
         </div>
 
     <section id="accountPanel" class="account-panel hidden">
@@ -1124,6 +1127,16 @@
         <div id="mySightingsList"></div>
     </section>
 
+    <section id="fleetCollectionPanel" class="account-panel hidden">
+        <h2>Fleet Collection</h2>
+        <div class="account-small-note">
+            Track how many different car numbers you have logged from each current passenger fleet.
+        </div>
+        <div style="margin-top:14px;"><button type="button" onclick="loadFleetCollection()">Refresh</button></div>
+        <div id="fleetCollectionStatus" class="status-message">Loading fleet collection...</div>
+        <div id="fleetCollectionList" class="reports-list"></div>
+    </section>
+
     <section id="achievementsPanel" class="account-panel hidden">
         <h2>Milestones & Achievements</h2>
         <div class="account-small-note">Achievements are earned from your synced sightings and keep the date you first unlocked them.</div>
@@ -1208,6 +1221,7 @@ function toggleSettings() {
         document.getElementById("myReportsPanel")?.classList.add("hidden");
         document.getElementById("searchHistoryPanel")?.classList.add("hidden");
         document.getElementById("achievementsPanel")?.classList.add("hidden");
+        document.getElementById("fleetCollectionPanel")?.classList.add("hidden");
     }
 
     updateFocusMode();
@@ -1219,6 +1233,101 @@ window.addEventListener("DOMContentLoaded", function() {
 });
 
 
+
+
+const passengerFleetCollectionNames = [
+    "R62", "R62A", "R142", "R142A", "R188",
+    "R143", "R160A", "R160B", "R179",
+    "R211A", "R211T", "R46", "R68", "R68A", "R211S"
+];
+
+function fleetRangeNumbers(ranges) {
+    const numbers = new Set();
+    for (const range of (ranges || [])) {
+        if (!Array.isArray(range) || range.length < 2) continue;
+        const start = Number(range[0]);
+        const end = Number(range[1]);
+        for (let n = start; n <= end; n++) numbers.add(String(n));
+    }
+    return numbers;
+}
+
+async function toggleFleetCollectionPanel() {
+    const panel = document.getElementById("fleetCollectionPanel");
+    if (!panel) return;
+    const opening = panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening ? "fleetCollectionPanel" : "");
+    panel.classList.toggle("hidden", !opening);
+    if (opening) await loadFleetCollection();
+}
+
+async function loadFleetCollection() {
+    const status = document.getElementById("fleetCollectionStatus");
+    const list = document.getElementById("fleetCollectionList");
+    if (!status || !list) return;
+
+    status.textContent = "Loading fleet collection...";
+    list.innerHTML = "";
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+        status.textContent = "Log in to view your fleet collection.";
+        return;
+    }
+
+    const { data: sightings, error } = await supabaseClient
+        .from("sightings")
+        .select("car_number, fleet")
+        .eq("user_id", user.id);
+
+    if (error) {
+        console.error("Could not load fleet collection:", error);
+        status.textContent = "Could not load your fleet collection.";
+        return;
+    }
+
+    const uniqueByFleet = new Map();
+    for (const row of (sightings || [])) {
+        const fleet = String(row.fleet || "").trim();
+        const car = String(row.car_number || "").trim();
+        if (!fleet || !car || !passengerFleetCollectionNames.includes(fleet)) continue;
+        if (!uniqueByFleet.has(fleet)) uniqueByFleet.set(fleet, new Set());
+        uniqueByFleet.get(fleet).add(car);
+    }
+
+    const cards = passengerFleetCollectionNames.map(name => {
+        const fleet = fleetData[name];
+        if (!fleet) return null;
+
+        const validCars = fleetRangeNumbers(fleet.ranges);
+        const seenCars = uniqueByFleet.get(name) || new Set();
+        const validSeen = [...seenCars].filter(car => validCars.has(car));
+        const seen = validSeen.length;
+        const total = validCars.size;
+        const percent = total ? Math.min(100, (seen / total) * 100) : 0;
+
+        return { name, seen, total, percent };
+    }).filter(Boolean);
+
+    const totalSeen = cards.reduce((sum, item) => sum + item.seen, 0);
+    const totalCars = cards.reduce((sum, item) => sum + item.total, 0);
+    const overallPercent = totalCars ? (totalSeen / totalCars) * 100 : 0;
+
+    status.textContent = `Overall collection: ${totalSeen} of ${totalCars} cars (${overallPercent.toFixed(1)}%).`;
+
+    list.innerHTML = cards.map(item => `
+        <div class="report-item">
+            <div class="report-item-heading">
+                <div class="report-item-car">${escapeHTML(item.name)}</div>
+                <div>${item.seen} / ${item.total}</div>
+            </div>
+            <div class="report-item-value">${item.percent.toFixed(1)}% collected</div>
+            <div style="height:8px;border:1px solid currentColor;margin-top:10px;overflow:hidden;">
+                <div style="height:100%;width:${item.percent.toFixed(2)}%;background:currentColor;"></div>
+            </div>
+        </div>
+    `).join("");
+}
 
 const achievementDefinitions = [
     { key:"first_sighting", title:"First Sighting", description:"Save your first sighting.", type:"total", target:1 },
@@ -2836,7 +2945,7 @@ function updateFocusMode() {
 }
 
 function closeSettingsContentPanels(exceptId = "") {
-    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel"].forEach(id => {
+    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel"].forEach(id => {
         if (id !== exceptId) {
             document.getElementById(id)?.classList.add("hidden");
         }
