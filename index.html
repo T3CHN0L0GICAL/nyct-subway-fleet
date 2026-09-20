@@ -918,6 +918,9 @@
             <div style="margin-top:12px;">
                 <button type="button" onclick="toggleReportsPanel()">My Reports</button>
             </div>
+            <div style="margin-top:12px;">
+                <button type="button" onclick="toggleSearchHistoryPanel()">Search History</button>
+            </div>
         </div>
 
     <section id="accountPanel" class="account-panel hidden">
@@ -1118,6 +1121,17 @@
         <div id="mySightingsList"></div>
     </section>
 
+    <section id="searchHistoryPanel" class="account-panel hidden">
+        <h2>Search History</h2>
+        <div class="account-small-note">Successful fleet searches made while signed in are synced to your account across devices.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+            <button type="button" onclick="loadSearchHistory()">Refresh</button>
+            <button type="button" onclick="clearSearchHistory()">Clear Search History</button>
+        </div>
+        <div id="searchHistoryStatus" class="status-message">Loading search history...</div>
+        <div id="searchHistoryList" class="reports-list"></div>
+    </section>
+
     <section id="myReportsPanel" class="account-panel hidden">
         <h2>My Reports</h2>
         <div class="account-small-note">
@@ -1181,6 +1195,7 @@ function toggleSettings() {
         document.getElementById("accountPanel")?.classList.add("hidden");
         document.getElementById("mySightingsPanel")?.classList.add("hidden");
         document.getElementById("myReportsPanel")?.classList.add("hidden");
+        document.getElementById("searchHistoryPanel")?.classList.add("hidden");
     }
 
     updateFocusMode();
@@ -1190,6 +1205,93 @@ window.addEventListener("DOMContentLoaded", function() {
     const select = document.getElementById("themeSelect");
     if (select) select.value = savedTheme;
 });
+
+
+async function toggleSearchHistoryPanel() {
+    const panel = document.getElementById("searchHistoryPanel");
+    const opening = panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening ? "searchHistoryPanel" : "");
+    panel.classList.toggle("hidden", !opening);
+    if (opening) await loadSearchHistory();
+}
+
+async function recordSearchHistory(carNumber, fleet) {
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+        const { error } = await supabaseClient.from("search_history").insert({
+            user_id: user.id,
+            car_number: String(carNumber),
+            fleet: fleet || null
+        });
+        if (error) console.warn("Search history insert failed:", error.message);
+    } catch (error) {
+        console.warn("Search history insert failed:", error?.message || error);
+    }
+}
+
+async function loadSearchHistory() {
+    const status = document.getElementById("searchHistoryStatus");
+    const list = document.getElementById("searchHistoryList");
+    if (!status || !list) return;
+    status.textContent = "Loading search history...";
+    list.innerHTML = "";
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+        status.textContent = "Log in to view synced search history.";
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from("search_history")
+        .select("id, car_number, fleet, searched_at")
+        .eq("user_id", user.id)
+        .order("searched_at", { ascending: false })
+        .limit(50);
+
+    if (error) {
+        console.error("Could not load search history:", error);
+        status.textContent = "Could not load search history.";
+        return;
+    }
+    if (!data?.length) {
+        status.textContent = "No synced searches yet.";
+        return;
+    }
+
+    status.textContent = `Showing your ${data.length} most recent synced search${data.length === 1 ? "" : "es"}.`;
+    list.innerHTML = data.map(item => `
+        <div class="report-item">
+            <div class="report-item-heading">
+                <div class="report-item-car">Car ${escapeHTML(item.car_number)}</div>
+                <div class="report-status-badge">${escapeHTML(item.fleet || "Unknown")}</div>
+            </div>
+            <div class="report-item-details">
+                <div class="report-item-label">Searched</div>
+                <div class="report-item-value">${escapeHTML(item.searched_at ? new Date(item.searched_at).toLocaleString() : "—")}</div>
+            </div>
+        </div>
+    `).join("");
+}
+
+async function clearSearchHistory() {
+    const status = document.getElementById("searchHistoryStatus");
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+        if (status) status.textContent = "Log in to clear synced search history.";
+        return;
+    }
+    if (!confirm("Clear your entire synced search history?")) return;
+
+    const { error } = await supabaseClient.from("search_history").delete().eq("user_id", user.id);
+    if (error) {
+        console.error("Could not clear search history:", error);
+        if (status) status.textContent = "Could not clear search history.";
+        return;
+    }
+    await loadSearchHistory();
+}
 
 const fleetData = {
 
@@ -2314,6 +2416,8 @@ async function identify() {
         line: null
     };
 
+    recordSearchHistory(input, fleet);
+
     const repeatSightingNotice = await getRepeatSightingNotice(input);
 
 
@@ -2600,7 +2704,7 @@ function updateFocusMode() {
 }
 
 function closeSettingsContentPanels(exceptId = "") {
-    ["accountPanel", "mySightingsPanel", "myReportsPanel"].forEach(id => {
+    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel"].forEach(id => {
         if (id !== exceptId) {
             document.getElementById(id)?.classList.add("hidden");
         }
