@@ -1082,6 +1082,200 @@
             background: var(--fi-text);
         }
 
+    
+        /* Consist Builder */
+        .consist-builder {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--fi-border);
+        }
+        .consist-builder-row {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+            margin-top: 8px;
+        }
+        .consist-builder-row input {
+            min-width: 0;
+        }
+        .consist-cars {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-top: 10px;
+        }
+        .consist-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid var(--fi-border);
+            border-radius: 999px;
+            padding: 6px 9px;
+            font-weight: 700;
+            background: var(--fi-chip);
+            color: var(--fi-text);
+        }
+        .consist-chip.primary {
+            outline: 1px solid var(--fi-text);
+        }
+        .consist-chip button {
+            border: 0;
+            background: transparent;
+            color: inherit;
+            padding: 0;
+            font-size: 16px;
+            line-height: 1;
+        }
+        .consist-summary {
+            margin-top: 8px;
+            color: var(--fi-muted);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+        @media (max-width: 600px) {
+            .consist-builder-row { flex-direction: column; }
+        }
+
+    
+        /* Advanced Sighting Search */
+        .advanced-sighting-search {
+            margin-top: 12px;
+            border: 1px solid var(--fi-border);
+            border-radius: 14px;
+            padding: 12px;
+        }
+        .advanced-sighting-search summary {
+            cursor: pointer;
+            font-weight: 800;
+            user-select: none;
+        }
+        .advanced-sighting-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .advanced-sighting-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .advanced-sighting-grid input,
+        .advanced-sighting-grid select {
+            width: 100%;
+        }
+        @media (max-width: 600px) {
+            .advanced-sighting-grid { grid-template-columns: 1fr; }
+        }
+
+    
+        /* Personal Records */
+        .personal-records-grid {
+            display:grid;
+            grid-template-columns:repeat(2,minmax(0,1fr));
+            gap:12px;
+            margin-top:14px;
+        }
+        .personal-record-card {
+            border:1px solid var(--fi-border);
+            border-radius:12px;
+            padding:14px;
+            background:var(--fi-surface);
+            min-width:0;
+        }
+        .personal-record-label {
+            font-size:12px;
+            opacity:.72;
+            font-weight:700;
+            margin-bottom:5px;
+        }
+        .personal-record-value {
+            font-size:24px;
+            font-weight:900;
+            overflow-wrap:anywhere;
+        }
+        .personal-record-detail {
+            margin-top:5px;
+            font-size:13px;
+            opacity:.78;
+            overflow-wrap:anywhere;
+        }
+        @media (max-width:600px) {
+            .personal-records-grid { grid-template-columns:1fr; }
+        }
+
+    
+        /* Year in Review */
+        .year-review-controls {
+            display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-top:14px;
+        }
+        .year-review-controls label { display:flex; flex-direction:column; gap:6px; font-weight:700; }
+        .year-review-controls select { min-width:120px; }
+        .year-review-grid {
+            display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:14px;
+        }
+        .year-review-card {
+            border:1px solid var(--fi-border); border-radius:12px; padding:14px; background:var(--fi-surface); min-width:0;
+        }
+        .year-review-label { font-size:12px; opacity:.72; font-weight:700; margin-bottom:5px; }
+        .year-review-value { font-size:24px; font-weight:900; overflow-wrap:anywhere; }
+        .year-review-detail { margin-top:5px; font-size:13px; opacity:.78; overflow-wrap:anywhere; }
+        .year-review-month { margin-top:12px; }
+        .year-review-month-head { display:flex; justify-content:space-between; gap:12px; font-size:13px; margin-bottom:5px; }
+        .year-review-month-bar { height:8px; border:1px solid currentColor; overflow:hidden; }
+        .year-review-month-fill { height:100%; background:currentColor; }
+        @media(max-width:600px){ .year-review-grid{grid-template-columns:1fr;} }
+
+    
+        /* Sightings Hub */
+        .sightings-hub-tabs {
+            display:grid;
+            grid-template-columns:repeat(4,minmax(0,1fr));
+            gap:8px;
+            margin:14px 0 4px;
+        }
+        .sightings-hub-tabs button {
+            width:100%;
+            min-width:0;
+            padding:10px 8px;
+        }
+        .sightings-hub-tabs button.active {
+            background:#fff;
+            color:#000;
+        }
+        html[data-theme="light"] .sightings-hub-tabs button.active {
+            background:#000;
+            color:#fff;
+        }
+        .sightings-hub-view.hidden { display:none !important; }
+        @media(max-width:600px){
+            .sightings-hub-tabs{grid-template-columns:repeat(2,minmax(0,1fr));}
+        }
+
+    
+        /* Trainset History */
+        .trainset-history-controls { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+        .trainset-history-controls input { flex:1 1 190px; }
+        .trainset-history-card {
+            border:1px solid var(--fi-border); border-radius:12px; padding:14px;
+            margin-top:12px; background:var(--fi-surface);
+        }
+        .trainset-history-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+        .trainset-history-title { font-size:18px; font-weight:900; }
+        .trainset-history-consist { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+        .trainset-car {
+            border:1px solid currentColor; border-radius:999px; padding:5px 9px;
+            font-weight:800; font-size:13px;
+        }
+        .trainset-history-meta { margin-top:9px; font-size:13px; opacity:.78; }
+        .trainset-pairings { margin-top:18px; }
+        .trainset-pairing-row {
+            display:flex; justify-content:space-between; gap:12px;
+            padding:9px 0; border-bottom:1px solid var(--fi-border); font-size:14px;
+        }
+
     </style>
 </head>
 
@@ -1151,15 +1345,15 @@
 
         <div class="settings-nav-grid" style="margin-top:18px;padding-top:18px;border-top:1px solid var(--fi-border);">
             <button type="button" onclick="toggleAccountPanel()">Account</button>
-            <button type="button" onclick="toggleSightingsPanel()">My Sightings</button>
+            <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
             <button type="button" onclick="toggleReportsPanel()">My Reports</button>
             <button type="button" onclick="toggleSearchHistoryPanel()">Search History</button>
             <button type="button" onclick="toggleAchievementsPanel()">Achievements</button>
             <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
-            <button type="button" onclick="toggleSightingCalendarPanel()">Sighting Calendar</button>
             <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
             <button type="button" onclick="toggleLineStatsPanel()">Line Stats</button>
             <button type="button" onclick="toggleFleetComparisonPanel()">Fleet Comparison</button>
+            <button type="button" onclick="toggleTrainsetHistoryPanel()">Trainset History</button>
         </div>
 
     <section id="accountPanel" class="account-panel hidden">
@@ -1295,7 +1489,17 @@
         </div>
     </section>
 
-    <section id="mySightingsPanel" class="account-panel hidden">
+    <section id="sightingsHubPanel" class="account-panel hidden">
+        <h2>Sightings Hub</h2>
+        <div class="account-small-note">Your sighting history, calendar, records, and yearly recaps in one place.</div>
+        <div class="sightings-hub-tabs">
+            <button id="sightingsHubTabSightings" type="button" onclick="showSightingsHubView('sightings')">My Sightings</button>
+            <button id="sightingsHubTabCalendar" type="button" onclick="showSightingsHubView('calendar')">Calendar</button>
+            <button id="sightingsHubTabRecords" type="button" onclick="showSightingsHubView('records')">Records</button>
+            <button id="sightingsHubTabYear" type="button" onclick="showSightingsHubView('year')">Year in Review</button>
+        </div>
+
+    <section id="mySightingsPanel" class="sightings-hub-view">
         <h2>My Sightings</h2>
 
         <div class="sightings-stats">
@@ -1342,7 +1546,7 @@
         </div>
 
         <div class="sightings-filters">
-            <input id="sightingsSearch" type="search" placeholder="Search car, fleet, station, or notes" autocomplete="off" oninput="applySightingsFilters()">
+            <input id="sightingsSearch" type="search" placeholder="Search car, fleet, station, notes, or consist car" autocomplete="off" oninput="applySightingsFilters()">
             <select id="sightingsLineFilter" onchange="applySightingsFilters()"><option value="">All lines</option></select>
             <select id="sightingsSort" onchange="applySightingsFilters()">
                 <option value="newest">Newest first</option>
@@ -1352,6 +1556,50 @@
             </select>
         </div>
 
+        <details class="advanced-sighting-search">
+            <summary>Advanced Search</summary>
+            <div class="advanced-sighting-grid">
+                <label>
+                    Fleet
+                    <select id="sightingsFleetFilter" onchange="applySightingsFilters()">
+                        <option value="">All fleets</option>
+                    </select>
+                </label>
+                <label>
+                    Sighting type
+                    <select id="sightingsConsistFilter" onchange="applySightingsFilters()">
+                        <option value="">All sightings</option>
+                        <option value="consist">Consists only</option>
+                        <option value="single">Single-car logs only</option>
+                    </select>
+                </label>
+                <label>
+                    From date
+                    <input id="sightingsDateFrom" type="date" onchange="applySightingsFilters()">
+                </label>
+                <label>
+                    Through date
+                    <input id="sightingsDateTo" type="date" onchange="applySightingsFilters()">
+                </label>
+                <label>
+                    Station
+                    <select id="sightingsStationFilter" onchange="applySightingsFilters()">
+                        <option value="">Any station status</option>
+                        <option value="with">Has station</option>
+                        <option value="without">No station</option>
+                    </select>
+                </label>
+                <label>
+                    Notes
+                    <select id="sightingsNotesFilter" onchange="applySightingsFilters()">
+                        <option value="">Any notes status</option>
+                        <option value="with">Has notes</option>
+                        <option value="without">No notes</option>
+                    </select>
+                </label>
+            </div>
+        </details>
+
         <div class="sightings-filter-actions">
             <button type="button" onclick="clearSightingsFilters()">Clear filters</button>
         </div>
@@ -1360,6 +1608,62 @@
         <div id="mySightingsList"></div>
     </section>
 
+    <section id="sightingCalendarPanel" class="sightings-hub-view hidden">
+        <h2>Sighting Calendar</h2>
+        <div class="account-small-note">
+            See which days you logged sightings and how many you saved each day.
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;">
+            <button type="button" onclick="changeSightingCalendarMonth(-1)" aria-label="Previous month">←</button>
+            <strong id="sightingCalendarMonthLabel"></strong>
+            <button type="button" onclick="changeSightingCalendarMonth(1)" aria-label="Next month">→</button>
+        </div>
+
+        <div id="sightingCalendarStatus" class="status-message">Loading calendar...</div>
+        <div id="sightingCalendarGrid" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:12px;"></div>
+        <div id="sightingCalendarDayDetails" class="reports-list" style="margin-top:14px;"></div>
+    </section>
+
+    <section id="personalRecordsPanel" class="sightings-hub-view hidden">
+        <h2>Personal Records</h2>
+        <div class="account-small-note">Your best Fleet Identifier sighting records. Train sightings count each saved sighting once; cars spotted includes every car saved in a consist.</div>
+        <div style="margin-top:14px;"><button type="button" onclick="loadPersonalRecords()">Refresh</button></div>
+        <div id="personalRecordsStatus" class="status-message">Loading personal records...</div>
+        <div id="personalRecordsGrid" class="personal-records-grid"></div>
+    </section>
+
+    <section id="yearInReviewPanel" class="sightings-hub-view hidden">
+        <h2>Year in Review</h2>
+        <div class="account-small-note">A yearly recap of your saved train sightings and every car recorded through the Consist Builder.</div>
+        <div class="year-review-controls">
+            <label>Year
+                <select id="yearReviewSelect" onchange="renderYearInReview()"></select>
+            </label>
+            <button type="button" onclick="loadYearInReview()">Refresh</button>
+        </div>
+        <div id="yearReviewStatus" class="status-message">Loading year in review...</div>
+        <div id="yearReviewGrid" class="year-review-grid"></div>
+        <div id="yearReviewMonthly" style="margin-top:18px;"></div>
+    </section>
+    </section> <!-- /sightingsHubPanel -->
+
+
+
+
+
+
+    <section id="trainsetHistoryPanel" class="account-panel hidden">
+        <h2>Trainset History</h2>
+        <div class="account-small-note">Review the multi-car consists you actually logged and the unit pairings you have observed. This history is built from Consist Builder sightings only.</div>
+        <div class="trainset-history-controls">
+            <input id="trainsetHistorySearch" type="search" inputmode="numeric" placeholder="Search a car number" oninput="renderTrainsetHistory()">
+            <button type="button" onclick="loadTrainsetHistory()">Refresh</button>
+        </div>
+        <div id="trainsetHistoryStatus" class="status-message">Loading trainset history...</div>
+        <div id="trainsetHistoryList"></div>
+        <div id="trainsetPairings" class="trainset-pairings"></div>
+    </section>
 
     <section id="lineStatsPanel" class="account-panel hidden">
         <h2>Line Stats</h2>
@@ -1397,22 +1701,7 @@
         <div id="fleetComparisonTable" class="fleet-compare-table"></div>
     </section>
 
-    <section id="sightingCalendarPanel" class="account-panel hidden">
-        <h2>Sighting Calendar</h2>
-        <div class="account-small-note">
-            See which days you logged sightings and how many you saved each day.
-        </div>
 
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;">
-            <button type="button" onclick="changeSightingCalendarMonth(-1)" aria-label="Previous month">←</button>
-            <strong id="sightingCalendarMonthLabel"></strong>
-            <button type="button" onclick="changeSightingCalendarMonth(1)" aria-label="Next month">→</button>
-        </div>
-
-        <div id="sightingCalendarStatus" class="status-message">Loading calendar...</div>
-        <div id="sightingCalendarGrid" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:12px;"></div>
-        <div id="sightingCalendarDayDetails" class="reports-list" style="margin-top:14px;"></div>
-    </section>
 
     <section id="fleetCollectionPanel" class="account-panel hidden">
         <h2>Fleet Collection</h2>
@@ -2002,6 +2291,473 @@ function renderFleetComparison() {
 }
 
 
+let yearReviewSightings = [];
+let yearReviewConsistBySighting = new Map();
+
+async function toggleYearInReviewPanel() {
+    const hub = document.getElementById("sightingsHubPanel");
+    if (!hub) return;
+    closeSettingsContentPanels("sightingsHubPanel");
+    hub.classList.remove("hidden");
+    await showSightingsHubView("year");
+}
+
+async function loadYearInReview() {
+    const status = document.getElementById("yearReviewStatus");
+    const select = document.getElementById("yearReviewSelect");
+    const grid = document.getElementById("yearReviewGrid");
+    const monthly = document.getElementById("yearReviewMonthly");
+    if (!status || !select || !grid || !monthly) return;
+
+    status.textContent = "Loading year in review...";
+    grid.innerHTML = "";
+    monthly.innerHTML = "";
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+        status.textContent = "Log in to view your year in review.";
+        return;
+    }
+
+    const [sightingsResult, consistResult] = await Promise.all([
+        supabaseClient.from("sightings")
+            .select("id, car_number, fleet, line, station, saved_at")
+            .eq("user_id", user.id)
+            .order("saved_at", {ascending:true}),
+        supabaseClient.from("sighting_cars")
+            .select("sighting_id, car_number, fleet")
+            .eq("user_id", user.id)
+    ]);
+
+    if (sightingsResult.error) {
+        console.error("Could not load year in review:", sightingsResult.error);
+        status.textContent = `Could not load your year in review: ${sightingsResult.error.message || "Unknown database error"}`;
+        return;
+    }
+    if (consistResult.error) console.error("Could not load consist cars for year in review:", consistResult.error);
+
+    yearReviewSightings = sightingsResult.data || [];
+    yearReviewConsistBySighting = new Map();
+    if (!consistResult.error) {
+        for (const row of (consistResult.data || [])) {
+            const key=String(row.sighting_id);
+            if(!yearReviewConsistBySighting.has(key)) yearReviewConsistBySighting.set(key,[]);
+            yearReviewConsistBySighting.get(key).push(String(row.car_number));
+        }
+    }
+
+    const years=[...new Set(yearReviewSightings.map(r=>{
+        const d=new Date(r.saved_at); return Number.isNaN(d.getTime())?null:d.getFullYear();
+    }).filter(Boolean))].sort((a,b)=>b-a);
+
+    if(!years.length){
+        select.innerHTML="";
+        status.textContent="No sightings yet.";
+        return;
+    }
+
+    const previous=Number(select.value);
+    select.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join("");
+    select.value=years.includes(previous)?String(previous):String(years[0]);
+    renderYearInReview();
+}
+
+function renderYearInReview() {
+    const status=document.getElementById("yearReviewStatus");
+    const grid=document.getElementById("yearReviewGrid");
+    const monthly=document.getElementById("yearReviewMonthly");
+    const year=Number(document.getElementById("yearReviewSelect")?.value);
+    if(!status||!grid||!monthly||!year)return;
+
+    const rows=yearReviewSightings.filter(r=>{
+        const d=new Date(r.saved_at); return !Number.isNaN(d.getTime())&&d.getFullYear()===year;
+    });
+
+    const uniqueCars=new Set(), fleetCounts=new Map(), lineCounts=new Map(), stationCounts=new Map(), dayCounts=new Map();
+    const monthCounts=Array(12).fill(0);
+    let carsSpotted=0, consistSightings=0;
+
+    for(const row of rows){
+        const d=new Date(row.saved_at);
+        monthCounts[d.getMonth()]++;
+        const day=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+        dayCounts.set(day,(dayCounts.get(day)||0)+1);
+
+        let cars=yearReviewConsistBySighting.get(String(row.id))||[];
+        if(!cars.length&&row.car_number) cars=[String(row.car_number)];
+        cars=[...new Set(cars)];
+        carsSpotted+=cars.length;
+        if(cars.length>1) consistSightings++;
+        cars.forEach(c=>uniqueCars.add(c));
+
+        if(row.fleet) fleetCounts.set(row.fleet,(fleetCounts.get(row.fleet)||0)+1);
+        if(row.line) lineCounts.set(row.line,(lineCounts.get(row.line)||0)+1);
+        if(String(row.station||"").trim()){
+            const st=String(row.station).trim();
+            stationCounts.set(st,(stationCounts.get(st)||0)+1);
+        }
+    }
+
+    const top=map=>[...map.entries()].sort((a,b)=>b[1]-a[1]||String(a[0]).localeCompare(String(b[0]),undefined,{numeric:true}))[0]||null;
+    const topFleet=top(fleetCounts), topLine=top(lineCounts), topStation=top(stationCounts), topDay=top(dayCounts);
+    const card=(label,value,detail="")=>`<div class="year-review-card"><div class="year-review-label">${escapeHTML(label)}</div><div class="year-review-value">${value}</div>${detail?`<div class="year-review-detail">${detail}</div>`:""}</div>`;
+
+    grid.innerHTML=[
+        card("Train sightings",String(rows.length),`${consistSightings} consist sighting${consistSightings===1?"":"s"}`),
+        card("Cars spotted",String(carsSpotted),`${uniqueCars.size} unique car${uniqueCars.size===1?"":"s"}`),
+        card("Fleets seen",String(fleetCounts.size),topFleet?`Most seen: ${escapeHTML(topFleet[0])} · ${topFleet[1]}`:""),
+        card("Lines seen",String(lineCounts.size),topLine?`Most seen: ${lineDisplayHTML(topLine[0])} · ${topLine[1]}`:""),
+        card("Busiest sighting day",topDay?String(topDay[1]):"0",topDay?escapeHTML(personalRecordDateLabel(topDay[0])):""),
+        card("Most-used station",topStation?escapeHTML(topStation[0]):"—",topStation?`${topStation[1]} sighting${topStation[1]===1?"":"s"}`:"No station data"),
+        card("First sighting of the year",rows[0]?escapeHTML(new Date(rows[0].saved_at).toLocaleDateString()):"—",rows[0]?`Car ${escapeHTML(rows[0].car_number||"—")} · ${escapeHTML(rows[0].fleet||"Unknown fleet")}`:""),
+        card("Last sighting of the year",rows.at(-1)?escapeHTML(new Date(rows.at(-1).saved_at).toLocaleDateString()):"—",rows.at(-1)?`Car ${escapeHTML(rows.at(-1).car_number||"—")} · ${escapeHTML(rows.at(-1).fleet||"Unknown fleet")}`:"")
+    ].join("");
+
+    const maxMonth=Math.max(...monthCounts,1);
+    const monthNames=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    monthly.innerHTML=`<h3>Monthly activity</h3>`+monthCounts.map((count,i)=>`
+        <div class="year-review-month">
+            <div class="year-review-month-head"><strong>${monthNames[i]}</strong><span>${count} sighting${count===1?"":"s"}</span></div>
+            <div class="year-review-month-bar"><div class="year-review-month-fill" style="width:${(count/maxMonth*100).toFixed(2)}%"></div></div>
+        </div>`).join("");
+
+    status.textContent=`${year} recap · ${rows.length} train sighting${rows.length===1?"":"s"} · ${carsSpotted} car${carsSpotted===1?"":"s"} spotted.`;
+}
+
+async function togglePersonalRecordsPanel() {
+    const hub = document.getElementById("sightingsHubPanel");
+    if (!hub) return;
+    closeSettingsContentPanels("sightingsHubPanel");
+    hub.classList.remove("hidden");
+    await showSightingsHubView("records");
+}
+
+function personalRecordDateLabel(dateKey) {
+    if (!dateKey) return "—";
+    const date = new Date(`${dateKey}T12:00:00`);
+    return Number.isNaN(date.getTime())
+        ? dateKey
+        : date.toLocaleDateString(undefined, { month:"short", day:"numeric", year:"numeric" });
+}
+
+function personalRecordCard(label, value, detail = "") {
+    return `
+        <div class="personal-record-card">
+            <div class="personal-record-label">${escapeHTML(label)}</div>
+            <div class="personal-record-value">${value}</div>
+            ${detail ? `<div class="personal-record-detail">${detail}</div>` : ""}
+        </div>
+    `;
+}
+
+async function loadPersonalRecords() {
+    const status = document.getElementById("personalRecordsStatus");
+    const grid = document.getElementById("personalRecordsGrid");
+    if (!status || !grid) return;
+
+    status.textContent = "Loading personal records...";
+    grid.innerHTML = "";
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+        status.textContent = "Log in to view your personal records.";
+        return;
+    }
+
+    const [sightingsResult, consistResult] = await Promise.all([
+        supabaseClient
+            .from("sightings")
+            .select("id, car_number, fleet, line, station, saved_at")
+            .eq("user_id", user.id)
+            .order("saved_at", { ascending: true }),
+        supabaseClient
+            .from("sighting_cars")
+            .select("sighting_id, car_number, fleet")
+            .eq("user_id", user.id)
+    ]);
+
+    if (sightingsResult.error) {
+        console.error("Could not load personal records:", sightingsResult.error);
+        status.textContent = `Could not load your personal records: ${sightingsResult.error.message || "Unknown database error"}`;
+        return;
+    }
+
+    // Older sightings have no sighting_cars rows, so the primary car remains
+    // the fallback. Consist data is supplemental and must not block records.
+    if (consistResult.error) {
+        console.error("Could not load consist cars for personal records:", consistResult.error);
+    }
+
+    const sightings = sightingsResult.data || [];
+    if (!sightings.length) {
+        status.textContent = "No sightings yet.";
+        return;
+    }
+
+    const consistBySighting = new Map();
+    if (!consistResult.error) {
+        for (const row of (consistResult.data || [])) {
+            const key = String(row.sighting_id);
+            if (!consistBySighting.has(key)) consistBySighting.set(key, []);
+            consistBySighting.get(key).push(String(row.car_number));
+        }
+    }
+
+    const dayMap = new Map();
+    const carCounts = new Map();
+    const fleetCounts = new Map();
+    const lineCounts = new Map();
+    const stationCounts = new Map();
+    const allUniqueCars = new Set();
+
+    for (const row of sightings) {
+        const date = new Date(row.saved_at);
+        if (Number.isNaN(date.getTime())) continue;
+        const day = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+
+        let cars = consistBySighting.get(String(row.id)) || [];
+        if (!cars.length && row.car_number) cars = [String(row.car_number)];
+        cars = [...new Set(cars)];
+
+        if (!dayMap.has(day)) dayMap.set(day, { sightings:0, cars:0, uniqueCars:new Set() });
+        const dayData = dayMap.get(day);
+        dayData.sightings += 1;
+        dayData.cars += cars.length;
+        cars.forEach(car => {
+            dayData.uniqueCars.add(car);
+            allUniqueCars.add(car);
+            carCounts.set(car, (carCounts.get(car) || 0) + 1);
+        });
+
+        if (row.fleet) fleetCounts.set(row.fleet, (fleetCounts.get(row.fleet) || 0) + 1);
+        if (row.line) lineCounts.set(row.line, (lineCounts.get(row.line) || 0) + 1);
+        if (String(row.station || "").trim()) {
+            const station = String(row.station).trim();
+            stationCounts.set(station, (stationCounts.get(station) || 0) + 1);
+        }
+    }
+
+    const bestDay = (field) => [...dayMap.entries()]
+        .sort((a,b) => {
+            const av = field === "uniqueCars" ? a[1].uniqueCars.size : a[1][field];
+            const bv = field === "uniqueCars" ? b[1].uniqueCars.size : b[1][field];
+            return bv-av || a[0].localeCompare(b[0]);
+        })[0];
+
+    const topEntry = map => [...map.entries()]
+        .sort((a,b) => b[1]-a[1] || String(a[0]).localeCompare(String(b[0]), undefined, {numeric:true}))[0] || null;
+
+    const sightingDay = bestDay("sightings");
+    const carsDay = bestDay("cars");
+    const uniqueDay = bestDay("uniqueCars");
+    const topCar = topEntry(carCounts);
+    const topFleet = topEntry(fleetCounts);
+    const topLine = topEntry(lineCounts);
+    const topStation = topEntry(stationCounts);
+
+    // Longest consecutive-day streak.
+    const dayKeys = [...dayMap.keys()].sort();
+    let longestStreak = 0, currentStreak = 0, previous = null;
+    for (const key of dayKeys) {
+        const current = new Date(`${key}T12:00:00`);
+        if (previous) {
+            const diff = Math.round((current - previous) / 86400000);
+            currentStreak = diff === 1 ? currentStreak + 1 : 1;
+        } else {
+            currentStreak = 1;
+        }
+        longestStreak = Math.max(longestStreak, currentStreak);
+        previous = current;
+    }
+
+    const first = sightings[0];
+    const latest = sightings[sightings.length - 1];
+
+    grid.innerHTML = [
+        personalRecordCard("Most train sightings in a day", String(sightingDay?.[1]?.sightings || 0),
+            sightingDay ? escapeHTML(personalRecordDateLabel(sightingDay[0])) : ""),
+        personalRecordCard("Most cars spotted in a day", String(carsDay?.[1]?.cars || 0),
+            carsDay ? escapeHTML(personalRecordDateLabel(carsDay[0])) : ""),
+        personalRecordCard("Most unique cars in a day", String(uniqueDay?.[1]?.uniqueCars?.size || 0),
+            uniqueDay ? escapeHTML(personalRecordDateLabel(uniqueDay[0])) : ""),
+        personalRecordCard("Longest sighting streak", `${longestStreak} day${longestStreak === 1 ? "" : "s"}`,
+            `${dayKeys.length} active day${dayKeys.length === 1 ? "" : "s"} total`),
+        personalRecordCard("Most-seen car", topCar ? `Car ${escapeHTML(topCar[0])}` : "—",
+            topCar ? `${topCar[1]} sighting${topCar[1] === 1 ? "" : "s"}` : ""),
+        personalRecordCard("Most-seen fleet", topFleet ? escapeHTML(topFleet[0]) : "—",
+            topFleet ? `${topFleet[1]} train sighting${topFleet[1] === 1 ? "" : "s"}` : ""),
+        personalRecordCard("Most-seen line", topLine ? lineDisplayHTML(topLine[0]) : "—",
+            topLine ? `${topLine[1]} sighting${topLine[1] === 1 ? "" : "s"}` : ""),
+        personalRecordCard("Most-used station", topStation ? escapeHTML(topStation[0]) : "—",
+            topStation ? `${topStation[1]} sighting${topStation[1] === 1 ? "" : "s"}` : "No station data yet"),
+        personalRecordCard("Unique cars collected", String(allUniqueCars.size),
+            `${sightings.length} train sighting${sightings.length === 1 ? "" : "s"}`),
+        personalRecordCard("First sighting", first?.saved_at ? escapeHTML(new Date(first.saved_at).toLocaleDateString()) : "—",
+            first ? `Car ${escapeHTML(first.car_number || "—")} · ${escapeHTML(first.fleet || "Unknown fleet")}` : ""),
+        personalRecordCard("Latest sighting", latest?.saved_at ? escapeHTML(new Date(latest.saved_at).toLocaleDateString()) : "—",
+            latest ? `Car ${escapeHTML(latest.car_number || "—")} · ${escapeHTML(latest.fleet || "Unknown fleet")}` : "")
+    ].join("");
+
+    status.textContent = `${sightings.length} train sighting${sightings.length === 1 ? "" : "s"} analyzed.`;
+}
+
+let trainsetHistoryRows = [];
+
+async function toggleTrainsetHistoryPanel() {
+    const panel = document.getElementById("trainsetHistoryPanel");
+    if (!panel) return;
+    const opening = panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening ? "trainsetHistoryPanel" : "");
+    panel.classList.toggle("hidden", !opening);
+    if (opening) await loadTrainsetHistory();
+}
+
+async function loadTrainsetHistory() {
+    const status = document.getElementById("trainsetHistoryStatus");
+    const list = document.getElementById("trainsetHistoryList");
+    const pairings = document.getElementById("trainsetPairings");
+    if (!status || !list || !pairings) return;
+
+    status.textContent = "Loading trainset history...";
+    list.innerHTML = "";
+    pairings.innerHTML = "";
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+        status.textContent = "Log in to view your trainset history.";
+        return;
+    }
+
+    const [sightingsResult, carsResult] = await Promise.all([
+        supabaseClient.from("sightings")
+            .select("id, car_number, fleet, line, station, saved_at")
+            .eq("user_id", user.id)
+            .order("saved_at", {ascending:false}),
+        supabaseClient.from("sighting_cars")
+            .select("sighting_id, car_number, fleet, position")
+            .eq("user_id", user.id)
+            .order("position", {ascending:true})
+    ]);
+
+    if (sightingsResult.error) {
+        console.error("Could not load trainset sightings:", sightingsResult.error);
+        status.textContent = `Could not load trainset history: ${sightingsResult.error.message || "Unknown database error"}`;
+        return;
+    }
+    if (carsResult.error) {
+        console.error("Could not load trainset cars:", carsResult.error);
+        status.textContent = `Could not load trainset history: ${carsResult.error.message || "Unknown database error"}`;
+        return;
+    }
+
+    const carsBySighting = new Map();
+    for (const row of (carsResult.data || [])) {
+        const key = String(row.sighting_id);
+        if (!carsBySighting.has(key)) carsBySighting.set(key, []);
+        carsBySighting.get(key).push(row);
+    }
+
+    trainsetHistoryRows = (sightingsResult.data || []).map(row => {
+        const cars = carsBySighting.get(String(row.id)) || [];
+        cars.sort((a,b) => (Number(a.position)||999) - (Number(b.position)||999));
+        return {...row, consistCars:cars};
+    }).filter(row => row.consistCars.length > 1);
+
+    renderTrainsetHistory();
+}
+
+function trainsetUnitSize(fleet, cars) {
+    if (["R143","R68","R68A"].includes(fleet)) return 4;
+    if (fleet === "R160A" && cars.some(c => {
+        const n=Number(c.car_number); return (n>=8313&&n<=8652)||(n>=9943&&n<=9974);
+    })) return 4;
+    if (fleet === "R179" && cars.some(c => {
+        const n=Number(c.car_number); return n>=3050&&n<=3237;
+    })) return 4;
+    if (["R211A","R211T","R211S","R62","R142","R142A","R160B"].includes(fleet)) return 5;
+    if (fleet === "R160A") return 5;
+    if (fleet === "R179") return 5;
+    return null;
+}
+
+function trainsetUnitGroups(row) {
+    const size = trainsetUnitSize(row.fleet, row.consistCars);
+    if (!size || row.consistCars.length < size) return [];
+    const groups=[];
+    for(let i=0;i<row.consistCars.length;i+=size){
+        const group=row.consistCars.slice(i,i+size).map(c=>String(c.car_number));
+        if(group.length===size) groups.push(group);
+    }
+    return groups;
+}
+
+function trainsetUnitLabel(group) {
+    return group.join("–");
+}
+
+function renderTrainsetHistory() {
+    const status=document.getElementById("trainsetHistoryStatus");
+    const list=document.getElementById("trainsetHistoryList");
+    const pairings=document.getElementById("trainsetPairings");
+    if(!status||!list||!pairings)return;
+
+    const query=(document.getElementById("trainsetHistorySearch")?.value||"").trim().toLowerCase();
+    const filtered=trainsetHistoryRows.filter(row => {
+        if(!query)return true;
+        return [
+            row.car_number,row.fleet,row.line,row.station,
+            ...row.consistCars.map(c=>c.car_number)
+        ].filter(Boolean).join(" ").toLowerCase().includes(query);
+    });
+
+    if(!trainsetHistoryRows.length){
+        status.textContent="No multi-car Consist Builder sightings yet.";
+        list.innerHTML="";
+        pairings.innerHTML="";
+        return;
+    }
+    status.textContent=query
+        ? `${filtered.length} of ${trainsetHistoryRows.length} trainset sighting${trainsetHistoryRows.length===1?"":"s"} shown`
+        : `${trainsetHistoryRows.length} trainset sighting${trainsetHistoryRows.length===1?"":"s"}`;
+
+    list.innerHTML=filtered.map(row=>{
+        const groups=trainsetUnitGroups(row);
+        const groupText=groups.length ? groups.map(trainsetUnitLabel).join(" + ") : "";
+        const date=row.saved_at?new Date(row.saved_at).toLocaleString():"";
+        return `<div class="trainset-history-card">
+            <div class="trainset-history-head">
+                <div>
+                    <div class="trainset-history-title">${escapeHTML(row.fleet||"Unknown fleet")}</div>
+                    <div>${row.line?lineDisplayHTML(row.line):""}</div>
+                </div>
+                <strong>${row.consistCars.length} cars</strong>
+            </div>
+            <div class="trainset-history-consist">
+                ${row.consistCars.map(c=>`<span class="trainset-car">${escapeHTML(String(c.car_number))}</span>`).join("")}
+            </div>
+            ${groupText?`<div class="trainset-history-meta"><strong>Linked unit${groups.length===1?"":"s"}:</strong> ${escapeHTML(groupText)}</div>`:""}
+            <div class="trainset-history-meta">${escapeHTML(date)}${row.station?` · ${escapeHTML(row.station)}`:""}</div>
+        </div>`;
+    }).join("");
+
+    // Pairings are observational: only show two complete linked units that the user
+    // actually logged together. Never infer a permanent pairing from car numbers.
+    const pairingCounts=new Map();
+    for(const row of trainsetHistoryRows){
+        const groups=trainsetUnitGroups(row);
+        if(groups.length!==2)continue;
+        const labels=groups.map(trainsetUnitLabel);
+        const key=labels.join(" + ");
+        pairingCounts.set(key,(pairingCounts.get(key)||0)+1);
+    }
+    const sorted=[...pairingCounts.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],undefined,{numeric:true}));
+    pairings.innerHTML=sorted.length
+        ? `<h3>Observed Unit Pairings</h3>
+           <div class="account-small-note">These are pairings you logged together, not assumed permanent trainsets.</div>
+           ${sorted.map(([name,count])=>`<div class="trainset-pairing-row"><strong>${escapeHTML(name)}</strong><span>${count} time${count===1?"":"s"}</span></div>`).join("")}`
+        : "";
+}
+
 async function toggleLineStatsPanel() {
     const panel = document.getElementById("lineStatsPanel");
     if (!panel) return;
@@ -2151,18 +2907,11 @@ function sightingCalendarDateKey(value) {
 }
 
 async function toggleSightingCalendarPanel() {
-    const panel = document.getElementById("sightingCalendarPanel");
-    if (!panel) return;
-
-    const opening = panel.classList.contains("hidden");
-    closeSettingsContentPanels(opening ? "sightingCalendarPanel" : "");
-    panel.classList.toggle("hidden", !opening);
-
-    if (opening) {
-        const now = new Date();
-        sightingCalendarDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        await loadSightingCalendar();
-    }
+    const hub = document.getElementById("sightingsHubPanel");
+    if (!hub) return;
+    closeSettingsContentPanels("sightingsHubPanel");
+    hub.classList.remove("hidden");
+    await showSightingsHubView("calendar");
 }
 
 async function loadSightingCalendar() {
@@ -2368,20 +3117,37 @@ async function loadFleetCollection() {
         return;
     }
 
-    const { data: sightings, error } = await supabaseClient
-        .from("sightings")
-        .select("car_number, fleet, saved_at")
-        .eq("user_id", user.id);
+    const [sightingsResult, consistResult] = await Promise.all([
+        supabaseClient
+            .from("sightings")
+            .select("id, car_number, fleet, saved_at")
+            .eq("user_id", user.id),
+        supabaseClient
+            .from("sighting_cars")
+            .select("sighting_id, car_number, fleet")
+            .eq("user_id", user.id)
+    ]);
 
-    if (error) {
-        console.error("Could not load fleet collection:", error);
+    if (sightingsResult.error || consistResult.error) {
+        console.error("Could not load fleet collection:", sightingsResult.error || consistResult.error);
         status.textContent = "Could not load your fleet collection.";
         return;
     }
 
+    const sightings = sightingsResult.data || [];
+    const savedAtBySighting = new Map(sightings.map(row => [String(row.id), row.saved_at]));
+    const collectionRows = [
+        ...sightings,
+        ...(consistResult.data || []).map(row => ({
+            car_number: row.car_number,
+            fleet: row.fleet,
+            saved_at: savedAtBySighting.get(String(row.sighting_id)) || ""
+        }))
+    ];
+
     const uniqueByFleet = new Map();
     const rowsByFleet = new Map();
-    for (const row of (sightings || [])) {
+    for (const row of collectionRows) {
         const fleet = String(row.fleet || "").trim();
         const car = String(row.car_number || "").trim();
         if (!fleet || !car || !passengerFleetCollectionNames.includes(fleet)) continue;
@@ -2533,6 +3299,19 @@ function achievementLongestStreak(rows) {
     return longest;
 }
 
+
+async function loadAchievementConsistCars(userId) {
+    const { data, error } = await supabaseClient
+        .from("sighting_cars")
+        .select("car_number")
+        .eq("user_id", userId);
+    if (error) {
+        console.warn("Could not load consist cars for achievements:", error.message);
+        return [];
+    }
+    return (data || []).map(row => String(row.car_number || "").trim()).filter(Boolean);
+}
+
 function achievementValue(def,stats){
     if(def.type==="total") return stats.total;
     if(def.type==="unique") return stats.unique;
@@ -2540,11 +3319,14 @@ function achievementValue(def,stats){
     return 0;
 }
 
-async function syncAchievements(user,sightings,earnedRows){
+async function syncAchievements(user,sightings,earnedRows,consistCars=[]){
     const existing=new Set((earnedRows||[]).map(x=>x.achievement_key));
     const stats={
         total:(sightings||[]).length,
-        unique:new Set((sightings||[]).map(x=>String(x.car_number||"").trim()).filter(Boolean)).size,
+        unique:new Set([
+            ...(sightings||[]).map(x=>String(x.car_number||"").trim()).filter(Boolean),
+            ...(consistCars||[])
+        ]).size,
         longestStreak:achievementLongestStreak(sightings||[])
     };
     const rows=achievementDefinitions
@@ -2558,11 +3340,12 @@ async function syncAchievements(user,sightings,earnedRows){
 
 async function refreshAchievementEligibility(user){
     if(!user) return;
-    const [s,a]=await Promise.all([
+    const [s,a,consistCars]=await Promise.all([
         supabaseClient.from("sightings").select("car_number, saved_at").eq("user_id",user.id),
-        supabaseClient.from("user_achievements").select("achievement_key, earned_at").eq("user_id",user.id)
+        supabaseClient.from("user_achievements").select("achievement_key, earned_at").eq("user_id",user.id),
+        loadAchievementConsistCars(user.id)
     ]);
-    if(!s.error&&!a.error) await syncAchievements(user,s.data||[],a.data||[]);
+    if(!s.error&&!a.error) await syncAchievements(user,s.data||[],a.data||[],consistCars);
 }
 
 async function toggleAchievementsPanel(){
@@ -2581,13 +3364,14 @@ async function loadAchievements(){
     const {data:{user}}=await supabaseClient.auth.getUser();
     if(!user){status.textContent="Log in to view synced achievements.";return;}
 
-    const [s,a]=await Promise.all([
+    const [s,a,consistCars]=await Promise.all([
         supabaseClient.from("sightings").select("car_number, saved_at").eq("user_id",user.id),
-        supabaseClient.from("user_achievements").select("achievement_key, earned_at").eq("user_id",user.id)
+        supabaseClient.from("user_achievements").select("achievement_key, earned_at").eq("user_id",user.id),
+        loadAchievementConsistCars(user.id)
     ]);
     if(s.error||a.error){status.textContent="Could not load achievements.";return;}
 
-    await syncAchievements(user,s.data||[],a.data||[]);
+    await syncAchievements(user,s.data||[],a.data||[],consistCars);
     const {data:earned,error}=await supabaseClient.from("user_achievements")
         .select("achievement_key, earned_at").eq("user_id",user.id);
     if(error){status.textContent="Could not refresh achievements.";return;}
@@ -2595,7 +3379,10 @@ async function loadAchievements(){
     const map=new Map((earned||[]).map(x=>[x.achievement_key,x.earned_at]));
     const stats={
         total:(s.data||[]).length,
-        unique:new Set((s.data||[]).map(x=>String(x.car_number||"").trim()).filter(Boolean)).size,
+        unique:new Set([
+            ...(s.data||[]).map(x=>String(x.car_number||"").trim()).filter(Boolean),
+            ...(consistCars||[])
+        ]).size,
         longestStreak:achievementLongestStreak(s.data||[])
     };
     const earnedDefinitions=achievementDefinitions.filter(def=>map.has(def.key));
@@ -3204,37 +3991,517 @@ function chooseLine(line) {
     });
 }
 
+
+
+
+/*
+ * Linked-unit rules.
+ * IMPORTANT: only add a fleet here when its unit numbering/order has been
+ * verified. Fleets not listed here continue to use the existing conservative
+ * same-fleet + length validation.
+ */
+function getVerifiedLinkedUnit(fleet, carNumber) {
+    const car = Number(carNumber);
+    if (!Number.isInteger(car)) return null;
+
+    const makeSequentialUnit = (rangeStart, rangeEnd, size, maxUnitsPerTrain = 2) => {
+        if (car < rangeStart || car > rangeEnd) return null;
+        const start = rangeStart + Math.floor((car - rangeStart) / size) * size;
+        const cars = Array.from({ length: size }, (_, i) => String(start + i));
+        if (Number(cars[cars.length - 1]) > rangeEnd) return null;
+        return {
+            fleet,
+            cars,
+            searchedPosition: cars.indexOf(String(car)) + 1,
+            size,
+            verified: true,
+            maxUnitsPerTrain
+        };
+    };
+
+    // R211: five-car ABBBA linked units.
+    if (fleet === "R211T" && car >= 4040 && car <= 4059) {
+        return makeSequentialUnit(4040, 4059, 5, 1);
+    }
+    if (fleet === "R211A") {
+        if (car >= 3400 && car <= 4039) return makeSequentialUnit(3400, 4039, 5, 2);
+        if (car >= 4060 && car <= 4499) return makeSequentialUnit(4060, 4499, 5, 2);
+    }
+    if (fleet === "R211S" && car >= 100 && car <= 174) {
+        // R211S cars are supplied as five-car ABBBA linked sets. Do not offer
+        // a second unit here because Staten Island service does not use a
+        // standard 10-car two-unit consist.
+        return makeSequentialUnit(100, 174, 5, 1);
+    }
+
+    // R143: 53 sequential four-car ABBA sets.
+    if (fleet === "R143" && car >= 8101 && car <= 8312) {
+        return makeSequentialUnit(8101, 8312, 4, 2);
+    }
+
+    // R160A: both four-car and five-car subfleets.
+    if (fleet === "R160A") {
+        if (car >= 8313 && car <= 8652) return makeSequentialUnit(8313, 8652, 4, 2);
+        if (car >= 8653 && car <= 8712) return makeSequentialUnit(8653, 8712, 5, 2);
+        if (car >= 9233 && car <= 9802) return makeSequentialUnit(9233, 9802, 5, 2);
+        if (car >= 9943 && car <= 9974) return makeSequentialUnit(9943, 9974, 4, 2);
+    }
+
+    // R160B: five-car sets.
+    if (fleet === "R160B") {
+        if (car >= 8713 && car <= 9232) return makeSequentialUnit(8713, 9232, 5, 2);
+        if (car >= 9803 && car <= 9942) return makeSequentialUnit(9803, 9942, 5, 2);
+    }
+
+    // R179: five-car ranges bookend the four-car range.
+    if (fleet === "R179") {
+        if (car >= 3010 && car <= 3049) return makeSequentialUnit(3010, 3049, 5, 2);
+        if (car >= 3050 && car <= 3237) return makeSequentialUnit(3050, 3237, 4, 2);
+        if (car >= 3238 && car <= 3327) return makeSequentialUnit(3238, 3327, 5, 2);
+    }
+
+    // R46: standard 5482-6205 cars are consecutive four-car ABBA sets.
+    // The special 6206-6207 AB pair and even-numbered 6208-6258 AA pairs are
+    // intentionally left out rather than pretending they are normal 4-car sets.
+    if (fleet === "R46" && car >= 5482 && car <= 6205) {
+        return makeSequentialUnit(5482, 6205, 4, 2);
+    }
+
+    // R68: four-car sets have the documented order A-B-B-A:
+    // e.g. 2500 + 2501 + 2503 + 2502.
+    if (fleet === "R68" && car >= 2500 && car <= 2923) {
+        const base = 2500 + Math.floor((car - 2500) / 4) * 4;
+        const cars = [base, base + 1, base + 3, base + 2].map(String);
+        return {
+            fleet, cars,
+            searchedPosition: cars.indexOf(String(car)) + 1,
+            size: 4, verified: true, maxUnitsPerTrain: 2
+        };
+    }
+
+    // R68A uses the opposite adjacent A/B numbering relationship from the R68.
+    // Example unit order: 5002 + 5001 + 5003 + 5004.
+    if (fleet === "R68A" && car >= 5001 && car <= 5200) {
+        const base = 5001 + Math.floor((car - 5001) / 4) * 4;
+        const cars = [base + 1, base, base + 2, base + 3].map(String);
+        return {
+            fleet, cars,
+            searchedPosition: cars.indexOf(String(car)) + 1,
+            size: 4, verified: true, maxUnitsPerTrain: 2
+        };
+    }
+
+    // A Division: R62 and R142-family cars use five-car linked units.
+    if (fleet === "R62" && car >= 1301 && car <= 1625) {
+        return makeSequentialUnit(1301, 1625, 5, 2);
+    }
+    if (fleet === "R142") {
+        if (car >= 1101 && car <= 1250) return makeSequentialUnit(1101, 1250, 5, 2);
+        if (car >= 6301 && car <= 7180) return makeSequentialUnit(6301, 7180, 5, 2);
+    }
+    if (fleet === "R142A" && car >= 7591 && car <= 7810) {
+        return makeSequentialUnit(7591, 7810, 5, 2);
+    }
+
+    /*
+     * R62A and R188 are intentionally NOT generalized here:
+     * - R62A includes singles, mixed/rearranged sets, and non-consecutive sets.
+     * - R188 operates in 11-car ACBBA-ABBBCA arrangements with inserted C cars.
+     * Their exact current unit membership needs a roster/set table, not a
+     * mathematical shortcut.
+     */
+    return null;
+}
+
+function linkedUnitPositionLabel(unit, carNumber) {
+    if (!unit) return "";
+    const pos = unit.cars.indexOf(String(carNumber));
+    return pos >= 0 ? `${pos + 1}/${unit.cars.length}` : "";
+}
+
+const CONSIST_LIMITS = {
+    // Maximum cars that may be recorded as one train/consist in this app.
+    // Open-gangway R211Ts operate as five-car units, so one R211T consist
+    // must never exceed five cars.
+    R211T: 5
+};
+
+function getConsistLimit(fleet) {
+    if (CONSIST_LIMITS[fleet]) return CONSIST_LIMITS[fleet];
+
+    const data = fleetData[fleet];
+    const division = String(data?.division || "");
+
+    // B Division passenger trains never exceed 10 cars.
+    if (/B Division/i.test(division)) return 10;
+
+    // A Division passenger trains max out at 11 cars.
+    if (/A Division/i.test(division)) return 11;
+
+    return null;
+}
+
+function resetPendingConsist() {
+    if (!pendingSighting) return;
+    pendingSighting.consistCars = [String(pendingSighting.carNumber)];
+    pendingSighting.linkedUnit = getVerifiedLinkedUnit(
+        pendingSighting.fleet,
+        pendingSighting.carNumber
+    );
+    pendingSighting.coupledUnit = null;
+}
+
+function renderPendingConsist() {
+    const wrap = document.getElementById("consistCars");
+    const summary = document.getElementById("consistSummary");
+    if (!wrap || !pendingSighting) return;
+
+    if (!Array.isArray(pendingSighting.consistCars) || !pendingSighting.consistCars.length) {
+        resetPendingConsist();
+    }
+    if (!pendingSighting.linkedUnit) {
+        pendingSighting.linkedUnit = getVerifiedLinkedUnit(
+            pendingSighting.fleet,
+            pendingSighting.carNumber
+        );
+    }
+
+    const unit = pendingSighting.linkedUnit;
+
+    if (unit?.verified) {
+        const renderUnitButtons = (linkedUnit, label) => {
+            const searched = String(pendingSighting.carNumber);
+            return `
+                <div style="width:100%;margin-top:6px;">
+                    <div style="font-size:12px;font-weight:800;margin-bottom:6px;">${label}</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:7px;">
+                        ${linkedUnit.cars.map(car => {
+                            const selected = pendingSighting.consistCars.includes(car);
+                            const primary = car === searched;
+                            const position = linkedUnitPositionLabel(linkedUnit, car);
+                            return `
+                                <button type="button"
+                                        class="consist-chip ${primary ? "primary" : ""} ${selected ? "selected" : ""}"
+                                        onclick="${primary ? "" : `toggleLinkedUnitCar('${escapeHTML(car)}')`}"
+                                        aria-pressed="${selected ? "true" : "false"}"
+                                        ${primary ? "disabled" : ""}>
+                                    ${escapeHTML(car)}
+                                    <span style="font-size:11px;opacity:.7;">${position}</span>
+                                    ${selected ? "✓" : ""}
+                                </button>
+                            `;
+                        }).join("")}
+                    </div>
+                </div>
+            `;
+        };
+
+        let unitHTML = renderUnitButtons(unit, "Linked Unit 1");
+        if (pendingSighting.coupledUnit?.verified) {
+            unitHTML += renderUnitButtons(pendingSighting.coupledUnit, "Linked Unit 2");
+        }
+        wrap.innerHTML = unitHTML;
+
+        const firstComplete = unit.cars.every(car => pendingSighting.consistCars.includes(car));
+        const secondComplete = pendingSighting.coupledUnit?.cars?.every(
+            car => pendingSighting.consistCars.includes(car)
+        );
+        const searchedPos = linkedUnitPositionLabel(unit, pendingSighting.carNumber);
+
+        if (summary) {
+            let text =
+                `Verified ${pendingSighting.fleet} linked unit: ${unit.cars.join(" · ")}. ` +
+                `Car ${pendingSighting.carNumber} is position ${searchedPos} within this unit.`;
+
+            if (pendingSighting.coupledUnit?.verified) {
+                text += ` Coupled unit: ${pendingSighting.coupledUnit.cars.join(" · ")}.`;
+            }
+
+            text += ` ${pendingSighting.consistCars.length} car${pendingSighting.consistCars.length === 1 ? "" : "s"} selected; the train still counts as 1 sighting event.`;
+            summary.textContent = text;
+        }
+
+        const manualRow = document.getElementById("consistCarInput")?.closest(".consist-builder-row");
+        if (manualRow) manualRow.style.display = "none";
+
+        const coupledArea = document.getElementById("coupledUnitArea");
+        const coupledInput = document.getElementById("coupledUnitInput");
+        const coupledButton = document.getElementById("coupledUnitButton");
+        const coupledMessage = document.getElementById("coupledUnitMessage");
+
+        const mayCouple = (unit.maxUnitsPerTrain || 1) > 1;
+        if (coupledArea) {
+            coupledArea.style.display =
+                mayCouple && firstComplete && !pendingSighting.coupledUnit
+                    ? "block"
+                    : "none";
+        }
+
+        if (coupledInput) coupledInput.disabled = Boolean(pendingSighting.coupledUnit);
+        if (coupledButton) coupledButton.disabled = Boolean(pendingSighting.coupledUnit);
+
+        if (coupledMessage) {
+            if (!mayCouple) {
+                coupledMessage.textContent = "";
+            } else if (!firstComplete) {
+                coupledMessage.textContent = "";
+            } else if (pendingSighting.coupledUnit && secondComplete) {
+                const total = first.size + pendingSighting.coupledUnit.size;
+                coupledMessage.textContent = `Full ${total}-car train selected.`;
+            }
+        }
+
+        const message = document.getElementById("consistMessage");
+        if (message) message.textContent = "";
+        return;
+    }
+
+    wrap.innerHTML = pendingSighting.consistCars.map((car, index) => `
+        <span class="consist-chip ${index === 0 ? "primary" : ""}">
+            ${escapeHTML(car)}
+            ${index === 0 ? "" : `<button type="button" onclick="removeConsistCar('${escapeHTML(car)}')" aria-label="Remove car ${escapeHTML(car)}">×</button>`}
+        </span>
+    `).join("");
+
+    if (summary) {
+        const count = pendingSighting.consistCars.length;
+        const limit = getConsistLimit(pendingSighting.fleet);
+        const limitText = limit ? ` Maximum for this consist: ${limit} cars.` : "";
+        summary.textContent = count === 1
+            ? `1 car spotted. Add the other cars only if you want to record the full consist.${limitText}`
+            : `${count} cars spotted in this train. This still counts as 1 sighting event.${limitText}`;
+
+        const input = document.getElementById("consistCarInput");
+        const addButton = input?.closest(".consist-builder-row")?.querySelector("button");
+        const atLimit = Boolean(limit && count >= limit);
+        if (input) {
+            input.disabled = atLimit;
+            input.placeholder = atLimit ? `Maximum ${limit} cars reached` : "Add another car number";
+        }
+        if (addButton) addButton.disabled = atLimit;
+    }
+}
+
+function toggleLinkedUnitCar(carNumber) {
+    if (!pendingSighting?.linkedUnit?.verified) return;
+    const car = String(carNumber);
+    const allowedCars = [
+        ...pendingSighting.linkedUnit.cars,
+        ...(pendingSighting.coupledUnit?.cars || [])
+    ];
+    if (!allowedCars.includes(car)) return;
+
+    const primary = String(pendingSighting.carNumber);
+    if (car === primary) return;
+
+    if (pendingSighting.consistCars.includes(car)) {
+        pendingSighting.consistCars = pendingSighting.consistCars.filter(x => x !== car);
+    } else {
+        pendingSighting.consistCars.push(car);
+    }
+
+    // Preserve Unit 1 order followed by Unit 2 order.
+    const order = allowedCars;
+    pendingSighting.consistCars.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    renderPendingConsist();
+}
+
+function addCoupledUnit() {
+    if (!pendingSighting?.linkedUnit?.verified) return;
+
+    const input = document.getElementById("coupledUnitInput");
+    const message = document.getElementById("coupledUnitMessage");
+    const value = input?.value.replace(/\D+/g, "").trim() || "";
+
+    if (!value) {
+        if (message) message.textContent = "Enter a car number from the second linked unit.";
+        return;
+    }
+
+    const first = pendingSighting.linkedUnit;
+    const firstComplete = first.cars.every(car => pendingSighting.consistCars.includes(car));
+    if (!firstComplete) {
+        if (message) message.textContent = "Select all cars in Linked Unit 1 first.";
+        return;
+    }
+
+    if ((first.maxUnitsPerTrain || 1) < 2) {
+        if (message) message.textContent = `${pendingSighting.fleet} does not use a second linked unit in this builder.`;
+        return;
+    }
+
+    const match = identifyNumeric(Number(value));
+    if (!match) {
+        if (message) message.textContent = `Car ${value} is not in the current Fleet Identifier database.`;
+        return;
+    }
+
+    const [fleet] = match;
+    if (fleet !== pendingSighting.fleet) {
+        if (message) message.textContent = `Car ${value} is an ${fleet}, not an ${pendingSighting.fleet}.`;
+        return;
+    }
+
+    const second = getVerifiedLinkedUnit(fleet, value);
+    if (!second?.verified) {
+        if (message) message.textContent = `A verified linked unit could not be determined for car ${value}.`;
+        return;
+    }
+
+    if (second.cars.some(car => first.cars.includes(car))) {
+        if (message) message.textContent = `Car ${value} belongs to Linked Unit 1. Enter a car from a different ${fleet} unit.`;
+        return;
+    }
+
+    if (second.size !== first.size) {
+        if (message) {
+            message.textContent = `That ${fleet} unit has ${second.size} cars, but Linked Unit 1 has ${first.size}. Choose another ${first.size}-car ${fleet} unit.`;
+        }
+        return;
+    }
+
+    pendingSighting.coupledUnit = second;
+    if (input) input.value = "";
+    if (message) message.textContent = `Linked Unit 2 found: ${second.cars.join(" · ")}. Select the cars you saw.`;
+    renderPendingConsist();
+}
+
+function addConsistCar() {
+    if (!pendingSighting) return;
+
+    if (pendingSighting.linkedUnit?.verified) {
+        const message = document.getElementById("consistMessage");
+        if (message) message.textContent = "Choose cars from the verified linked unit shown above.";
+        return;
+    }
+
+    const input = document.getElementById("consistCarInput");
+    const message = document.getElementById("consistMessage");
+    if (!input) return;
+
+    const value = input.value.replace(/\D+/g, "").trim();
+    input.value = value;
+
+    if (!value) {
+        if (message) message.textContent = "Enter a car number first.";
+        return;
+    }
+
+    const match = identifyNumeric(Number(value));
+    if (!match) {
+        if (message) message.textContent = `Car ${value} is not in the current Fleet Identifier database.`;
+        return;
+    }
+
+    const [fleet] = match;
+    if (fleet !== pendingSighting.fleet) {
+        if (message) message.textContent = `Car ${value} is an ${fleet}, not an ${pendingSighting.fleet}.`;
+        return;
+    }
+
+    if (!Array.isArray(pendingSighting.consistCars)) resetPendingConsist();
+
+    if (pendingSighting.consistCars.includes(value)) {
+        if (message) message.textContent = `Car ${value} is already in this consist.`;
+        return;
+    }
+
+    const consistLimit = getConsistLimit(pendingSighting.fleet);
+    if (consistLimit && pendingSighting.consistCars.length >= consistLimit) {
+        if (message) {
+            message.textContent = pendingSighting.fleet === "R211T"
+                ? "R211T consists are limited to 5 cars."
+                : `${pendingSighting.fleet} consists are limited to ${consistLimit} cars.`;
+        }
+        return;
+    }
+
+    pendingSighting.consistCars.push(value);
+    input.value = "";
+    if (message) message.textContent = "";
+    renderPendingConsist();
+    input.focus();
+}
+
+function removeConsistCar(carNumber) {
+    if (!pendingSighting || !Array.isArray(pendingSighting.consistCars)) return;
+    const primary = String(pendingSighting.carNumber);
+    if (String(carNumber) === primary) return;
+    pendingSighting.consistCars = pendingSighting.consistCars.filter(car => car !== String(carNumber));
+    renderPendingConsist();
+}
+
+function handleConsistKeydown(event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        addConsistCar();
+    }
+}
+
+function consistBuilderHTML() {
+    return `
+        <div class="consist-builder">
+            <strong>Consist (optional)</strong>
+            <div class="account-small-note" style="margin-top:5px;">
+                Record the cars you actually saw in this train. For fleets with verified linked-unit data, Fleet Identifier will show the real unit and each car's position automatically. The whole train still counts as one sighting.
+            </div>
+            <div id="consistCars" class="consist-cars"></div>
+            <div class="consist-builder-row">
+                <input id="consistCarInput" type="text" inputmode="numeric" pattern="[0-9]*"
+                       autocomplete="off" placeholder="Add another car number"
+                       oninput="this.value=this.value.replace(/\\D+/g,'')"
+                       onkeydown="handleConsistKeydown(event)">
+                <button type="button" onclick="addConsistCar()">Add Car</button>
+            </div>
+            <div id="consistMessage" class="status-message"></div>
+
+            <div id="coupledUnitArea" style="display:none;margin-top:12px;">
+                <strong>Add Coupled Unit</strong>
+                <div class="account-small-note" style="margin-top:5px;">
+                    Enter any car number from the second linked unit. Fleet Identifier will determine the rest of that unit.
+                </div>
+                <div class="consist-builder-row">
+                    <input id="coupledUnitInput" type="text" inputmode="numeric" pattern="[0-9]*"
+                           autocomplete="off" placeholder="Car from second unit"
+                           oninput="this.value=this.value.replace(/\D+/g,'')"
+                           onkeydown="if(event.key==='Enter'){event.preventDefault();addCoupledUnit();}">
+                    <button id="coupledUnitButton" type="button" onclick="addCoupledUnit()">Add Unit</button>
+                </div>
+                <div id="coupledUnitMessage" class="status-message"></div>
+            </div>
+
+            <div id="consistSummary" class="consist-summary"></div>
+        </div>
+    `;
+}
+
 async function saveSighting() {
     if (!pendingSighting) return;
 
     const status = document.getElementById("sightingStatus");
 
     if (!pendingSighting.line) {
-        if (status) {
-            status.textContent = "Choose the line you saw this car on first.";
-        }
+        if (status) status.textContent = "Choose the line you saw this car on first.";
         return;
     }
 
-    const {
-        data: { session }
-    } = await supabaseClient.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
 
     if (!session?.user) {
-        if (status) {
-            status.textContent = "You need to be signed in to save sightings to the cloud.";
-        }
+        if (status) status.textContent = "You need to be signed in to save sightings to the cloud.";
         return;
     }
 
-    if (status) {
-        status.textContent = "Saving sighting...";
-    }
+    if (status) status.textContent = "Saving sighting...";
 
     const notes = document.getElementById("sightingNotes")?.value.trim() || "";
     const station = document.getElementById("sightingStation")?.value.trim() || "";
 
-    const { error } = await supabaseClient
+    const consistCars = Array.isArray(pendingSighting.consistCars) && pendingSighting.consistCars.length
+        ? [...new Set(pendingSighting.consistCars.map(String))]
+        : [String(pendingSighting.carNumber)];
+
+    const { data: sighting, error } = await supabaseClient
         .from("sightings")
         .insert({
             user_id: session.user.id,
@@ -3243,23 +4510,47 @@ async function saveSighting() {
             line: pendingSighting.line,
             station: station || null,
             notes: notes || null
-        });
+        })
+        .select("id")
+        .single();
 
-    if (error) {
+    if (error || !sighting?.id) {
         console.error("Could not save sighting:", error);
+        if (status) status.textContent = "Could not save sighting. Please try again.";
+        return;
+    }
 
+    const consistRows = consistCars.map((car, index) => {
+        const match = identifyNumeric(Number(car));
+        return {
+            sighting_id: sighting.id,
+            user_id: session.user.id,
+            car_number: car,
+            fleet: match?.[0] || pendingSighting.fleet,
+            position: index + 1
+        };
+    });
+
+    const { error: consistError } = await supabaseClient
+        .from("sighting_cars")
+        .insert(consistRows);
+
+    if (consistError) {
+        console.error("Could not save consist cars:", consistError);
+        // Keep the primary sighting rather than losing the user's log, but be
+        // explicit that the consist credit did not finish saving.
         if (status) {
-            status.textContent = "Could not save sighting. Please try again.";
+            status.textContent = "The sighting was saved, but the consist cars could not be saved. Please try adding the consist again later.";
         }
         return;
     }
 
     if (status) {
-        status.textContent =
-            `Saved: car ${pendingSighting.carNumber} on the ${pendingSighting.line} line.`;
+        status.textContent = consistCars.length === 1
+            ? `Saved: car ${pendingSighting.carNumber} on the ${pendingSighting.line} line.`
+            : `Saved: 1 sighting · ${consistCars.length} cars spotted on the ${pendingSighting.line} line.`;
     }
 
-    // Check for newly earned achievements after each successful sighting.
     refreshAchievementEligibility(session.user);
 }
 
@@ -3899,7 +5190,8 @@ async function identify() {
         pendingSighting = {
             carNumber: "0000",
             fleet: "TEST",
-            line: null
+            line: null,
+            consistCars: ["0000"]
         };
 
         resultBox.className = "result";
@@ -4057,8 +5349,17 @@ async function identify() {
         carNumber: input,
         fleet: fleet,
         configuration: configuration || "",
-        line: null
+        line: null,
+        consistCars: [input],
+        linkedUnit: getVerifiedLinkedUnit(fleet, input),
+        coupledUnit: null
     };
+
+    // R211S cars 100-174 can only be sighted in SIR passenger service,
+    // so there is no reason to ask the user to choose a line.
+    if (fleet === "R211S") {
+        pendingSighting.line = "Staten Island Railway";
+    }
 
     recordSearchHistory(input, fleet);
 
@@ -4179,14 +5480,18 @@ async function identify() {
 
         <div class="sighting-panel">
             <h3>Log this sighting</h3>
-            <div>Which line did you see car <strong>${input}</strong> on?</div>
-            <div class="line-grid">${lineButtonsHTML(data.division)}</div>
+            ${fleet === "R211S"
+                ? `<div>Line: ${lineDisplayHTML("Staten Island Railway")}</div>`
+                : `<div>Which line did you see car <strong>${input}</strong> on?</div>
+                   <div class="line-grid">${lineButtonsHTML(data.division)}</div>`}
 
             <label for="sightingStation" style="margin-top:12px;">Station (optional)</label>
             <input id="sightingStation" class="sighting-station" type="text" maxlength="100" autocomplete="off" placeholder="Example: Broadway Junction">
 
             <label for="sightingNotes" style="margin-top:12px;">Notes (optional)</label>
             <textarea id="sightingNotes" class="sighting-notes" maxlength="1000" placeholder="Add notes about this sighting."></textarea>
+
+            ${consistBuilderHTML()}
 
             <button type="button" onclick="saveSighting()" style="margin-top:10px;">Save Sighting</button>
             <div id="sightingStatus" class="status-message"></div>
@@ -4198,6 +5503,7 @@ async function identify() {
     resultBox.className = "result";
 
     resultBox.innerHTML = html;
+    renderPendingConsist();
 
 }
 
@@ -4348,7 +5654,7 @@ function updateFocusMode() {
 }
 
 function closeSettingsContentPanels(exceptId = "") {
-    ["accountPanel", "mySightingsPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel", "sightingCalendarPanel", "fleetBreakdownPanel", "lineStatsPanel", "fleetComparisonPanel"].forEach(id => {
+    ["accountPanel", "sightingsHubPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel", "fleetBreakdownPanel", "lineStatsPanel", "fleetComparisonPanel", "trainsetHistoryPanel"].forEach(id => {
         if (id !== exceptId) {
             document.getElementById(id)?.classList.add("hidden");
         }
@@ -4362,15 +5668,38 @@ function toggleAccountPanel() {
     panel.classList.toggle("hidden", !opening);
 }
 
-async function toggleSightingsPanel() {
-    const panel = document.getElementById("mySightingsPanel");
+async function toggleSightingsHub() {
+    const panel = document.getElementById("sightingsHubPanel");
+    if (!panel) return;
     const opening = panel.classList.contains("hidden");
-    closeSettingsContentPanels(opening ? "mySightingsPanel" : "");
+    closeSettingsContentPanels(opening ? "sightingsHubPanel" : "");
     panel.classList.toggle("hidden", !opening);
+    if (opening) await showSightingsHubView("sightings");
+}
 
-    if (opening) {
-        await loadMySightings();
-    }
+async function showSightingsHubView(view) {
+    const views = {
+        sightings: "mySightingsPanel",
+        calendar: "sightingCalendarPanel",
+        records: "personalRecordsPanel",
+        year: "yearInReviewPanel"
+    };
+    const tabs = {
+        sightings: "sightingsHubTabSightings",
+        calendar: "sightingsHubTabCalendar",
+        records: "sightingsHubTabRecords",
+        year: "sightingsHubTabYear"
+    };
+
+    Object.values(views).forEach(id => document.getElementById(id)?.classList.add("hidden"));
+    Object.values(tabs).forEach(id => document.getElementById(id)?.classList.remove("active"));
+    document.getElementById(views[view])?.classList.remove("hidden");
+    document.getElementById(tabs[view])?.classList.add("active");
+
+    if (view === "sightings") await loadMySightings();
+    if (view === "calendar") await loadSightingCalendar();
+    if (view === "records") await loadPersonalRecords();
+    if (view === "year") await loadYearInReview();
 }
 
 async function toggleReportsPanel() {
@@ -4545,22 +5874,50 @@ async function loadMySightings() {
         return;
     }
 
-    const { data, error } = await supabaseClient
-        .from("sightings")
-        .select("id, car_number, fleet, line, station, notes, saved_at")
-        .eq("user_id", session.user.id)
-        .order("saved_at", { ascending: false });
+    const [sightingsResult, consistResult] = await Promise.all([
+        supabaseClient
+            .from("sightings")
+            .select("id, car_number, fleet, line, station, notes, saved_at")
+            .eq("user_id", session.user.id)
+            .order("saved_at", { ascending: false }),
+        supabaseClient
+            .from("sighting_cars")
+            .select("sighting_id, car_number, fleet, position")
+            .eq("user_id", session.user.id)
+            .order("position", { ascending: true })
+    ]);
 
-    if (error) {
-        console.error("Could not load sightings:", error);
-        status.textContent = "Could not load your sightings. Please try again.";
+    if (sightingsResult.error) {
+        console.error("Could not load sightings:", sightingsResult.error);
+        status.textContent = `Could not load your sightings: ${sightingsResult.error.message || "Unknown database error"}`;
         return;
     }
 
-    mySightingsData = data || [];
+    // Consist data is supplemental. A problem loading it must never prevent
+    // the user's normal sightings from loading.
+    if (consistResult.error) {
+        console.error("Could not load consist cars:", consistResult.error);
+    }
+
+    const consistBySighting = new Map();
+    for (const row of (consistResult.error ? [] : (consistResult.data || []))) {
+        const key = String(row.sighting_id);
+        if (!consistBySighting.has(key)) consistBySighting.set(key, []);
+        consistBySighting.get(key).push(String(row.car_number));
+    }
+
+    mySightingsData = (sightingsResult.data || []).map(row => ({
+        ...row,
+        consist_cars: consistBySighting.get(String(row.id)) || [String(row.car_number)]
+    }));
     updateSightingsStats();
     populateSightingsLineFilter();
+    populateSightingsFleetFilter();
     applySightingsFilters();
+
+    if (consistResult.error && status) {
+        status.textContent = `Sightings loaded, but consist details could not load: ${consistResult.error.message || "Unknown database error"}`;
+    }
 }
 
 function mostCommonValue(items, key) {
@@ -4603,7 +5960,10 @@ function updateSightingsStats() {
     const total = mySightingsData.length;
     const uniqueCars = new Set(
         mySightingsData
-            .map(s => String(s.car_number || "").trim())
+            .flatMap(s => Array.isArray(s.consist_cars) && s.consist_cars.length
+                ? s.consist_cars
+                : [s.car_number])
+            .map(car => String(car || "").trim())
             .filter(Boolean)
     ).size;
 
@@ -4698,12 +6058,22 @@ function updateSightingsStats() {
 }
 
 function clearSightingsFilters() {
-    const search = document.getElementById("sightingsSearch");
-    const line = document.getElementById("sightingsLineFilter");
-    const sort = document.getElementById("sightingsSort");
+    const ids = [
+        "sightingsSearch",
+        "sightingsLineFilter",
+        "sightingsFleetFilter",
+        "sightingsConsistFilter",
+        "sightingsDateFrom",
+        "sightingsDateTo",
+        "sightingsStationFilter",
+        "sightingsNotesFilter"
+    ];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+    });
 
-    if (search) search.value = "";
-    if (line) line.value = "";
+    const sort = document.getElementById("sightingsSort");
     if (sort) sort.value = "newest";
 
     applySightingsFilters();
@@ -4721,19 +6091,65 @@ function populateSightingsLineFilter() {
     if (lines.includes(current)) select.value = current;
 }
 
+function populateSightingsFleetFilter() {
+    const select = document.getElementById("sightingsFleetFilter");
+    if (!select) return;
+    const current = select.value;
+    const fleets = [...new Set(mySightingsData.map(s => s.fleet).filter(Boolean))]
+        .sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric:true}));
+    select.innerHTML = `<option value="">All fleets</option>` + fleets.map(fleet =>
+        `<option value="${escapeHTML(fleet)}">${escapeHTML(fleet)}</option>`
+    ).join("");
+    if (fleets.includes(current)) select.value = current;
+}
+
+
 function applySightingsFilters() {
     const search = (document.getElementById("sightingsSearch")?.value || "").trim().toLowerCase();
     const line = document.getElementById("sightingsLineFilter")?.value || "";
+    const fleet = document.getElementById("sightingsFleetFilter")?.value || "";
+    const consistType = document.getElementById("sightingsConsistFilter")?.value || "";
+    const dateFrom = document.getElementById("sightingsDateFrom")?.value || "";
+    const dateTo = document.getElementById("sightingsDateTo")?.value || "";
+    const stationFilter = document.getElementById("sightingsStationFilter")?.value || "";
+    const notesFilter = document.getElementById("sightingsNotesFilter")?.value || "";
     const sort = document.getElementById("sightingsSort")?.value || "newest";
 
+    const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toTime = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
+
     let filtered = mySightingsData.filter(s => {
-        const matchesSearch = !search ||
-            String(s.car_number || "").toLowerCase().includes(search) ||
-            String(s.fleet || "").toLowerCase().includes(search) ||
-            String(s.station || "").toLowerCase().includes(search) ||
-            String(s.notes || "").toLowerCase().includes(search);
-        const matchesLine = !line || s.line === line;
-        return matchesSearch && matchesLine;
+        const consistCars = Array.isArray(s.consist_cars) && s.consist_cars.length
+            ? s.consist_cars.map(String)
+            : [String(s.car_number || "")];
+
+        const haystack = [
+            s.car_number,
+            ...consistCars,
+            s.fleet,
+            s.line,
+            s.station,
+            s.notes
+        ].filter(Boolean).join(" ").toLowerCase();
+
+        const savedTime = s.saved_at ? new Date(s.saved_at).getTime() : null;
+        const hasStation = Boolean(String(s.station || "").trim());
+        const hasNotes = Boolean(String(s.notes || "").trim());
+        const isConsist = consistCars.length > 1;
+
+        if (search && !haystack.includes(search)) return false;
+        if (line && s.line !== line) return false;
+        if (fleet && s.fleet !== fleet) return false;
+        if (consistType === "consist" && !isConsist) return false;
+        if (consistType === "single" && isConsist) return false;
+        if (fromTime !== null && (savedTime === null || savedTime < fromTime)) return false;
+        if (toTime !== null && (savedTime === null || savedTime > toTime)) return false;
+        if (stationFilter === "with" && !hasStation) return false;
+        if (stationFilter === "without" && hasStation) return false;
+        if (notesFilter === "with" && !hasNotes) return false;
+        if (notesFilter === "without" && hasNotes) return false;
+
+        return true;
     });
 
     filtered = [...filtered].sort((a,b) => {
