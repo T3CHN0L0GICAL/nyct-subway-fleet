@@ -1851,7 +1851,7 @@ const STATION_SPECIAL_ALIASES = {
     "42 St-Port Authority Bus Terminal": ["42 pabt", "pabt", "port authority", "port authority bus terminal", "times square", "times sq", "42 tsq"],
     "Jay St-MetroTech": ["jay st", "jay street", "metrotech", "metro tech"],
     "Hoyt-Schermerhorn Sts": ["hoyt schermerhorn", "hoyt sch", "schermerhorn"],
-    "Canarsie-Rockaway Pkwy": ["rockaway pkwy", "canarsie rockaway", "rockaway parkway"],
+    "Canarsie-Rockaway Pkwy": ["canarsie", "rockaway pkwy", "canarsie rockaway", "rockaway parkway"],
     "74 St-Broadway": ["74 bway", "74 broadway"],
     "Court Sq": ["court square"],
     "Grand Central-42 St": ["grand central", "gct", "grand central 42"],
@@ -1877,32 +1877,61 @@ function normalizeStationSearch(value) {
 }
 
 function stationAliases(station) {
-    return [
+    const aliases = [
         ...(STATION_SPECIAL_ALIASES[station.stopName] || []),
         ...(STATION_SPECIAL_ALIASES[station.complexName] || [])
     ];
+
+    // The station feed labels the J/M/Z station as "Myrtle Av", while its
+    // full legal/display name is Myrtle Av–Broadway. Add the full name only
+    // to that specific station object. Plain "Myrtle Av" remains the actual
+    // feed name, so searching Myrtle Av still returns every Myrtle Av station.
+    const stop = normalizeStationSearch(station.stopName);
+    const routeTokens = new Set(String(station.routes || "").split(/[ ,]+/).map(x => x.trim()).filter(Boolean));
+    if (stop === "myrtle avenue" && routeTokens.has("M") && (routeTokens.has("J") || routeTokens.has("Z"))) {
+        aliases.push("myrtle av broadway", "myrtle avenue broadway");
+    }
+
+    return aliases;
 }
 
 function stationSearchText(station) {
+    // Search identity is intentionally limited to the station's own name
+    // plus deliberate aliases. Route, corridor/line, borough, and complex
+    // metadata are display-only and must never cause a station to match.
     return normalizeStationSearch([
         station.stopName,
-        station.complexName,
-        station.complexDisplayName,
-        station.constituentNames,
-        station.line,
-        station.routes,
-        station.borough,
         ...stationAliases(station)
     ].filter(Boolean).join(" "));
 }
 
-function stationRouteValues(routes) {
+function stationRouteValues(routes, station = null) {
     const aliases = { GS: "42 St S", FS: "Franklin S", H: "Rockaway S", SI: "SIR", SIR: "SIR" };
-    return String(routes || "").split(/[ ,]+/).map(x => x.trim()).filter(Boolean).map(x => aliases[x] || x);
+    const stop = normalizeStationSearch(station?.stopName || "");
+    const complex = normalizeStationSearch(station?.complexName || "");
+    const stationName = `${stop} ${complex}`.trim();
+
+    // Some station feeds expose shuttle service as a generic "S".
+    // Resolve that generic value from the station itself so the picker
+    // can render the correct shuttle bullet instead of a plain letter S.
+    let genericShuttle = "";
+    if (/rockaway park|beach 116|beach 105|beach 98|beach 90|broad channel/.test(stationName)) {
+        genericShuttle = "Rockaway S";
+    } else if (/franklin avenue|franklin av|park place|park pl|botanic garden|prospect park/.test(stationName)) {
+        genericShuttle = "Franklin S";
+    } else if (/times square|times sq|grand central/.test(stationName)) {
+        genericShuttle = "42 St S";
+    }
+
+    return String(routes || "")
+        .split(/[ ,]+/)
+        .map(x => x.trim())
+        .filter(Boolean)
+        .map(x => x === "S" && genericShuttle ? genericShuttle : (aliases[x] || x));
 }
 
-function stationRoutesHTML(routes) {
-    const values = stationRouteValues(routes);
+function stationRoutesHTML(routes, station = null) {
+    const values = stationRouteValues(routes, station);
     if (!values.length) return "";
     return `<span class="route-bullet-list">${values.map(line => routeBulletClass(line) ? lineDisplayHTML(line) : `<span>${escapeHTML(line)}</span>`).join("")}</span>`;
 }
@@ -2006,16 +2035,24 @@ function stationMatchScore(station, rawQuery) {
     }
 
     const name = normalizeStationSearch(station.stopName);
-    const complex = normalizeStationSearch(station.complexName);
-    const aliases = normalizeStationSearch(stationAliases(station).join(" "));
+    const aliasValues = stationAliases(station).map(alias => normalizeStationSearch(alias)).filter(Boolean);
     const haystack = stationSearchText(station);
     if (name === query) return 0;
-    if (complex && complex === query) return 1;
-    if (aliases.split(" ").length && stationAliases(station).some(alias => normalizeStationSearch(alias) === query)) return 1;
+    if (aliasValues.some(alias => alias === query)) return 1;
     if (name.startsWith(query)) return 2;
     if (name.includes(query)) return 3;
-    const tokens = query.split(" ");
-    if (tokens.every(token => haystack.includes(token))) return 4;
+    if (aliasValues.some(alias => alias.startsWith(query))) return 4;
+    if (aliasValues.some(alias => alias.includes(query))) return 5;
+
+    // Loose token matching is useful for shorthand such as "14 8", but it
+    // must never break apart a complete station-name phrase. For example,
+    // "6 Av" normalizes to "6 avenue" and must not match 36 Av, 63 St,
+    // 67 Av, etc. The same rule applies across all station-name types.
+    const hasCompleteStationPhrase = /(?:^|\s)\d{1,3}\s+(?:street|avenue|boulevard|parkway|road|drive|place|plaza|square)(?=\s|$)/.test(query);
+    if (!hasCompleteStationPhrase) {
+        const tokens = query.split(" ");
+        if (tokens.every(token => haystack.includes(token))) return 6;
+    }
     return 9999;
 }
 
@@ -2028,10 +2065,91 @@ function stationMatches(rawQuery, limit = 24) {
         .map(item => item.station);
 }
 
+function stationBoroughName(value) {
+    const raw = String(value || "").trim();
+    const key = raw.toLowerCase().replace(/[^a-z]/g, "");
+    const names = {
+        m: "Manhattan", manhattan: "Manhattan",
+        b: "Brooklyn", bk: "Brooklyn", brooklyn: "Brooklyn",
+        q: "Queens", queens: "Queens",
+        bx: "Bronx", bronx: "Bronx",
+        si: "Staten Island", staten: "Staten Island", statenisland: "Staten Island"
+    };
+    return names[key] || raw;
+}
+
+function stationCorridorName(station) {
+    const rawLine = String(station.line || "").trim();
+    if (!rawLine) return "";
+
+    const line = normalizeStationSearch(rawLine);
+    const borough = stationBoroughName(station.borough);
+    const routes = new Set(stationRouteValues(station.routes));
+    const stationName = normalizeStationSearch(station.stopName);
+
+    // Myrtle Av–Broadway serves the Jamaica corridor (J/Z) and the Myrtle
+    // corridor (M), so show both instead of implying every route runs via Jamaica.
+    // The station feed commonly supplies the J/M/Z stop as "Myrtle Av"
+    // even though the full station name is Myrtle Av-Broadway. Identify it
+    // by both its name and its J/M/Z service so the override reaches the
+    // actual station object returned by the feed.
+    const isMyrtleBroadway =
+        (stationName === "myrtle avenue" || stationName === "myrtle avenue broadway") &&
+        routes.has("M") &&
+        (routes.has("J") || routes.has("Z"));
+    if (isMyrtleBroadway) {
+        return ["Jamaica", "Myrtle"];
+    }
+
+    // Some MTA data labels cover more than one physical corridor. Choose the
+    // locally useful corridor for the station rather than treating a route's
+    // full path as one permanent designation.
+    if (line.includes("canarsie")) return borough === "Manhattan" ? "14 St" : "Canarsie";
+    if (line.includes("8") && line.includes("avenue") && line.includes("fulton")) {
+        return borough === "Manhattan" ? "8 Av" : "Fulton St";
+    }
+    if (line.includes("6") && line.includes("avenue") && line.includes("culver")) {
+        return borough === "Manhattan" ? "6 Av" : "Culver";
+    }
+    if (line.includes("broadway") && line.includes("7") && line.includes("avenue")) {
+        return borough === "Manhattan" ? "7 Av" : "Broadway–7 Av";
+    }
+
+    // Friendly display normalization for common physical-line labels.
+    let friendly = rawLine
+        .replace(/\bEighth\b/gi, "8")
+        .replace(/\b8th\b/gi, "8")
+        .replace(/\bSixth\b/gi, "6")
+        .replace(/\b6th\b/gi, "6")
+        .replace(/\bSeventh\b/gi, "7")
+        .replace(/\b7th\b/gi, "7")
+        .replace(/\bAvenue\b/gi, "Av")
+        .replace(/\bStreet\b/gi, "St")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    // If the source is already a simple corridor name, keep it. This remains
+    // display-only; it never participates in station-name search matching.
+    return friendly;
+}
+
+function stationDisplayName(station) {
+    const stop = normalizeStationSearch(station.stopName);
+    const routes = new Set(stationRouteValues(station.routes));
+    const isMyrtleBroadway =
+        stop === "myrtle avenue" &&
+        routes.has("M") &&
+        (routes.has("J") || routes.has("Z"));
+    return isMyrtleBroadway ? "Myrtle Av–Broadway" : station.stopName;
+}
+
 function stationMetaHTML(station) {
     const parts = [];
-    if (station.line) parts.push(station.line);
-    if (station.borough) parts.push(station.borough);
+    const corridor = stationCorridorName(station);
+    const corridors = Array.isArray(corridor) ? corridor : (corridor ? [corridor] : []);
+    corridors.forEach(name => parts.push(`via ${name}`));
+    const borough = stationBoroughName(station.borough);
+    if (borough) parts.push(borough);
     const sameName = normalizeStationSearch(station.complexName) === normalizeStationSearch(station.stopName);
     if (station.complexName && !sameName) parts.push(`${station.complexName} complex`);
     return escapeHTML(parts.join(" · "));
@@ -2074,7 +2192,7 @@ function enhanceStationInput(input) {
     function choose(station) {
         selectedStation = station;
         // Save the constituent/platform name, not a generic complex label.
-        input.value = station.stopName;
+        input.value = stationDisplayName(station);
         input.dataset.stationId = station.id;
         input.dataset.stationMasterId = station.stationId;
         input.dataset.stationComplexId = station.complexId;
@@ -2086,7 +2204,11 @@ function enhanceStationInput(input) {
         const complexText = station.complexName && normalizeStationSearch(station.complexName) !== normalizeStationSearch(station.stopName)
             ? ` · ${station.complexName} complex`
             : "";
-        note.textContent = `${station.line || "NYC Subway"}${station.routes ? ` · ${station.routes}` : ""}${complexText}`;
+        const selectedCorridor = stationCorridorName(station);
+        const selectedCorridors = Array.isArray(selectedCorridor) ? selectedCorridor : (selectedCorridor ? [selectedCorridor] : []);
+        const corridorText = selectedCorridors.length ? selectedCorridors.map(name => `via ${name}`).join(" · ") : "NYC Subway";
+        const boroughText = stationBoroughName(station.borough);
+        note.textContent = `${corridorText}${boroughText ? ` · ${boroughText}` : ""}${complexText}`;
         close();
         input.dispatchEvent(new Event("change", { bubbles: true }));
     }
@@ -2099,7 +2221,7 @@ function enhanceStationInput(input) {
         } else {
             menu.innerHTML = matches.map((station, index) => `
                 <button type="button" class="station-picker-option" role="option" data-index="${index}">
-                    <span class="station-picker-name">${escapeHTML(station.stopName)} ${stationRoutesHTML(station.routes)}</span>
+                    <span class="station-picker-name">${escapeHTML(stationDisplayName(station))} ${stationRoutesHTML(station.routes, station)}</span>
                     <span class="station-picker-meta">${stationMetaHTML(station)}</span>
                 </button>
             `).join("");
@@ -2114,7 +2236,7 @@ function enhanceStationInput(input) {
 
     async function search() {
         const raw = input.value.trim();
-        if (selectedStation && raw !== selectedStation.stopName) selectedStation = null;
+        if (selectedStation && raw !== stationDisplayName(selectedStation)) selectedStation = null;
         delete input.dataset.stationId;
         delete input.dataset.stationMasterId;
         delete input.dataset.stationComplexId;
