@@ -671,6 +671,7 @@
     .sightings-filter-actions {
         display: flex;
         justify-content: flex-end;
+        gap: 10px;
         margin: 8px 0 4px;
     }
 
@@ -1602,6 +1603,7 @@
 
         <div class="sightings-filter-actions">
             <button type="button" onclick="clearSightingsFilters()">Clear filters</button>
+            <button type="button" onclick="loadMySightings()">Refresh</button>
         </div>
 
         <div id="mySightingsStatus" class="status-message">Loading sightings...</div>
@@ -4291,11 +4293,19 @@ function renderPendingConsist() {
     const unit = pendingSighting.linkedUnit;
 
     if (unit?.verified) {
-        const renderUnitButtons = (linkedUnit, label) => {
+        const renderUnitButtons = (linkedUnit, label, unitNumber) => {
             const searched = String(pendingSighting.carNumber);
+            const unitComplete = linkedUnit.cars.every(car => pendingSighting.consistCars.includes(car));
             return `
                 <div style="width:100%;margin-top:6px;">
-                    <div style="font-size:12px;font-weight:800;margin-bottom:6px;">${label}</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                        <div style="font-size:12px;font-weight:800;">${label}</div>
+                        <button type="button"
+                                style="padding:6px 10px;font-size:12px;"
+                                onclick="toggleLinkedUnitAll(${unitNumber})">
+                            ${unitComplete ? "Clear" : "All"}
+                        </button>
+                    </div>
                     <div style="display:flex;flex-wrap:wrap;gap:7px;">
                         ${linkedUnit.cars.map(car => {
                             const selected = pendingSighting.consistCars.includes(car);
@@ -4318,9 +4328,9 @@ function renderPendingConsist() {
             `;
         };
 
-        let unitHTML = renderUnitButtons(unit, "Linked Unit 1");
+        let unitHTML = renderUnitButtons(unit, "Linked Unit 1", 1);
         if (pendingSighting.coupledUnit?.verified) {
-            unitHTML += renderUnitButtons(pendingSighting.coupledUnit, "Linked Unit 2");
+            unitHTML += renderUnitButtons(pendingSighting.coupledUnit, "Linked Unit 2", 2);
         }
         wrap.innerHTML = unitHTML;
 
@@ -4402,6 +4412,38 @@ function renderPendingConsist() {
         }
         if (addButton) addButton.disabled = atLimit;
     }
+}
+
+function toggleLinkedUnitAll(unitNumber) {
+    if (!pendingSighting?.linkedUnit?.verified) return;
+
+    const linkedUnit = unitNumber === 2
+        ? pendingSighting.coupledUnit
+        : pendingSighting.linkedUnit;
+    if (!linkedUnit?.verified) return;
+
+    const primary = String(pendingSighting.carNumber);
+    const unitComplete = linkedUnit.cars.every(car => pendingSighting.consistCars.includes(car));
+
+    if (unitComplete) {
+        // The searched/primary car always remains part of the sighting.
+        pendingSighting.consistCars = pendingSighting.consistCars.filter(
+            car => !linkedUnit.cars.includes(car) || car === primary
+        );
+    } else {
+        linkedUnit.cars.forEach(car => {
+            if (!pendingSighting.consistCars.includes(car)) {
+                pendingSighting.consistCars.push(car);
+            }
+        });
+    }
+
+    const order = [
+        ...pendingSighting.linkedUnit.cars,
+        ...(pendingSighting.coupledUnit?.cars || [])
+    ];
+    pendingSighting.consistCars.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    renderPendingConsist();
 }
 
 function toggleLinkedUnitCar(carNumber) {
@@ -4674,6 +4716,14 @@ async function saveSighting() {
     }
 
     refreshAchievementEligibility(session.user);
+
+    // Field workflow: after a fully successful save, clear the searched car
+    // and return focus to the main input so the next car can be entered fast.
+    const mainSearchInput = document.getElementById("carNumber");
+    if (mainSearchInput) {
+        mainSearchInput.value = "";
+        mainSearchInput.focus();
+    }
 }
 
 
@@ -5060,19 +5110,64 @@ async function getRepeatSightingNotice(carNumber) {
 
         if (sessionError || !session?.user) return "";
 
-        const { data, error } = await supabaseClient
-            .from("sightings")
-            .select("saved_at")
-            .eq("user_id", session.user.id)
-            .eq("car_number", String(carNumber))
-            .order("saved_at", { ascending: false });
+        const car = String(carNumber);
+        const userId = session.user.id;
 
-        if (error) {
-            console.error("Could not check previous sightings:", error);
-            return "";
+        // A car counts as previously spotted whether it was the primary car
+        // on a sighting or appeared anywhere in a Consist Builder entry.
+        const [primaryResult, consistResult] = await Promise.all([
+            supabaseClient
+                .from("sightings")
+                .select("id,saved_at")
+                .eq("user_id", userId)
+                .eq("car_number", car),
+            supabaseClient
+                .from("sighting_cars")
+                .select("sighting_id")
+                .eq("user_id", userId)
+                .eq("car_number", car)
+        ]);
+
+        if (primaryResult.error) {
+            console.error("Could not check primary previous sightings:", primaryResult.error);
+        }
+        if (consistResult.error) {
+            console.error("Could not check consist previous sightings:", consistResult.error);
         }
 
-        const previous = data || [];
+        // If both lookups fail, stay quiet rather than showing an incorrect notice.
+        if (primaryResult.error && consistResult.error) return "";
+
+        const sightingsById = new Map();
+        (primaryResult.data || []).forEach(row => {
+            sightingsById.set(String(row.id), row);
+        });
+
+        const missingIds = [...new Set((consistResult.data || [])
+            .map(row => row.sighting_id)
+            .filter(id => id != null)
+            .map(String))]
+            .filter(id => !sightingsById.has(id));
+
+        if (missingIds.length) {
+            const { data: consistSightings, error: consistSightingsError } = await supabaseClient
+                .from("sightings")
+                .select("id,saved_at")
+                .eq("user_id", userId)
+                .in("id", missingIds);
+
+            if (consistSightingsError) {
+                console.error("Could not load consist sighting dates:", consistSightingsError);
+            } else {
+                (consistSightings || []).forEach(row => {
+                    sightingsById.set(String(row.id), row);
+                });
+            }
+        }
+
+        const previous = [...sightingsById.values()].sort((a, b) =>
+            new Date(b.saved_at || 0) - new Date(a.saved_at || 0)
+        );
         if (!previous.length) return "";
 
         const count = previous.length;
@@ -5082,7 +5177,7 @@ async function getRepeatSightingNotice(carNumber) {
 
         return `
             <div class="repeat-sighting-notice">
-                <strong>You’ve seen car ${escapeHTML(carNumber)} before.</strong>
+                <strong>You’ve seen car ${escapeHTML(car)} before.</strong>
                 ${count} previous sighting${count === 1 ? "" : "s"} · Last seen ${escapeHTML(lastSeen)}
             </div>
         `;
@@ -5091,7 +5186,6 @@ async function getRepeatSightingNotice(carNumber) {
         return "";
     }
 }
-
 
 
 let searchMode = "car";
@@ -5305,6 +5399,16 @@ async function identify() {
 
     const resultBox =
         document.getElementById("result");
+
+    // An empty search should behave like no search was performed.
+    if (!input) {
+        pendingSighting = null;
+        if (resultBox) {
+            resultBox.className = "result hidden";
+            resultBox.innerHTML = "";
+        }
+        return;
+    }
 
 
     // Test car — available only in Car Number mode.
