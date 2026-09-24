@@ -110,15 +110,15 @@
             line-height: 1.1;
         }
 
-        /* LIRR wordmark has extra transparent horizontal canvas on mobile.
-           Pull only its title inward so the visible logo-to-title spacing
-           matches the standard Subway header without affecting desktop or Metro-North. */
+        /* LIRR-only mobile optical correction. Keep the normal 15px flex gap,
+           but compensate slightly for transparent space inside the embedded
+           wordmark without allowing the title to overlap the visible logo. */
         .title-row.railroad-header.lirr-header {
             gap: 15px;
         }
 
         .title-row.railroad-header.lirr-header img.railroad-logo {
-            margin-right: -30px;
+            margin-right: -10px;
         }
     }
 
