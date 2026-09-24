@@ -120,6 +120,15 @@
         .title-row.railroad-header.lirr-header img.railroad-logo {
             margin-right: -10px;
         }
+
+        /* LIRR only: keep the approved logo/title spacing, but constrain the
+           mobile title so it stacks as “LIRR Fleet” / “Identifier”. */
+        .title-row.railroad-header.lirr-header h1 {
+            flex: 0 0 145px;
+            width: 145px;
+            max-width: 145px;
+            text-align: center;
+        }
     }
 
     .title-row h1 {
