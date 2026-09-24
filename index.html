@@ -306,6 +306,32 @@
         background: var(--fi-hover);
     }
 
+    .line-button.via-active {
+        outline: 2px solid #20b8b0;
+    }
+
+    .via-line-status {
+        grid-column: 1 / -1;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--fi-muted);
+        min-height: 18px;
+    }
+
+    .consist-unit-seen {
+        border: 2px solid #20b8b0;
+        border-radius: 10px;
+        padding: 8px;
+        background: rgba(32, 184, 176, 0.12);
+    }
+
+    .consist-unit-seen-label {
+        color: #20b8b0;
+        font-size: 11px;
+        font-weight: 900;
+        margin-top: 4px;
+    }
+
     .status-message {
         margin-top: 12px;
         color: var(--fi-muted);
@@ -4066,17 +4092,26 @@ function routeTitle(line) {
 }
 
 function lineDisplayHTML(line) {
-    const safeLine = escapeHTML(line);
-    const bulletClass = routeBulletClass(line);
+    const rawLine = String(line || "").trim();
+    if (!rawLine) return "";
+    if (rawLine === "NIS") return `<strong class="nis-line-label">NIS</strong>`;
+
+    const viaMatch = rawLine.match(/^(.+?)\s+via\s+(.+)$/i);
+    if (viaMatch) {
+        return `${lineDisplayHTML(viaMatch[1].trim())} <span class="via-display-label">via</span> ${lineDisplayHTML(viaMatch[2].trim())}`;
+    }
+
+    const safeLine = escapeHTML(rawLine);
+    const bulletClass = routeBulletClass(rawLine);
     if (!bulletClass) return safeLine;
 
     let label = safeLine;
-    if (line === "42 St S") label = "S";
-    if (line === "Franklin S") label = `S<span class="shuttle-suffix">F</span>`;
-    if (line === "Rockaway S") label = `S<span class="shuttle-suffix">R</span>`;
-    if (line === "SIR") label = "SIR";
+    if (rawLine === "42 St S") label = "S";
+    if (rawLine === "Franklin S") label = `S<span class="shuttle-suffix">F</span>`;
+    if (rawLine === "Rockaway S") label = `S<span class="shuttle-suffix">R</span>`;
+    if (rawLine === "SIR") label = "SIR";
 
-    return `<span class="route-bullet ${bulletClass}" title="${escapeHTML(routeTitle(line))}" aria-label="${escapeHTML(routeTitle(line))}">${label}</span>`;
+    return `<span class="route-bullet ${bulletClass}" title="${escapeHTML(routeTitle(rawLine))}" aria-label="${escapeHTML(routeTitle(rawLine))}">${label}</span>`;
 }
 
 function fleetLinesDisplayHTML(linesText) {
@@ -4107,12 +4142,73 @@ function getSavedSightings() {
     }
 }
 
+function updateLineChoiceUI() {
+    if (!pendingSighting) return;
+    const selectedLine = pendingSighting.line || "";
+    const baseLine = pendingSighting.baseLine || "";
+    const viaMode = Boolean(pendingSighting.viaMode);
+
+    document.querySelectorAll(".line-button[data-line]").forEach(button => {
+        const buttonLine = button.dataset.line || "";
+        const selected = viaMode
+            ? buttonLine === baseLine
+            : (selectedLine === buttonLine || selectedLine.startsWith(`${buttonLine} via `));
+        button.classList.toggle("selected", selected);
+    });
+
+    const viaButton = document.getElementById("viaLineButton");
+    if (viaButton) viaButton.classList.toggle("via-active", viaMode);
+
+    const status = document.getElementById("viaLineStatus");
+    if (status) {
+        if (viaMode && baseLine) {
+            status.innerHTML = `${lineDisplayHTML(baseLine)} selected — now choose the line it is running via.`;
+        } else if (/\s+via\s+/i.test(selectedLine)) {
+            status.innerHTML = `Selected: ${lineDisplayHTML(selectedLine)}`;
+        } else if (selectedLine === "NIS") {
+            status.textContent = "Selected: Not in Service";
+        } else {
+            status.textContent = "";
+        }
+    }
+}
+
 function chooseLine(line) {
     if (!pendingSighting) return;
+
+    if (pendingSighting.viaMode && pendingSighting.baseLine) {
+        if (line === pendingSighting.baseLine) return;
+        pendingSighting.line = `${pendingSighting.baseLine} via ${line}`;
+        pendingSighting.viaMode = false;
+        updateLineChoiceUI();
+        return;
+    }
+
     pendingSighting.line = line;
-    document.querySelectorAll(".line-button").forEach(button => {
-        button.classList.toggle("selected", button.dataset.line === line);
-    });
+    pendingSighting.baseLine = line;
+    pendingSighting.viaMode = false;
+    updateLineChoiceUI();
+}
+
+function chooseNIS() {
+    if (!pendingSighting) return;
+    pendingSighting.line = "NIS";
+    pendingSighting.baseLine = null;
+    pendingSighting.viaMode = false;
+    updateLineChoiceUI();
+}
+
+function startViaSelection() {
+    if (!pendingSighting) return;
+    const current = String(pendingSighting.line || "");
+    if (!current || current === "NIS" || /\s+via\s+/i.test(current)) {
+        const status = document.getElementById("viaLineStatus");
+        if (status) status.textContent = "Choose the train's normal service first, then tap via.";
+        return;
+    }
+    pendingSighting.baseLine = current;
+    pendingSighting.viaMode = true;
+    updateLineChoiceUI();
 }
 
 
@@ -4265,6 +4361,70 @@ function getConsistLimit(fleet) {
     return null;
 }
 
+async function getLinkedUnitHistory(linkedUnit) {
+    if (!linkedUnit?.verified || !Array.isArray(linkedUnit.cars) || !linkedUnit.cars.length) return null;
+
+    try {
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError || !session?.user) return null;
+
+        const cars = linkedUnit.cars.map(String);
+        const { data: rows, error } = await supabaseClient
+            .from("sighting_cars")
+            .select("sighting_id, car_number")
+            .eq("user_id", session.user.id)
+            .in("car_number", cars);
+
+        if (error) {
+            console.error("Could not check linked-unit history:", error);
+            return null;
+        }
+
+        const carsBySighting = new Map();
+        for (const row of (rows || [])) {
+            const key = String(row.sighting_id);
+            if (!carsBySighting.has(key)) carsBySighting.set(key, new Set());
+            carsBySighting.get(key).add(String(row.car_number));
+        }
+
+        const matchingIds = [...carsBySighting.entries()]
+            .filter(([, seenCars]) => cars.every(car => seenCars.has(car)))
+            .map(([id]) => id);
+
+        if (!matchingIds.length) return null;
+
+        const { data: sightings, error: sightingsError } = await supabaseClient
+            .from("sightings")
+            .select("id,saved_at")
+            .eq("user_id", session.user.id)
+            .in("id", matchingIds);
+
+        if (sightingsError) {
+            console.error("Could not load linked-unit sighting dates:", sightingsError);
+            return { count: matchingIds.length, lastSeen: null };
+        }
+
+        const sorted = (sightings || []).sort((a, b) =>
+            new Date(b.saved_at || 0) - new Date(a.saved_at || 0)
+        );
+        return { count: matchingIds.length, lastSeen: sorted[0]?.saved_at || null };
+    } catch (error) {
+        console.error("Could not check linked-unit history:", error);
+        return null;
+    }
+}
+
+function linkedUnitHistoryNotice(linkedUnit, history) {
+    if (!linkedUnit?.verified || !history?.count) return "";
+    const lastSeen = history.lastSeen ? new Date(history.lastSeen).toLocaleString() : "an earlier date";
+    return `
+        <div class="repeat-sighting-notice" style="border-color:#20b8b0;">
+            <strong>You’ve logged this linked unit before.</strong>
+            ${escapeHTML(linkedUnit.cars.join(" · "))} · ${history.count} previous sighting${history.count === 1 ? "" : "s"} · Last seen ${escapeHTML(lastSeen)}
+        </div>
+    `;
+}
+
 function resetPendingConsist() {
     if (!pendingSighting) return;
     pendingSighting.consistCars = [String(pendingSighting.carNumber)];
@@ -4296,10 +4456,14 @@ function renderPendingConsist() {
         const renderUnitButtons = (linkedUnit, label, unitNumber) => {
             const searched = String(pendingSighting.carNumber);
             const unitComplete = linkedUnit.cars.every(car => pendingSighting.consistCars.includes(car));
+            const history = unitNumber === 1
+                ? pendingSighting.linkedUnitHistory
+                : pendingSighting.coupledUnitHistory;
+            const previouslySeen = Boolean(history?.count);
             return `
-                <div style="width:100%;margin-top:6px;">
+                <div class="${previouslySeen ? "consist-unit-seen" : ""}" style="width:100%;margin-top:6px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
-                        <div style="font-size:12px;font-weight:800;">${label}</div>
+                        <div style="font-size:12px;font-weight:800;">${label}${previouslySeen ? `<div class="consist-unit-seen-label">Previously logged linked unit</div>` : ""}</div>
                         <button type="button"
                                 style="padding:6px 10px;font-size:12px;"
                                 onclick="toggleLinkedUnitAll(${unitNumber})">
@@ -4470,7 +4634,7 @@ function toggleLinkedUnitCar(carNumber) {
     renderPendingConsist();
 }
 
-function addCoupledUnit() {
+async function addCoupledUnit() {
     if (!pendingSighting?.linkedUnit?.verified) return;
 
     const input = document.getElementById("coupledUnitInput");
@@ -4525,8 +4689,13 @@ function addCoupledUnit() {
     }
 
     pendingSighting.coupledUnit = second;
+    pendingSighting.coupledUnitHistory = await getLinkedUnitHistory(second);
     if (input) input.value = "";
-    if (message) message.textContent = `Linked Unit 2 found: ${second.cars.join(" · ")}. Select the cars you saw.`;
+    if (message) {
+        message.textContent = pendingSighting.coupledUnitHistory?.count
+            ? `Linked Unit 2 found: ${second.cars.join(" · ")}. Teal means you have logged this linked unit before.`
+            : `Linked Unit 2 found: ${second.cars.join(" · ")}. Select the cars you saw.`;
+    }
     renderPendingConsist();
 }
 
@@ -4981,9 +5150,14 @@ async function reportMissingCar(carNumber) {
 }
 
 function lineButtonsHTML(division) {
-    return linesForDivision(division).map(line =>
+    const normalButtons = linesForDivision(division).map(line =>
         `<button type="button" class="line-button" data-line="${line}" title="${line}" onclick='chooseLine(${JSON.stringify(line)})'>${lineDisplayHTML(line)}</button>`
     ).join("");
+
+    return normalButtons +
+        `<button type="button" class="line-button" id="nisLineButton" title="Not in Service" onclick="chooseNIS()">NIS</button>` +
+        `<button type="button" class="line-button" id="viaLineButton" title="Run via another line" onclick="startViaSelection()">via</button>` +
+        `<div id="viaLineStatus" class="via-line-status" aria-live="polite"></div>`;
 }
 
 function reportLineOptionsHTML(division) {
@@ -5576,20 +5750,33 @@ async function identify() {
         fleet: fleet,
         configuration: configuration || "",
         line: null,
+        baseLine: null,
+        viaMode: false,
         consistCars: [input],
         linkedUnit: getVerifiedLinkedUnit(fleet, input),
-        coupledUnit: null
+        linkedUnitHistory: null,
+        coupledUnit: null,
+        coupledUnitHistory: null
     };
+
+    if (pendingSighting.linkedUnit?.verified) {
+        pendingSighting.linkedUnitHistory = await getLinkedUnitHistory(pendingSighting.linkedUnit);
+    }
 
     // R211S cars 100-174 can only be sighted in SIR passenger service,
     // so there is no reason to ask the user to choose a line.
     if (fleet === "R211S") {
         pendingSighting.line = "Staten Island Railway";
+        pendingSighting.baseLine = "Staten Island Railway";
     }
 
     recordSearchHistory(input, fleet);
 
     const repeatSightingNotice = await getRepeatSightingNotice(input);
+    const unitHistoryNotice = linkedUnitHistoryNotice(
+        pendingSighting.linkedUnit,
+        pendingSighting.linkedUnitHistory
+    );
 
 
     let html = `
@@ -5603,6 +5790,7 @@ async function identify() {
         </div>
 
         ${repeatSightingNotice}
+        ${unitHistoryNotice}
 
     `;
 
@@ -5707,7 +5895,12 @@ async function identify() {
         <div class="sighting-panel">
             <h3>Log this sighting</h3>
             ${fleet === "R211S"
-                ? `<div>Line: ${lineDisplayHTML("Staten Island Railway")}</div>`
+                ? `<div>Line: ${lineDisplayHTML("Staten Island Railway")}</div>
+                   <div class="line-grid">
+                       <button type="button" class="line-button selected" data-line="Staten Island Railway" onclick="chooseLine('Staten Island Railway')">${lineDisplayHTML("SIR")}</button>
+                       <button type="button" class="line-button" id="nisLineButton" title="Not in Service" onclick="chooseNIS()">NIS</button>
+                       <div id="viaLineStatus" class="via-line-status" aria-live="polite"></div>
+                   </div>`
                 : `<div>Which line did you see car <strong>${input}</strong> on?</div>
                    <div class="line-grid">${lineButtonsHTML(data.division)}</div>`}
 
@@ -6433,8 +6626,11 @@ function getDivisionForFleet(fleet) {
 function editLineOptionsHTML(fleet, currentLine) {
     const division = getDivisionForFleet(fleet);
     const lines = linesForDivision(division);
+    const customCurrent = currentLine && !lines.includes(currentLine)
+        ? `<option value="${escapeHTML(currentLine)}" selected>${escapeHTML(currentLine)}</option>`
+        : "";
 
-    return lines.map(line => `
+    return customCurrent + lines.map(line => `
         <option value="${escapeHTML(line)}" ${line === currentLine ? "selected" : ""}>
             ${escapeHTML(
                 line === "42 St S" ? "S — 42nd Street" :
