@@ -4276,6 +4276,21 @@ const fleetData = {
         notes: "Staten Island Railway fleet."
     },
 
+    "R42": {
+        ranges: [[4790,4791],[4806,4807],[4826,4831]],
+        builder: "St. Louis Car Company",
+        years: "1969–1970",
+        lines: "Non-passenger work / storage movements",
+        division: "Work Equipment",
+        factory: "Married pairs",
+        passenger: "N/A (retired from passenger service)",
+        built: "400 cars originally",
+        serviceSpeed: "55 mph",
+        designSpeed: "Unknown",
+        propulsion: "General Electric SCM / Westinghouse cam-control DC propulsion",
+        notes: "Retired R42 equipment retained after passenger service. Cars 4790–4791, 4806–4807, 4826–4827 and 4830–4831 have been documented as garbage/rail-adhesion work cars. Cars 4828–4829 were documented as retained storage cars and have also appeared in non-passenger equipment movements."
+    },
+
     "R37": {
         ranges: [[50,53]],
         builder: "General Electric",
@@ -4385,6 +4400,12 @@ function inRange(number, ranges) {
 
 
 function identifyNumeric(number) {
+
+    // Retired R42 pair 4828–4829 was retained in storage/non-passenger use.
+    // Keep it searchable without labeling it as one of the dedicated garbage/rail-adhesion pairs.
+    if (number === 4828 || number === 4829) {
+        return ["R42", "Retired / storage work equipment"];
+    }
 
     // R46 special numbers
     if (number >= 5482 && number <= 6207) {
