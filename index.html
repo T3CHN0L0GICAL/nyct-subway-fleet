@@ -5214,6 +5214,56 @@ function consistBuilderHTML() {
     `;
 }
 
+function pastSightingFieldsHTML() {
+    return `
+        <div class="past-sighting-box" style="margin-top:12px;padding:12px;border:1px solid currentColor;border-radius:10px;">
+            <label style="display:flex;align-items:center;gap:9px;margin:0;cursor:pointer;">
+                <input id="pastSightingToggle" type="checkbox" onchange="togglePastSightingFields()" style="width:auto;">
+                <strong>Log a past sighting</strong>
+            </label>
+            <div class="account-small-note" style="margin-top:6px;">
+                Use the date and time you actually saw the train, such as the timestamp from an older photo.
+            </div>
+            <div id="pastSightingFields" class="hidden" style="margin-top:10px;">
+                <label for="pastSightingDateTime">Date &amp; time spotted</label>
+                <input id="pastSightingDateTime" type="datetime-local" style="width:100%;padding:12px;font-size:16px;border-radius:9px;">
+            </div>
+        </div>`;
+}
+
+function togglePastSightingFields() {
+    const checked = !!document.getElementById("pastSightingToggle")?.checked;
+    document.getElementById("pastSightingFields")?.classList.toggle("hidden", !checked);
+    if (checked) {
+        const input = document.getElementById("pastSightingDateTime");
+        if (input && !input.value) {
+            const now = new Date();
+            const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+                .toISOString().slice(0, 16);
+            input.max = local;
+        }
+    }
+}
+
+function getRequestedSightingTimestamp() {
+    const toggle = document.getElementById("pastSightingToggle");
+    if (!toggle?.checked) return { ok: true, value: null };
+
+    const raw = document.getElementById("pastSightingDateTime")?.value || "";
+    if (!raw) return { ok: false, message: "Choose the date and time for this past sighting." };
+
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+        return { ok: false, message: "That past sighting date/time is not valid." };
+    }
+
+    if (date.getTime() > Date.now() + 60000) {
+        return { ok: false, message: "A past sighting can't be dated in the future." };
+    }
+
+    return { ok: true, value: date.toISOString() };
+}
+
 async function saveSighting() {
     if (!pendingSighting) return;
 
@@ -5231,7 +5281,13 @@ async function saveSighting() {
         return;
     }
 
-    if (status) status.textContent = "Saving sighting...";
+    const requestedTimestamp = getRequestedSightingTimestamp();
+    if (!requestedTimestamp.ok) {
+        if (status) status.textContent = requestedTimestamp.message;
+        return;
+    }
+
+    if (status) status.textContent = requestedTimestamp.value ? "Saving past sighting..." : "Saving sighting...";
 
     const notes = document.getElementById("sightingNotes")?.value.trim() || "";
     const station = document.getElementById("sightingStation")?.value.trim() || "";
@@ -5240,16 +5296,23 @@ async function saveSighting() {
         ? [...new Set(pendingSighting.consistCars.map(String))]
         : [String(pendingSighting.carNumber)];
 
+    const sightingPayload = {
+        user_id: session.user.id,
+        car_number: pendingSighting.carNumber,
+        fleet: pendingSighting.fleet,
+        line: pendingSighting.line,
+        station: station || null,
+        notes: notes || null
+    };
+
+    // saved_at represents when the train was actually spotted. For a normal
+    // field log, let the database default it to now. For an imported/past
+    // sighting, save the user-selected historical timestamp instead.
+    if (requestedTimestamp.value) sightingPayload.saved_at = requestedTimestamp.value;
+
     const { data: sighting, error } = await supabaseClient
         .from("sightings")
-        .insert({
-            user_id: session.user.id,
-            car_number: pendingSighting.carNumber,
-            fleet: pendingSighting.fleet,
-            line: pendingSighting.line,
-            station: station || null,
-            notes: notes || null
-        })
+        .insert(sightingPayload)
         .select("id")
         .single();
 
@@ -6438,6 +6501,8 @@ async function identify() {
 
             <label for="sightingStation" style="margin-top:12px;">Station (optional)</label>
             <input id="sightingStation" class="sighting-station" type="text" maxlength="100" autocomplete="off" placeholder="Example: Broadway Junction">
+
+            ${pastSightingFieldsHTML()}
 
             <label for="sightingNotes" style="margin-top:12px;">Notes (optional)</label>
             <textarea id="sightingNotes" class="sighting-notes" maxlength="1000" placeholder="Add notes about this sighting."></textarea>
