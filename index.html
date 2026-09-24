@@ -109,6 +109,17 @@
             font-size: 22px;
             line-height: 1.1;
         }
+
+        /* LIRR wordmark has extra transparent horizontal canvas on mobile.
+           Pull only its title inward so the visible logo-to-title spacing
+           matches the standard Subway header without affecting desktop or Metro-North. */
+        .title-row.railroad-header.lirr-header {
+            gap: 15px;
+        }
+
+        .title-row.railroad-header.lirr-header img.railroad-logo {
+            margin-right: -30px;
+        }
     }
 
     .title-row h1 {
@@ -2017,6 +2028,7 @@ function renderFleetSystem() {
         logo.classList.toggle("railroad-logo", Boolean(config.railroadHeader));
     }
     titleRow?.classList.toggle("railroad-header", Boolean(config.railroadHeader));
+    titleRow?.classList.toggle("lirr-header", activeFleetSystem === "lirr");
 
     if (title) title.textContent = config.title;
     if (description) description.textContent = isSubway
