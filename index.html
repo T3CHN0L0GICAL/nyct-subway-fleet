@@ -454,6 +454,37 @@
         vertical-align: middle;
     }
 
+    /* Phase 5.3F-S1 — interactive Subway service bullets / Line Fleets */
+    .route-bullet-button {
+        appearance: none;
+        border: 0;
+        padding: 0;
+        margin: 0;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        border-radius: 999px;
+        line-height: 1;
+    }
+    .route-bullet-button:focus-visible { outline: 2px solid var(--fi-text); outline-offset: 3px; }
+    .route-bullet-button .route-bullet { pointer-events: none; }
+    .line-fleets-panel { margin-top: 14px; }
+    .line-fleets-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+    .line-fleets-head h3 { margin:0; }
+    .line-fleets-list { display:grid; gap:10px; }
+    .line-fleet-button {
+        width:100%; text-align:left; border:1px solid var(--fi-border); background:var(--fi-surface);
+        color:var(--fi-text); border-radius:12px; padding:13px 14px; cursor:pointer;
+        display:flex; align-items:center; justify-content:space-between; gap:12px; min-width:0;
+    }
+    .line-fleet-button:hover, .line-fleet-button:focus-visible { background:#292929; }
+    .line-fleet-name { font-weight:800; font-size:16px; }
+    .line-fleet-meta { opacity:.72; font-size:12px; text-align:right; }
+    .line-fleets-note { margin-top:12px; opacity:.72; font-size:12px; line-height:1.4; }
+    @media (max-width:520px) { .line-fleet-button { align-items:flex-start; flex-direction:column; } .line-fleet-meta { text-align:left; } }
+
+
     .line-button {
         display: flex;
         align-items: center;
@@ -1440,7 +1471,10 @@
     /* Phase 5.2 cleanup — global Account & Settings vs system-specific Tools */
     #settingsPanel.account-settings-mode #toolsPanelTitle,
     #settingsPanel.account-settings-mode #sharedSettingsTools,
-    #settingsPanel.account-settings-mode #subwaySettingsTools { display: none !important; }
+    #settingsPanel.account-settings-mode #subwaySettingsTools,
+    #settingsPanel.account-settings-mode #busSettingsTools,
+    #settingsPanel.account-settings-mode #railroadSettingsTools { display: none !important; }
+    #settingsPanel.tools-mode #sessionDiagnostics { display: none !important; }
     #settingsPanel.tools-mode #sharedAccountSettings,
     #settingsPanel.tools-mode #accountPanel { display: none !important; }
 
@@ -1508,6 +1542,7 @@
     @media(max-width:560px){ .rail-station-result{grid-template-columns:minmax(0,1fr) minmax(100px,130px)} .rail-route-badges{max-width:130px} }
 
 </style>
+<!-- Phase 5.3F-R2B: universal comparison/reports, railroad reverse search, tools-preserving system switch, settings-only diagnostics -->
 </head>
 
 <body>
@@ -1577,7 +1612,6 @@
         <div id="toolsNavGrid" class="settings-nav-grid" style="margin-top:18px;padding-top:18px;border-top:1px solid var(--fi-border);">
             <div id="sharedSettingsTools" class="tools-grid-contents">
                 <button type="button" onclick="toggleSearchHistoryPanel()">Search History</button>
-                <button id="sessionDiagnosticsToolButton" type="button" class="hidden" onclick="toggleSessionDiagnosticsPanel()">Session Diagnostics</button>
             </div>
 
             <div id="subwaySettingsTools" class="tools-grid-contents">
@@ -1592,16 +1626,20 @@
             </div>
             <div id="busSettingsTools" class="tools-grid-contents hidden">
                 <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
+                <button type="button" onclick="toggleReportsPanel()">My Reports</button>
                 <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
                 <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
                 <button type="button" onclick="toggleLineStatsPanel()">Route Stats</button>
                 <button type="button" onclick="toggleDepotStatsPanel()">Depot Stats</button>
+                <button type="button" onclick="toggleFleetComparisonPanel()">Fleet Comparison</button>
             </div>
             <div id="railroadSettingsTools" class="tools-grid-contents hidden">
                 <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
+                <button type="button" onclick="toggleReportsPanel()">My Reports</button>
                 <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
                 <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
                 <button type="button" onclick="toggleLineStatsPanel()">Branch / Line Stats</button>
+                <button type="button" onclick="toggleFleetComparisonPanel()">Fleet Comparison</button>
             </div>
         </div>
 
@@ -2079,16 +2117,26 @@
     </div>
 
     <div id="lirrSystemView" class="hidden">
-        <section class="search-box"><div class="input-row">
-            <input id="lirrNumber" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Example: 7707" autocomplete="off" aria-label="LIRR Car Number">
+        <section class="search-box">
+        <div class="search-mode-tabs" role="tablist" aria-label="LIRR search type">
+            <button id="lirrSearchModeCar" class="search-mode-tab active" type="button" role="tab" aria-selected="true" onclick="setRailroadSearchMode('lirr','car')">Car / Vehicle Number</button>
+            <button id="lirrSearchModeFleet" class="search-mode-tab" type="button" role="tab" aria-selected="false" onclick="setRailroadSearchMode('lirr','fleet')">Fleet</button>
+        </div>
+        <div class="input-row">
+            <input id="lirrNumber" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Example: 7707" autocomplete="off" aria-label="LIRR Car or Vehicle Number">
             <button type="button" onclick="identifyRailroad('lirr')">Search</button>
         </div></section>
         <section id="lirrResult" class="result hidden"></section>
     </div>
 
     <div id="metroNorthSystemView" class="hidden">
-        <section class="search-box"><div class="input-row">
-            <input id="metroNorthNumber" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Example: 4200" autocomplete="off" aria-label="Metro-North Car Number">
+        <section class="search-box">
+        <div class="search-mode-tabs" role="tablist" aria-label="Metro-North search type">
+            <button id="metroNorthSearchModeCar" class="search-mode-tab active" type="button" role="tab" aria-selected="true" onclick="setRailroadSearchMode('metro-north','car')">Car / Vehicle Number</button>
+            <button id="metroNorthSearchModeFleet" class="search-mode-tab" type="button" role="tab" aria-selected="false" onclick="setRailroadSearchMode('metro-north','fleet')">Fleet</button>
+        </div>
+        <div class="input-row">
+            <input id="metroNorthNumber" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="Example: 4200" autocomplete="off" aria-label="Metro-North Car or Vehicle Number">
             <button type="button" onclick="identifyRailroad('metro-north')">Search</button>
         </div></section>
         <section id="metroNorthResult" class="result hidden"></section>
@@ -2282,9 +2330,15 @@ function renderFleetSystem() {
     titleRow?.classList.toggle("lirr-header", activeFleetSystem === "lirr");
 
     if (title) title.textContent = config.title;
-    if (description) description.textContent = isSubway
-        ? (searchMode === "fleet" ? "Enter a subway fleet to learn more about it." : config.description)
-        : config.description;
+    if (description) {
+        if (isSubway) description.textContent = searchMode === "fleet" ? "Enter a subway fleet to learn more about it." : config.description;
+        else if (config.id === "lirr" || config.id === "metro-north") {
+            const mode = railroadSearchModes[config.id] || "car";
+            description.textContent = mode === "fleet"
+                ? `Enter a ${config.id === "lirr" ? "LIRR" : "Metro-North"} fleet to learn more about it.`
+                : config.description;
+        } else description.textContent = config.description;
+    }
 
     const footer = document.getElementById("appFooter");
     if (footer) {
@@ -2351,11 +2405,18 @@ function resetSystemSpecificUIForSwitch() {
 
 function selectFleetSystem(system) {
     if (!FLEET_SYSTEMS[system]) return;
+    const settingsPanel = document.getElementById("settingsPanel");
+    const preserveTools = Boolean(settingsPanel && !settingsPanel.classList.contains("hidden") && settingsPanel.classList.contains("tools-mode"));
     if (system !== activeFleetSystem) resetSystemSpecificUIForSwitch();
     activeFleetSystem = system;
     localStorage.setItem("fleetIdentifierActiveSystem", system);
     closeSystemSwitcher();
     renderFleetSystem();
+    if (preserveTools && settingsPanel) {
+        settingsPanel.classList.remove("hidden", "account-settings-mode");
+        settingsPanel.classList.add("tools-mode");
+        closeSettingsContentPanels();
+    }
     updateFocusMode();
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -2373,6 +2434,9 @@ function openAccountFromSystemMenu() {
 
     const accountPanel = document.getElementById("accountPanel");
     if (accountPanel) accountPanel.classList.remove("hidden");
+    const diagnostics = document.getElementById("sessionDiagnostics");
+    if (diagnostics) diagnostics.classList.toggle("hidden", !sessionDiagnosticsEnabled());
+    if (sessionDiagnosticsEnabled()) refreshSessionDiagnostics();
 
     updateFocusMode();
 }
@@ -2399,8 +2463,9 @@ function toggleSettings() {
         settingsPanel.classList.add("tools-mode");
         settingsPanel.classList.remove("hidden");
 
-        // Tools are system-specific; account management stays in Account & Settings.
+        // Tools are system-specific; account management and diagnostics stay in Account & Settings.
         document.getElementById("accountPanel")?.classList.add("hidden");
+        document.getElementById("sessionDiagnostics")?.classList.add("hidden");
     }
 
     if (settingsPanel.classList.contains("hidden")) {
@@ -2897,125 +2962,41 @@ function fleetComparisonRangeText(fleet) {
     if (!fleet) return "—";
     const parts = (fleet.ranges || []).map(range => {
         if (!Array.isArray(range) || range.length < 2) return "";
-        return Number(range[0]) === Number(range[1])
-            ? String(range[0])
-            : `${range[0]}–${range[1]}`;
+        return Number(range[0]) === Number(range[1]) ? String(range[0]) : `${range[0]}–${range[1]}`;
     }).filter(Boolean);
-
-    if (Array.isArray(fleet.specialEven) && fleet.specialEven.length >= 2) {
-        parts.push(`${fleet.specialEven[0]}–${fleet.specialEven[1]} (even numbers only)`);
-    }
+    if (Array.isArray(fleet.specialEven) && fleet.specialEven.length >= 2) parts.push(`${fleet.specialEven[0]}–${fleet.specialEven[1]} (even numbers only)`);
+    if (Array.isArray(fleet.singles)) fleet.singles.forEach(([a,b,step]) => parts.push(`${a}–${b}${step===2 ? " (every other number)" : ""}`));
     return parts.join(", ") || "—";
 }
-
-function fleetComparisonValue(value) {
-    const text = String(value ?? "").trim();
-    return text ? escapeHTML(text) : "—";
+function fleetComparisonValue(value) { const text=String(value??"").trim(); return text?escapeHTML(text):"—"; }
+function activeFleetComparisonDataset() {
+    if (activeFleetSystem === "bus") return busFleetData.map((f,i)=>({key:`bus-${i}`,name:f.model,...f}));
+    if (activeFleetSystem === "lirr" || activeFleetSystem === "metro-north") return (RAILROAD_FLEETS[activeFleetSystem]||[]).map((f,i)=>({key:`rail-${i}`,...f}));
+    return Object.keys(fleetData).map(name=>({key:name,name,...fleetData[name]}));
 }
-
 function populateFleetComparisonSelectors() {
-    const left = document.getElementById("fleetCompareLeft");
-    const right = document.getElementById("fleetCompareRight");
-    if (!left || !right || typeof fleetData === "undefined") return;
-
-    const names = Object.keys(fleetData);
-    const passenger = names.filter(name => fleetData[name]?.division !== "Work Equipment");
-    const work = names.filter(name => fleetData[name]?.division === "Work Equipment");
-
-    const options = [
-        `<optgroup label="Passenger Fleets">${passenger.map(name => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join("")}</optgroup>`,
-        work.length ? `<optgroup label="Work Equipment">${work.map(name => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join("")}</optgroup>` : ""
-    ].join("");
-
-    left.innerHTML = `<option value="" selected>Choose Fleet 1</option>${options}`;
-    right.innerHTML = `<option value="" selected>Choose Fleet 2</option>${options}`;
-
-    left.value = "";
-    right.value = "";
+    const left=document.getElementById("fleetCompareLeft"), right=document.getElementById("fleetCompareRight"); if(!left||!right)return;
+    const data=activeFleetComparisonDataset();
+    const options=data.map(f=>`<option value="${escapeHTML(f.key)}">${escapeHTML(f.name)}</option>`).join("");
+    left.innerHTML=`<option value="" selected>Choose Fleet 1</option>${options}`;
+    right.innerHTML=`<option value="" selected>Choose Fleet 2</option>${options}`;
 }
-
 function toggleFleetComparisonPanel() {
-    const panel = document.getElementById("fleetComparisonPanel");
-    if (!panel) return;
-    const opening = panel.classList.contains("hidden");
-    closeSettingsContentPanels(opening ? "fleetComparisonPanel" : "");
-    panel.classList.toggle("hidden", !opening);
-
-    if (opening) {
-        const left = document.getElementById("fleetCompareLeft");
-        if (!left?.options?.length) populateFleetComparisonSelectors();
-        renderFleetComparison();
-    }
+    const panel=document.getElementById("fleetComparisonPanel"); if(!panel)return;
+    const opening=panel.classList.contains("hidden"); closeSettingsContentPanels(opening?"fleetComparisonPanel":""); panel.classList.toggle("hidden",!opening);
+    if(opening){ populateFleetComparisonSelectors(); renderFleetComparison(); }
 }
-
-function swapFleetComparison() {
-    const left = document.getElementById("fleetCompareLeft");
-    const right = document.getElementById("fleetCompareRight");
-    if (!left || !right) return;
-    const oldLeft = left.value;
-    left.value = right.value;
-    right.value = oldLeft;
-    renderFleetComparison();
-}
-
-function renderFleetComparison() {
-    const leftSelect = document.getElementById("fleetCompareLeft");
-    const rightSelect = document.getElementById("fleetCompareRight");
-    const status = document.getElementById("fleetComparisonStatus");
-    const table = document.getElementById("fleetComparisonTable");
-    if (!leftSelect || !rightSelect || !status || !table || typeof fleetData === "undefined") return;
-
-    const leftName = leftSelect.value;
-    const rightName = rightSelect.value;
-    const left = fleetData[leftName];
-    const right = fleetData[rightName];
-
-    if (!left || !right) {
-        status.textContent = "Choose two fleets to compare.";
-        table.innerHTML = "";
-        return;
-    }
-
-    status.textContent = leftName === rightName
-        ? `Comparing ${leftName} with itself.`
-        : `${leftName} vs. ${rightName}`;
-
-    const rows = [
-        ["Car numbers", fleetComparisonRangeText(left), fleetComparisonRangeText(right), false],
-        ["Builder", left.builder, right.builder, false],
-        ["Years built", left.years, right.years, false],
-        ["Lines commonly used", left.lines, right.lines, true],
-        ["Division", left.division, right.division, false],
-        ["Factory version", left.factory, right.factory, false],
-        ["Passenger version", left.passenger, right.passenger, false],
-        ["Fleet size", left.built, right.built, false],
-        ["Maximum service speed", left.serviceSpeed, right.serviceSpeed, false],
-        ["Design speed", left.designSpeed, right.designSpeed, false],
-        ["Propulsion", left.propulsion, right.propulsion, false],
-        ["Notes", left.notes, right.notes, false]
-    ];
-
-    const valueHTML = (value, isLines) => {
-        const text = String(value ?? "").trim();
-        if (!text) return "—";
-        if (isLines && text !== "Systemwide") return `<div class="fleet-compare-lines">${fleetLinesDisplayHTML(text)}</div>`;
-        return fleetComparisonValue(text);
-    };
-
-    table.innerHTML = `
-        <div class="fleet-compare-row">
-            <div class="fleet-compare-cell fleet-compare-label">Specification</div>
-            <div class="fleet-compare-cell fleet-compare-heading">${escapeHTML(leftName)}</div>
-            <div class="fleet-compare-cell fleet-compare-heading">${escapeHTML(rightName)}</div>
-        </div>
-        ${rows.map(([label, leftValue, rightValue, isLines]) => `
-            <div class="fleet-compare-row">
-                <div class="fleet-compare-cell fleet-compare-label">${escapeHTML(label)}</div>
-                <div class="fleet-compare-cell">${valueHTML(leftValue, isLines)}</div>
-                <div class="fleet-compare-cell">${valueHTML(rightValue, isLines)}</div>
-            </div>
-        `).join("")}
-    `;
+function swapFleetComparison(){ const l=document.getElementById("fleetCompareLeft"),r=document.getElementById("fleetCompareRight"); if(!l||!r)return; [l.value,r.value]=[r.value,l.value]; renderFleetComparison(); }
+function renderFleetComparison(){
+    const ls=document.getElementById("fleetCompareLeft"),rs=document.getElementById("fleetCompareRight"),status=document.getElementById("fleetComparisonStatus"),table=document.getElementById("fleetComparisonTable"); if(!ls||!rs||!status||!table)return;
+    const data=activeFleetComparisonDataset(), left=data.find(f=>f.key===ls.value), right=data.find(f=>f.key===rs.value);
+    if(!left||!right){status.textContent="Choose two fleets to compare.";table.innerHTML="";return;}
+    status.textContent=left.key===right.key?`Comparing ${left.name} with itself.`:`${left.name} vs. ${right.name}`;
+    let rows;
+    if(activeFleetSystem==="bus") rows=[["Bus numbers",fleetComparisonRangeText(left),fleetComparisonRangeText(right)],["Builder / manufacturer",left.builder,right.builder],["Years built / delivered",left.years,right.years],["Length / type",left.length,right.length],["Powertrain",left.powertrain,right.powertrain],["Fleet / order size",left.fleetSize,right.fleetSize],["Passenger charging",left.charging,right.charging],["Maximum speed",left.maxSpeed,right.maxSpeed],["Notes",left.notes,right.notes]];
+    else if(activeFleetSystem==="lirr"||activeFleetSystem==="metro-north") rows=[["Vehicle numbers",fleetComparisonRangeText(left),fleetComparisonRangeText(right)],["Builder",left.builder,right.builder],["Years built",left.years,right.years],["Formation",left.formation,right.formation],["Power",left.power,right.power],["Typical system service",left.service,right.service],["Notes",left.notes,right.notes]];
+    else rows=[["Car numbers",fleetComparisonRangeText(left),fleetComparisonRangeText(right)],["Builder",left.builder,right.builder],["Years built",left.years,right.years],["Lines commonly used",left.lines,right.lines],["Division",left.division,right.division],["Factory version",left.factory,right.factory],["Passenger version",left.passenger,right.passenger],["Fleet size",left.built,right.built],["Maximum service speed",left.serviceSpeed,right.serviceSpeed],["Design speed",left.designSpeed,right.designSpeed],["Propulsion",left.propulsion,right.propulsion],["Notes",left.notes,right.notes]];
+    table.innerHTML=`<div class="fleet-compare-row"><div class="fleet-compare-cell fleet-compare-label">Specification</div><div class="fleet-compare-cell fleet-compare-heading">${escapeHTML(left.name)}</div><div class="fleet-compare-cell fleet-compare-heading">${escapeHTML(right.name)}</div></div>${rows.map(([label,a,b])=>`<div class="fleet-compare-row"><div class="fleet-compare-cell fleet-compare-label">${escapeHTML(label)}</div><div class="fleet-compare-cell">${fleetComparisonValue(a)}</div><div class="fleet-compare-cell">${fleetComparisonValue(b)}</div></div>`).join("")}`;
 }
 
 
@@ -4871,7 +4852,7 @@ function routeTitle(line) {
     return `${line} train`;
 }
 
-function lineDisplayHTML(line) {
+function lineDisplayHTML(line, interactive = false) {
     const rawLine = String(line || "").trim();
     if (!rawLine) return "";
     if (rawLine === "NIS") return `<strong class="nis-line-label">NIS</strong>`;
@@ -4891,10 +4872,12 @@ function lineDisplayHTML(line) {
     if (rawLine === "Rockaway S") label = `S<span class="shuttle-suffix">R</span>`;
     if (rawLine === "SIR") label = "SIR";
 
-    return `<span class="route-bullet ${bulletClass}" title="${escapeHTML(routeTitle(rawLine))}" aria-label="${escapeHTML(routeTitle(rawLine))}">${label}</span>`;
+    const bullet = `<span class="route-bullet ${bulletClass}" title="${escapeHTML(routeTitle(rawLine))}" aria-hidden="true">${label}</span>`;
+    if (!interactive || rawLine === "SIR") return bullet;
+    return `<button type="button" class="route-bullet-button" data-line-fleets="${escapeHTML(rawLine)}" title="View fleets currently serving ${escapeHTML(routeTitle(rawLine))}" aria-label="View fleets currently serving ${escapeHTML(routeTitle(rawLine))}">${bullet}</button>`;
 }
 
-function fleetLinesDisplayHTML(linesText) {
+function fleetLinesDisplayHTML(linesText, interactive = false) {
     const aliases = {
         "42nd Street Shuttle": "42 St S",
         "Franklin Avenue Shuttle": "Franklin S",
@@ -4905,10 +4888,94 @@ function fleetLinesDisplayHTML(linesText) {
     const parts = String(linesText || "").split(",").map(part => part.trim()).filter(Boolean);
     const rendered = parts.map(part => {
         const line = aliases[part] || part;
-        return routeBulletClass(line) ? lineDisplayHTML(line) : escapeHTML(part);
+        return routeBulletClass(line) ? lineDisplayHTML(line, interactive) : escapeHTML(part);
     });
 
     return `<span class="route-bullet-list">${rendered.join("")}</span>`;
+}
+
+
+// Phase 5.3F-S1 — current passenger-service assignment layer.
+// Kept separate from fleetData so line assignments can be updated without touching identifier ranges/specs.
+// Last research pass: September 2026. These are normal/current assignments, not one-off reroutes or loans.
+const subwayCurrentLineFleets = {
+    "1":["R62A"],
+    "2":["R142"],
+    "3":["R62"],
+    "4":["R142","R142A"],
+    "5":["R142"],
+    "6":["R62A"],
+    "7":["R188"],
+    "42 St S":["R62A"],
+    "A":["R179","R211A"],
+    "B":["R68","R68A","R211A"],
+    "C":["R179","R211A"],
+    "D":["R68","R211A"],
+    "E":["R160A","R160B"],
+    "F":["R160A","R160B"],
+    "G":["R211A","R211T"],
+    "J":["R143","R160A","R179"],
+    "L":["R143","R160A"],
+    "M":["R160A"],
+    "N":["R46","R68","R68A"],
+    "Q":["R46","R68","R68A"],
+    "R":["R160A","R160B"],
+    "W":["R46","R68","R68A"],
+    "Z":["R143","R160A","R179"],
+    "Franklin S":["R68"],
+    "Rockaway S":["R211A"]
+};
+
+let subwayLineFleetsReturnHTML = "";
+
+function bindInteractiveSubwayBullets(root = document) {
+    if (!root?.addEventListener || root.dataset?.lineFleetsDelegated === '1') return;
+    if (root.dataset) root.dataset.lineFleetsDelegated = '1';
+    root.addEventListener('click', event => {
+        const button = event.target.closest?.('.route-bullet-button[data-line-fleets]');
+        if (!button || !root.contains(button)) return;
+        openSubwayLineFleets(button.dataset.lineFleets || '');
+    });
+}
+
+function openSubwayLineFleets(line) {
+    if (activeFleetSystem !== 'subway') return;
+    const resultBox = document.getElementById('result');
+    if (!resultBox) return;
+    const fleets = (subwayCurrentLineFleets[line] || []).filter(name => fleetData[name]);
+    subwayLineFleetsReturnHTML = resultBox.innerHTML;
+    const lineBullet = routeBulletClass(line) ? lineDisplayHTML(line, false) : `<strong>${escapeHTML(line)}</strong>`;
+    resultBox.className = 'result';
+    resultBox.innerHTML = `
+        <div class="line-fleets-panel">
+            <div class="line-fleets-head">${lineBullet}<h3>${escapeHTML(routeTitle(line))} fleets</h3></div>
+            ${fleets.length ? `<div class="line-fleets-list">${fleets.map(name => {
+                const d=fleetData[name]||{};
+                return `<button type="button" class="line-fleet-button" data-line-fleet-name="${escapeHTML(name)}">
+                    <span class="line-fleet-name">${escapeHTML(name)}</span>
+                    <span class="line-fleet-meta">${escapeHTML(d.builder || '')}${d.years ? ` · ${escapeHTML(d.years)}` : ''}</span>
+                </button>`;
+            }).join('')}</div>` : `<div class="account-small-note">No current passenger fleet assignment is stored for this line yet.</div>`}
+            <div class="line-fleets-note">Current/normal passenger-service assignments. Temporary reroutes, loans, testing, and special moves are not included.</div>
+            <button type="button" id="lineFleetsBack" style="margin-top:14px;">Back to result</button>
+        </div>`;
+    resultBox.querySelector('#lineFleetsBack')?.addEventListener('click', restoreSubwayResultFromLineFleets);
+    resultBox.querySelectorAll('[data-line-fleet-name]').forEach(btn => btn.addEventListener('click', () => {
+        const fleet=btn.dataset.lineFleetName;
+        if (!fleetData[fleet]) return;
+        const input=document.getElementById('carNumber');
+        if (input) input.value=fleet;
+        setSearchMode?.('fleet');
+        showFleetSearchResult(fleet);
+    }));
+}
+
+function restoreSubwayResultFromLineFleets() {
+    const resultBox=document.getElementById('result');
+    if (!resultBox || !subwayLineFleetsReturnHTML) return;
+    resultBox.innerHTML=subwayLineFleetsReturnHTML;
+    resultBox.className='result';
+    bindInteractiveSubwayBullets(resultBox);
 }
 
 
@@ -6384,7 +6451,7 @@ function showFleetSearchResult(fleet) {
             <div>${escapeHTML(data.years || "Unknown")}</div>
 
             <div class="label">Lines</div>
-            <div>${fleetLinesDisplayHTML(data.lines || "")}</div>
+            <div>${fleetLinesDisplayHTML(data.lines || "", true)}</div>
 
             <div class="label">Division</div>
             <div>${escapeHTML(data.division || "Unknown")}</div>
@@ -6413,6 +6480,7 @@ function showFleetSearchResult(fleet) {
             Enter a specific car number to log a sighting for this fleet.
         </div>
     `;
+    bindInteractiveSubwayBullets(resultBox);
 }
 
 
@@ -7078,6 +7146,31 @@ const RAILROAD_FLEETS = Object.freeze({
     ]
 });
 
+const railroadSearchModes = { lirr:"car", "metro-north":"car" };
+function railroadSearchIds(system){ return system==="lirr"?{input:"lirrNumber",result:"lirrResult",car:"lirrSearchModeCar",fleet:"lirrSearchModeFleet"}:{input:"metroNorthNumber",result:"metroNorthResult",car:"metroNorthSearchModeCar",fleet:"metroNorthSearchModeFleet"}; }
+function setRailroadSearchMode(system,mode){
+    if(!["car","fleet"].includes(mode))return; railroadSearchModes[system]=mode;
+    const ids=railroadSearchIds(system), input=document.getElementById(ids.input), result=document.getElementById(ids.result), car=document.getElementById(ids.car), fleet=document.getElementById(ids.fleet), isCar=mode==="car";
+    car?.classList.toggle("active",isCar); fleet?.classList.toggle("active",!isCar); car?.setAttribute("aria-selected",isCar?"true":"false"); fleet?.setAttribute("aria-selected",isCar?"false":"true");
+    if(input){input.value=""; input.inputMode=isCar?"numeric":"text"; input.placeholder=isCar?(system==="lirr"?"Example: 7707":"Example: 4200"):(system==="lirr"?"Example: M7":"Example: M8"); input.setAttribute("aria-label",isCar?`${system==="lirr"?"LIRR":"Metro-North"} Car or Vehicle Number`:`${system==="lirr"?"LIRR":"Metro-North"} Fleet`); if(isCar)input.setAttribute("pattern","[0-9]*");else input.removeAttribute("pattern");}
+    if(result){result.className="result hidden";result.innerHTML="";}
+    if(activeFleetSystem===system) renderFleetSystem();
+}
+function findRailroadFleetByName(system,value){ const q=String(value||"").toUpperCase().replace(/[\s_-]+/g,""); return (RAILROAD_FLEETS[system]||[]).find(f=>String(f.name).toUpperCase().replace(/[\s_-]+/g,"")===q)||null; }
+function showRailroadFleetSearchResult(system,fleet,query){
+    const ids=railroadSearchIds(system), box=document.getElementById(ids.result); if(!box)return;
+    if(!fleet){box.className="result";box.innerHTML=`<div class="error"><strong>Fleet not found.</strong><br>Enter a valid ${system==="lirr"?"LIRR":"Metro-North"} fleet name.</div>`;recordIdentifierSearch({system,searchValue:query,found:false,resultDetails:{searchMode:"fleet"}});return;}
+    box.className="result"; box.innerHTML=`<div class="fleet-title">${escapeHTML(fleet.name)}</div><div class="info"><div class="label">Vehicle number range(s)</div><div>${escapeHTML(fleetComparisonRangeText(fleet))}</div><div class="label">Builder</div><div>${escapeHTML(fleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(fleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(fleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(fleet.power)}</div><div class="label">Typical system service</div><div>${escapeHTML(fleet.service)}</div><div class="label">Notes</div><div>${escapeHTML(fleet.notes)}</div></div>`;
+    recordIdentifierSearch({system,searchValue:query,found:true,resultName:fleet.name,resultDetails:{searchMode:"fleet",builder:fleet.builder,years:fleet.years}});
+}
+
+
+document.addEventListener("DOMContentLoaded", () => {
+    ["lirr","metro-north"].forEach(system => {
+        const ids=railroadSearchIds(system), input=document.getElementById(ids.input); if(!input)return;
+        input.addEventListener("input",()=>{ if((railroadSearchModes[system]||"car")==="car") input.value=input.value.replace(/\D+/g,""); else input.value=input.value.replace(/[^a-zA-Z0-9 _-]+/g,""); });
+    });
+});
 function activeRailroadSystem() { return activeFleetSystem === "lirr" || activeFleetSystem === "metro-north" ? activeFleetSystem : null; }
 function railroadFleetNames(system) { return new Set((RAILROAD_FLEETS[system] || []).map(f => f.name)); }
 function busFleetNames() { return new Set((busFleetData || []).map(f => String(f.model || "").trim()).filter(Boolean)); }
@@ -7120,6 +7213,7 @@ async function identifyRailroad(system) {
     const box = document.getElementById(resultId);
     if (!box) return;
     if (!input) { box.className="result hidden"; box.innerHTML=""; return; }
+    if ((railroadSearchModes[system] || "car") === "fleet") { showRailroadFleetSearchResult(system, findRailroadFleetByName(system,input), input); return; }
     if (!/^\d+$/.test(input)) { box.className="result"; box.innerHTML='<div class="fleet-title unknown-value">Invalid number</div>'; return; }
 
     if (input === "0000") {
@@ -7486,7 +7580,7 @@ async function identify() {
             <div>${data.years}</div>
 
             <div class="label">Lines</div>
-            <div>${fleetLinesDisplayHTML(data.lines)}</div>
+            <div>${fleetLinesDisplayHTML(data.lines, true)}</div>
 
             <div class="label">Division</div>
             <div>${data.division}</div>
@@ -7732,12 +7826,8 @@ async function refreshSessionDiagnostics() {
 
 function initializeSessionDiagnosticsVisibility() {
     const enabled = sessionDiagnosticsEnabled();
-    const button = document.getElementById("sessionDiagnosticsToolButton");
     const panel = document.getElementById("sessionDiagnostics");
-
-    button?.classList.toggle("hidden", !enabled);
-    if (panel) panel.classList.add("hidden");
-
+    if (panel) panel.classList.toggle("hidden", !enabled);
     if (enabled) refreshSessionDiagnostics();
 }
 
@@ -7809,6 +7899,7 @@ async function showSightingsHubView(view) {
 
 async function toggleReportsPanel() {
     const panel = document.getElementById("myReportsPanel");
+    const heading=panel?.querySelector("h2"); if(heading) heading.textContent=`${activeSystemToolLabel()} Reports`;
     const opening = panel.classList.contains("hidden");
     closeSettingsContentPanels(opening ? "myReportsPanel" : "");
     panel.classList.toggle("hidden", !opening);
@@ -9206,6 +9297,12 @@ function initializeRouteDropdowns() {
 
 document.addEventListener("DOMContentLoaded", initializeRouteDropdowns);
 
+
+
+// Keep dynamically-rendered Subway result bullets interactive across result restoration/re-renders.
+// One delegated listener stays attached to #result, so Back to result does not create dead bullets.
+const subwayResultObserverTarget = document.getElementById("result");
+if (subwayResultObserverTarget) bindInteractiveSubwayBullets(subwayResultObserverTarget);
 </script>
 
 </body>
