@@ -1570,6 +1570,41 @@
             <option value="system">System</option>
         </select>
 
+
+        </div>
+
+        <h2 id="toolsPanelTitle">Tools</h2>
+        <div id="toolsNavGrid" class="settings-nav-grid" style="margin-top:18px;padding-top:18px;border-top:1px solid var(--fi-border);">
+            <div id="sharedSettingsTools" class="tools-grid-contents">
+                <button type="button" onclick="toggleSearchHistoryPanel()">Search History</button>
+                <button id="sessionDiagnosticsToolButton" type="button" class="hidden" onclick="toggleSessionDiagnosticsPanel()">Session Diagnostics</button>
+            </div>
+
+            <div id="subwaySettingsTools" class="tools-grid-contents">
+                <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
+                <button type="button" onclick="toggleReportsPanel()">My Reports</button>
+                <button type="button" onclick="toggleAchievementsPanel()">Achievements</button>
+                <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
+                <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
+                <button type="button" onclick="toggleLineStatsPanel()">Line Stats</button>
+                <button type="button" onclick="toggleFleetComparisonPanel()">Fleet Comparison</button>
+                <button type="button" onclick="toggleTrainsetHistoryPanel()">Trainset History</button>
+            </div>
+            <div id="busSettingsTools" class="tools-grid-contents hidden">
+                <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
+                <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
+                <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
+                <button type="button" onclick="toggleLineStatsPanel()">Route Stats</button>
+                <button type="button" onclick="toggleDepotStatsPanel()">Depot Stats</button>
+            </div>
+            <div id="railroadSettingsTools" class="tools-grid-contents hidden">
+                <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
+                <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
+                <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
+                <button type="button" onclick="toggleLineStatsPanel()">Branch / Line Stats</button>
+            </div>
+        </div>
+
         <section id="sessionDiagnostics" class="session-diagnostics hidden">
             <h2>Session Diagnostics</h2>
             <div class="account-small-note">
@@ -1599,38 +1634,6 @@
             </div>
             <button type="button" onclick="refreshSessionDiagnostics()">Refresh Diagnostics</button>
         </section>
-        </div>
-
-        <h2 id="toolsPanelTitle">Tools</h2>
-        <div id="toolsNavGrid" class="settings-nav-grid" style="margin-top:18px;padding-top:18px;border-top:1px solid var(--fi-border);">
-            <div id="sharedSettingsTools" class="tools-grid-contents">
-                <button type="button" onclick="toggleSearchHistoryPanel()">Search History</button>
-            </div>
-
-            <div id="subwaySettingsTools" class="tools-grid-contents">
-                <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
-                <button type="button" onclick="toggleReportsPanel()">My Reports</button>
-                <button type="button" onclick="toggleAchievementsPanel()">Achievements</button>
-                <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
-                <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
-                <button type="button" onclick="toggleLineStatsPanel()">Line Stats</button>
-                <button type="button" onclick="toggleFleetComparisonPanel()">Fleet Comparison</button>
-                <button type="button" onclick="toggleTrainsetHistoryPanel()">Trainset History</button>
-            </div>
-            <div id="busSettingsTools" class="tools-grid-contents hidden">
-                <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
-                <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
-                <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
-                <button type="button" onclick="toggleLineStatsPanel()">Route Stats</button>
-                <button type="button" onclick="toggleDepotStatsPanel()">Depot Stats</button>
-            </div>
-            <div id="railroadSettingsTools" class="tools-grid-contents hidden">
-                <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
-                <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
-                <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
-                <button type="button" onclick="toggleLineStatsPanel()">Branch / Line Stats</button>
-            </div>
-        </div>
 
     <section id="accountPanel" class="account-panel hidden">
         <div id="signedOutView">
@@ -2338,7 +2341,7 @@ function resetSystemSpecificUIForSwitch() {
     [
         "accountPanel", "sightingsHubPanel", "mySightingsPanel",
         "sightingCalendarPanel", "personalRecordsPanel", "yearInReviewPanel",
-        "myReportsPanel", "searchHistoryPanel", "achievementsPanel",
+        "myReportsPanel", "searchHistoryPanel", "sessionDiagnostics", "achievementsPanel",
         "fleetCollectionPanel", "fleetBreakdownPanel", "lineStatsPanel",
         "fleetComparisonPanel", "trainsetHistoryPanel"
     ].forEach(id => document.getElementById(id)?.classList.add("hidden"));
@@ -2404,6 +2407,7 @@ function toggleSettings() {
         document.getElementById("mySightingsPanel")?.classList.add("hidden");
         document.getElementById("myReportsPanel")?.classList.add("hidden");
         document.getElementById("searchHistoryPanel")?.classList.add("hidden");
+        document.getElementById("sessionDiagnostics")?.classList.add("hidden");
         document.getElementById("achievementsPanel")?.classList.add("hidden");
         document.getElementById("fleetCollectionPanel")?.classList.add("hidden");
         document.getElementById("sightingCalendarPanel")?.classList.add("hidden");
@@ -7727,12 +7731,25 @@ async function refreshSessionDiagnostics() {
 }
 
 function initializeSessionDiagnosticsVisibility() {
-    if (!sessionDiagnosticsEnabled()) return;
-
+    const enabled = sessionDiagnosticsEnabled();
+    const button = document.getElementById("sessionDiagnosticsToolButton");
     const panel = document.getElementById("sessionDiagnostics");
-    if (panel) panel.classList.remove("hidden");
 
-    refreshSessionDiagnostics();
+    button?.classList.toggle("hidden", !enabled);
+    if (panel) panel.classList.add("hidden");
+
+    if (enabled) refreshSessionDiagnostics();
+}
+
+async function toggleSessionDiagnosticsPanel() {
+    if (!sessionDiagnosticsEnabled()) return;
+    const panel = document.getElementById("sessionDiagnostics");
+    if (!panel) return;
+
+    const opening = panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening ? "sessionDiagnostics" : "");
+    panel.classList.toggle("hidden", !opening);
+    if (opening) await refreshSessionDiagnostics();
 }
 
 function updateFocusMode() {
@@ -7741,7 +7758,7 @@ function updateFocusMode() {
 }
 
 function closeSettingsContentPanels(exceptId = "") {
-    ["accountPanel", "sightingsHubPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel", "fleetBreakdownPanel", "lineStatsPanel", "depotStatsPanel", "fleetComparisonPanel", "trainsetHistoryPanel"].forEach(id => {
+    ["accountPanel", "sightingsHubPanel", "myReportsPanel", "searchHistoryPanel", "sessionDiagnostics", "achievementsPanel", "fleetCollectionPanel", "fleetBreakdownPanel", "lineStatsPanel", "depotStatsPanel", "fleetComparisonPanel", "trainsetHistoryPanel"].forEach(id => {
         if (id !== exceptId) {
             document.getElementById(id)?.classList.add("hidden");
         }
