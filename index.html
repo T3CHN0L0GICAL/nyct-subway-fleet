@@ -1379,7 +1379,9 @@
         z-index: 2000;
         top: calc(100% + 8px);
         left: 0;
-        width: min(310px, calc(100vw - 32px));
+        width: min(240px, calc(100vw - 24px));
+        max-width: calc(100vw - 24px);
+        box-sizing: border-box;
         padding: 10px;
         border: 1px solid var(--fi-border);
         border-radius: 12px;
@@ -1614,6 +1616,13 @@
                 <button type="button" onclick="toggleLineStatsPanel()">Line Stats</button>
                 <button type="button" onclick="toggleFleetComparisonPanel()">Fleet Comparison</button>
                 <button type="button" onclick="toggleTrainsetHistoryPanel()">Trainset History</button>
+            </div>
+            <div id="busSettingsTools" class="tools-grid-contents hidden">
+                <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
+                <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
+                <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
+                <button type="button" onclick="toggleLineStatsPanel()">Route Stats</button>
+                <button type="button" onclick="toggleDepotStatsPanel()">Depot Stats</button>
             </div>
             <div id="railroadSettingsTools" class="tools-grid-contents hidden">
                 <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
@@ -1941,6 +1950,14 @@
         <div id="lineStatsGrid" class="line-stats-grid"></div>
     </section>
 
+    <section id="depotStatsPanel" class="account-panel hidden">
+        <h2>Bus Depot Stats</h2>
+        <div class="account-small-note">See how your saved bus sightings break down by the current depot assignment stored in Fleet Identifier.</div>
+        <div style="margin-top:14px;"><button type="button" onclick="loadDepotStats()">Refresh</button></div>
+        <div id="depotStatsStatus" class="status-message">Loading depot stats...</div>
+        <div id="depotStatsGrid" class="line-stats-grid"></div>
+    </section>
+
     <section id="fleetBreakdownPanel" class="account-panel hidden">
         <h2>Fleet Breakdown</h2>
         <div class="account-small-note">See how your saved sightings are distributed across the fleets you have spotted.</div>
@@ -2211,14 +2228,37 @@ function closeSystemSwitcher() {
     document.getElementById("topAccountAvatarButton")?.setAttribute("aria-expanded", "false");
 }
 
+function alignSystemSwitcherToTools() {
+    const menu = document.getElementById("systemSwitcherMenu");
+    const accountWrap = document.getElementById("topAccountMini");
+    const toolsButton = document.querySelector('#settingsControls > button[onclick="toggleSettings()"]');
+    if (!menu || !accountWrap || !toolsButton || menu.classList.contains("hidden")) return;
+
+    // Match the dropdown's right edge to the Tools button's right edge.
+    // This also keeps the menu inside the mobile viewport instead of creating horizontal overflow.
+    const wrapRect = accountWrap.getBoundingClientRect();
+    const toolsRect = toolsButton.getBoundingClientRect();
+    const menuWidth = menu.getBoundingClientRect().width;
+    const viewportPadding = 12;
+    let left = toolsRect.right - wrapRect.left - menuWidth;
+    const absoluteLeft = wrapRect.left + left;
+    if (absoluteLeft < viewportPadding) left += viewportPadding - absoluteLeft;
+    const absoluteRight = wrapRect.left + left + menuWidth;
+    if (absoluteRight > window.innerWidth - viewportPadding) left -= absoluteRight - (window.innerWidth - viewportPadding);
+    menu.style.left = `${left}px`;
+}
+
 function toggleSystemSwitcher(event) {
     event?.stopPropagation();
     const menu = document.getElementById("systemSwitcherMenu");
     if (!menu) return;
     const opening = menu.classList.contains("hidden");
     menu.classList.toggle("hidden", !opening);
+    if (opening) alignSystemSwitcherToTools();
     document.getElementById("topAccountAvatarButton")?.setAttribute("aria-expanded", opening ? "true" : "false");
 }
+
+window.addEventListener("resize", alignSystemSwitcherToTools);
 
 function renderFleetSystem() {
     const config = getFleetSystemConfig();
@@ -2259,13 +2299,14 @@ function renderFleetSystem() {
     // The account/profile/appearance layer is shared by every system. The
     // Subway tool grid is system-specific and must not render outside Subway.
     document.getElementById("subwaySettingsTools")?.classList.toggle("hidden", !isSubway);
+    document.getElementById("busSettingsTools")?.classList.toggle("hidden", !isBus);
     const isRailroad = config.id === "lirr" || config.id === "metro-north";
     document.getElementById("railroadSettingsTools")?.classList.toggle("hidden", !isRailroad);
     // Keep shared Account available everywhere, but on Subway place Account back
     // inside the original 10-button grid so the desktop layout stays 3-3-3-1.
     document.getElementById("sharedSettingsTools")?.classList.remove("hidden");
 
-    if (!isSubway && !isRailroad) {
+    if (!isSubway && !isBus && !isRailroad) {
         [
             "mySightingsPanel", "myReportsPanel",
             "achievementsPanel", "fleetCollectionPanel", "sightingCalendarPanel",
@@ -3447,19 +3488,19 @@ async function toggleLineStatsPanel() {
     const opening = panel.classList.contains("hidden");
     closeSettingsContentPanels(opening ? "lineStatsPanel" : "");
     panel.classList.toggle("hidden", !opening);
-    if (opening) { const h=panel.querySelector("h2"); if(h) h.textContent=activeRailroadSystem()?`${activeSystemToolLabel()} Branch / Line Stats`:"Line Stats"; await loadLineStats(); }
+    if (opening) { const h=panel.querySelector("h2"); if(h) h.textContent=activeFleetSystem==="bus"?"Bus Route Stats":activeRailroadSystem()?`${activeSystemToolLabel()} Branch / Line Stats`:"Line Stats"; await loadLineStats(); }
 }
 
 async function loadLineStats() {
     const status = document.getElementById("lineStatsStatus");
     const grid = document.getElementById("lineStatsGrid");
     if (!status || !grid) return;
-    status.textContent = "Loading line stats...";
+    status.textContent = activeFleetSystem === "bus" ? "Loading route stats..." : "Loading line stats...";
     grid.innerHTML = "";
 
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
-        status.textContent = "Log in to view your line stats.";
+        status.textContent = activeFleetSystem === "bus" ? "Log in to view your route stats." : "Log in to view your line stats.";
         return;
     }
 
@@ -3470,13 +3511,13 @@ async function loadLineStats() {
 
     if (error) {
         console.error("Could not load line stats:", error);
-        status.textContent = "Could not load your line stats.";
+        status.textContent = activeFleetSystem === "bus" ? "Could not load your route stats." : "Could not load your line stats.";
         return;
     }
 
     const rows = scopeSightingsRows(data || []).filter(row => String(row.line || "").trim());
     if (!rows.length) {
-        status.textContent = "No line sightings yet.";
+        status.textContent = activeFleetSystem === "bus" ? "No route sightings yet." : "No line sightings yet.";
         return;
     }
 
@@ -3501,7 +3542,9 @@ async function loadLineStats() {
     }).sort((a,b) => b.count-a.count || a.line.localeCompare(b.line, undefined, {numeric:true}));
 
     const maxCount = Math.max(...stats.map(s => s.count), 1);
-    status.textContent = `${rows.length} total line sighting${rows.length === 1 ? "" : "s"} across ${stats.length} line${stats.length === 1 ? "" : "s"}.`;
+    status.textContent = activeFleetSystem === "bus"
+        ? `${rows.length} total bus sighting${rows.length === 1 ? "" : "s"} across ${stats.length} route${stats.length === 1 ? "" : "s"}.`
+        : `${rows.length} total line sighting${rows.length === 1 ? "" : "s"} across ${stats.length} line${stats.length === 1 ? "" : "s"}.`;
 
     grid.innerHTML = stats.map(item => {
         const title = routeBulletClass(item.line)
@@ -3521,9 +3564,101 @@ async function loadLineStats() {
                     <div><span class="line-stat-detail-label">Most-seen fleet</span><strong>${escapeHTML(item.mostSeenFleet)}</strong></div>
                     <div><span class="line-stat-detail-label">Latest sighting</span><strong>${escapeHTML(latestDate)}</strong></div>
                 </div>
-                ${latestStation ? `<div class="account-small-note" style="margin-top:10px;">Latest station: ${escapeHTML(latestStation)}</div>` : ""}
+                ${latestStation ? `<div class="account-small-note" style="margin-top:10px;">Latest ${activeFleetSystem === "bus" ? "location" : "station"}: ${escapeHTML(latestStation)}</div>` : ""}
                 <div class="line-stat-bar" aria-hidden="true"><div class="line-stat-bar-fill" style="width:${((item.count/maxCount)*100).toFixed(2)}%;"></div></div>
             </div>`;
+    }).join("");
+}
+
+async function toggleDepotStatsPanel() {
+    if (activeFleetSystem !== "bus") return;
+    const panel = document.getElementById("depotStatsPanel");
+    if (!panel) return;
+    const opening = panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening ? "depotStatsPanel" : "");
+    panel.classList.toggle("hidden", !opening);
+    if (opening) await loadDepotStats();
+}
+
+async function loadDepotStats() {
+    const status = document.getElementById("depotStatsStatus");
+    const grid = document.getElementById("depotStatsGrid");
+    if (!status || !grid) return;
+    status.textContent = "Loading depot stats...";
+    grid.innerHTML = "";
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+        status.textContent = "Log in to view your depot stats.";
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from("sightings")
+        .select("car_number, fleet, line, station, saved_at")
+        .eq("user_id", user.id);
+    if (error) {
+        console.error("Could not load depot stats:", error);
+        status.textContent = "Could not load your depot stats.";
+        return;
+    }
+
+    const rows = scopeSightingsRows(data || []).filter(row => String(row.fleet || "") !== "TEST");
+    if (!rows.length) {
+        status.textContent = "No bus sightings yet.";
+        return;
+    }
+
+    const byDepot = new Map();
+    let unverified = 0;
+    rows.forEach(row => {
+        const raw = String(row.car_number || "").trim();
+        const number = Number.parseInt(raw, 10);
+        const assignment = Number.isFinite(number) ? getBusAssignment(number) : null;
+        if (!assignment?.depot) { unverified++; return; }
+        if (!byDepot.has(assignment.depot)) byDepot.set(assignment.depot, { rows: [], routes: assignment.routes || "" });
+        const entry = byDepot.get(assignment.depot);
+        entry.rows.push(row);
+        if (!entry.routes && assignment.routes) entry.routes = assignment.routes;
+    });
+
+    if (!byDepot.size) {
+        status.textContent = `No saved bus sightings currently have a verified depot assignment.${unverified ? ` ${unverified} sighting${unverified===1?"":"s"} remain unverified.` : ""}`;
+        return;
+    }
+
+    const stats = [...byDepot.entries()].map(([depot, entry]) => {
+        const uniqueBuses = new Set(entry.rows.map(r => String(r.car_number || "").trim()).filter(Boolean));
+        const routeCounts = new Map();
+        entry.rows.forEach(r => {
+            const route = String(r.line || "").trim();
+            if (route) routeCounts.set(route, (routeCounts.get(route) || 0) + 1);
+        });
+        const mostSeenRoute = [...routeCounts.entries()].sort((a,b)=>b[1]-a[1] || a[0].localeCompare(b[0],undefined,{numeric:true}))[0]?.[0] || "—";
+        const latest = entry.rows.reduce((best,r)=>!best || new Date(r.saved_at)>new Date(best.saved_at)?r:best,null);
+        return { depot, routes: entry.routes, count: entry.rows.length, uniqueBuses: uniqueBuses.size, mostSeenRoute, latest };
+    }).sort((a,b)=>b.count-a.count || a.depot.localeCompare(b.depot));
+
+    const maxCount = Math.max(...stats.map(s=>s.count),1);
+    status.textContent = `${rows.length} total bus sighting${rows.length===1?"":"s"} across ${stats.length} verified depot${stats.length===1?"":"s"}.${unverified ? ` ${unverified} sighting${unverified===1?"":"s"} do not yet have a verified depot assignment.` : ""}`;
+    grid.innerHTML = stats.map(item => {
+        const latestDate = item.latest?.saved_at ? new Date(item.latest.saved_at).toLocaleDateString() : "—";
+        const latestLocation = String(item.latest?.station || "").trim();
+        const routeDisplay = item.mostSeenRoute !== "—" && routeBulletClass(item.mostSeenRoute) ? lineDisplayHTML(item.mostSeenRoute) : escapeHTML(item.mostSeenRoute);
+        return `<div class="line-stat-card">
+            <div class="line-stat-card-head">
+                <div class="line-stat-card-title"><span>${escapeHTML(item.depot)}</span></div>
+                <div class="line-stat-count">${item.count} sighting${item.count===1?"":"s"}</div>
+            </div>
+            <div class="line-stat-details">
+                <div><span class="line-stat-detail-label">Unique buses</span><strong>${item.uniqueBuses}</strong></div>
+                <div><span class="line-stat-detail-label">Most-seen route</span><strong>${routeDisplay}</strong></div>
+                <div><span class="line-stat-detail-label">Latest sighting</span><strong>${escapeHTML(latestDate)}</strong></div>
+            </div>
+            ${latestLocation ? `<div class="account-small-note" style="margin-top:10px;">Latest location: ${escapeHTML(latestLocation)}</div>` : ""}
+            ${item.routes ? `<div class="account-small-note" style="margin-top:8px;"><strong>Routes operated by this depot:</strong> ${escapeHTML(item.routes)}</div>` : ""}
+            <div class="line-stat-bar" aria-hidden="true"><div class="line-stat-bar-fill" style="width:${((item.count/maxCount)*100).toFixed(2)}%;"></div></div>
+        </div>`;
     }).join("");
 }
 
@@ -3533,7 +3668,7 @@ async function toggleFleetBreakdownPanel() {
     const opening=panel.classList.contains("hidden");
     closeSettingsContentPanels(opening?"fleetBreakdownPanel":"");
     panel.classList.toggle("hidden",!opening);
-    if(opening) { const h=panel.querySelector("h2"); if(h) h.textContent=activeRailroadSystem()?`${activeSystemToolLabel()} Fleet Breakdown`:"Fleet Breakdown"; await loadFleetBreakdown(); }
+    if(opening) { const h=panel.querySelector("h2"); if(h) h.textContent=activeFleetSystem!=="subway"?`${activeSystemToolLabel()} Fleet Breakdown`:"Fleet Breakdown"; await loadFleetBreakdown(); }
 }
 
 async function loadFleetBreakdown() {
@@ -3783,7 +3918,7 @@ async function toggleFleetCollectionPanel() {
     const opening = panel.classList.contains("hidden");
     closeSettingsContentPanels(opening ? "fleetCollectionPanel" : "");
     panel.classList.toggle("hidden", !opening);
-    if (opening) { const h=panel.querySelector("h2"); if(h) h.textContent=activeRailroadSystem()?`${activeSystemToolLabel()} Fleet Collection`:"Fleet Collection"; await loadFleetCollection(); }
+    if (opening) { const h=panel.querySelector("h2"); if(h) h.textContent=activeFleetSystem!=="subway"?`${activeSystemToolLabel()} Fleet Collection`:"Fleet Collection"; await loadFleetCollection(); }
 }
 
 async function loadFleetCollection() {
@@ -3801,6 +3936,7 @@ async function loadFleetCollection() {
     }
 
     if (activeRailroadSystem()) { await loadRailroadFleetCollection(user, status, list); return; }
+    if (activeFleetSystem === "bus") { await loadBusFleetCollection(user, status, list); return; }
 
     const [sightingsResult, consistResult] = await Promise.all([
         supabaseClient
@@ -3941,6 +4077,42 @@ async function loadFleetCollection() {
             </div>
         </div>`;
     }).join("");
+}
+
+async function loadBusFleetCollection(user, status, list) {
+    const { data, error } = await supabaseClient
+        .from("sightings")
+        .select("car_number, fleet, saved_at, line, station")
+        .eq("user_id", user.id);
+    if (error) {
+        console.error("Could not load bus fleet collection:", error);
+        status.textContent = "Could not load your bus fleet collection.";
+        return;
+    }
+    const rows = scopeSightingsRows(data || []).filter(r => String(r.fleet || "") !== "TEST");
+    const fleetMap = new Map();
+    for (const def of busFleetData) {
+        const name = String(def.model || "").trim();
+        if (!name) continue;
+        if (!fleetMap.has(name)) fleetMap.set(name, { def, ranges: [] });
+        fleetMap.get(name).ranges.push(...(def.ranges || []));
+    }
+    const cards = [...fleetMap.entries()].map(([name, entry]) => {
+        const valid = new Set();
+        for (const [a,b] of entry.ranges) for (let n=a;n<=b;n++) valid.add(String(n).padStart(n < 100 ? 4 : 1, "0"));
+        const fleetRows = rows.filter(r => String(r.fleet || "").trim() === name);
+        const seenRaw = new Set(fleetRows.map(r => String(r.car_number || "").trim()).filter(Boolean));
+        const seen = [...seenRaw].filter(n => valid.has(n) || valid.has(String(Number(n))));
+        const total = valid.size;
+        return { name, seen: seen.length, total, percent: total ? seen.length / total * 100 : 0, sightings: fleetRows.length };
+    }).filter(x => x.total > 0).sort((a,b) => b.seen-a.seen || a.name.localeCompare(b.name));
+    const totalSeen = cards.reduce((n,x)=>n+x.seen,0), totalBuses = cards.reduce((n,x)=>n+x.total,0);
+    status.textContent = `Overall bus collection: ${totalSeen} of ${totalBuses} buses (${totalBuses ? (totalSeen/totalBuses*100).toFixed(1) : "0.0"}%).`;
+    list.innerHTML = cards.map(item => `<div class="report-item">
+        <div class="report-item-heading"><div class="report-item-car">${escapeHTML(item.name)}</div><div>${item.seen} / ${item.total}</div></div>
+        <div class="report-item-value">${item.percent.toFixed(1)}% collected · ${item.sightings} sighting${item.sightings===1?"":"s"}</div>
+        <div style="height:8px;border:1px solid currentColor;margin-top:10px;overflow:hidden;"><div style="height:100%;width:${item.percent.toFixed(2)}%;background:currentColor;"></div></div>
+    </div>`).join("");
 }
 
 function toggleCollectionDetails(index) {
@@ -6904,14 +7076,28 @@ const RAILROAD_FLEETS = Object.freeze({
 
 function activeRailroadSystem() { return activeFleetSystem === "lirr" || activeFleetSystem === "metro-north" ? activeFleetSystem : null; }
 function railroadFleetNames(system) { return new Set((RAILROAD_FLEETS[system] || []).map(f => f.name)); }
+function busFleetNames() { return new Set((busFleetData || []).map(f => String(f.model || "").trim()).filter(Boolean)); }
 function sightingBelongsToActiveSystem(row) {
-    const system=activeRailroadSystem(); if(!system) return true;
     const fleet=String(row?.fleet||"").trim();
-    if(fleet==="TEST") return String(row?.line||"").trim()==="TEST";
-    return railroadFleetNames(system).has(fleet);
+    const line=String(row?.line||"").trim();
+    const station=String(row?.station||"").trim();
+    if(activeFleetSystem === "bus") {
+        if(fleet === "TEST") return line === "TEST" && station === "Stop Av / Stop St";
+        return busFleetNames().has(fleet);
+    }
+    const system=activeRailroadSystem();
+    if(system) {
+        if(fleet === "TEST") return line === "TEST" && station !== "Stop Av / Stop St";
+        return railroadFleetNames(system).has(fleet);
+    }
+    // Subway excludes known bus and railroad fleets so each system's tools remain isolated.
+    if(busFleetNames().has(fleet)) return false;
+    if(railroadFleetNames("lirr").has(fleet) || railroadFleetNames("metro-north").has(fleet)) return false;
+    if(fleet === "TEST" && station === "Stop Av / Stop St") return false;
+    return true;
 }
 function scopeSightingsRows(rows) { return (rows||[]).filter(sightingBelongsToActiveSystem); }
-function activeSystemToolLabel() { return activeFleetSystem==="lirr"?"LIRR":activeFleetSystem==="metro-north"?"Metro-North":"Subway"; }
+function activeSystemToolLabel() { return activeFleetSystem==="bus"?"Bus":activeFleetSystem==="lirr"?"LIRR":activeFleetSystem==="metro-north"?"Metro-North":"Subway"; }
 
 function railroadNumberInFleet(number, fleet) {
     if (fleet.exclusions?.includes(number)) return false;
@@ -7555,7 +7741,7 @@ function updateFocusMode() {
 }
 
 function closeSettingsContentPanels(exceptId = "") {
-    ["accountPanel", "sightingsHubPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel", "fleetBreakdownPanel", "lineStatsPanel", "fleetComparisonPanel", "trainsetHistoryPanel"].forEach(id => {
+    ["accountPanel", "sightingsHubPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel", "fleetCollectionPanel", "fleetBreakdownPanel", "lineStatsPanel", "depotStatsPanel", "fleetComparisonPanel", "trainsetHistoryPanel"].forEach(id => {
         if (id !== exceptId) {
             document.getElementById(id)?.classList.add("hidden");
         }
@@ -7571,7 +7757,7 @@ function toggleAccountPanel() {
 
 async function toggleSightingsHub() {
     const panel = document.getElementById("sightingsHubPanel");
-    const heading=panel?.querySelector(":scope > h2"); if(heading) heading.textContent=activeRailroadSystem()?`${activeSystemToolLabel()} Sightings Hub`:"Sightings Hub";
+    const heading=panel?.querySelector(":scope > h2"); if(heading) heading.textContent=activeFleetSystem!=="subway"?`${activeSystemToolLabel()} Sightings Hub`:"Sightings Hub";
     if (!panel) return;
     const opening = panel.classList.contains("hidden");
     closeSettingsContentPanels(opening ? "sightingsHubPanel" : "");
