@@ -242,6 +242,30 @@
       display: none !important;
     }
 
+    /* Phase 5.3F-B — system-scoped admin workspaces */
+    .system-switcher {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 0 0 22px;
+    }
+    .system-switch-button {
+      border: 1px solid #333;
+      background: #181818;
+      color: #aaa;
+      border-radius: 10px;
+      padding: 12px 10px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .system-switch-button:hover { background: #222; color: #fff; }
+    .system-switch-button.active { background: #fff; color: #111; border-color: #fff; }
+    .workspace-heading { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; margin:0 0 18px; }
+    .workspace-heading h2 { margin:0; font-size:24px; }
+    .workspace-heading p { margin:5px 0 0; color:#888; }
+    .system-only-note { color:#888; margin:0; line-height:1.45; }
+    @media (max-width: 650px) { .system-switcher { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
     .auth-shell {
       width: min(520px, 100%);
       margin: 20px auto 0;
@@ -395,7 +419,7 @@
       }
     }
 
-    /* NYC Subway route bullets */
+    /* NYC Subway route bullets — used only when the sighting system is Subway */
     .route-bullet {
       display: inline-flex; align-items: center; justify-content: center;
       width: 28px; height: 28px; border-radius: 50%;
@@ -459,7 +483,7 @@
 
     <header>
       <h1>Fleet Identifier Admin</h1>
-      <div class="subtitle">Sightings overview</div>
+      <div class="subtitle">Multi-system operations dashboard</div>
     </header>
 
     <div id="authShell" class="auth-shell hidden">
@@ -514,6 +538,17 @@
         <button id="signOutButton" class="sign-out-button" type="button">Sign Out</button>
       </div>
 
+      <div class="system-switcher" id="adminSystemSwitcher" aria-label="Admin system">
+        <button class="system-switch-button active" type="button" data-admin-system="subway">Subway</button>
+        <button class="system-switch-button" type="button" data-admin-system="bus">Bus</button>
+        <button class="system-switch-button" type="button" data-admin-system="lirr">LIRR</button>
+        <button class="system-switch-button" type="button" data-admin-system="metro-north">Metro-North</button>
+      </div>
+
+      <div class="workspace-heading">
+        <div><h2 id="adminWorkspaceTitle">Subway Admin</h2><p id="adminWorkspaceSubtitle">Manage Subway sightings, reports, and fleet activity.</p></div>
+      </div>
+
       <div id="sessionDiagnosticsSection" class="section hidden">
         <h2>Session Diagnostics</h2>
         <p class="session-diagnostics-note">
@@ -544,7 +579,7 @@
       </div>
 
       <div class="card">
-        <div class="card-label">Lines Reported</div>
+        <div class="card-label">Routes Reported</div>
         <div class="card-value" id="uniqueLines">—</div>
       </div>
 
@@ -582,9 +617,9 @@
       <h2>Recent Sightings</h2>
 
       <div class="filters">
-        <input id="sightingSearch" type="search" placeholder="Search car, fleet, line, or notes">
+        <input id="sightingSearch" type="search" placeholder="Search vehicle, fleet, route, or notes">
         <select id="fleetFilter"><option value="">All fleets</option></select>
-        <select id="lineFilter"><option value="">All lines</option></select>
+        <select id="lineFilter"><option value="">All routes</option></select>
         <button id="clearSightingFilters" class="filter-button" type="button">Clear Filters</button>
       </div>
 
@@ -594,9 +629,9 @@
         <table>
           <thead>
             <tr>
-              <th>Car</th>
+              <th>Vehicle</th>
               <th>Fleet</th>
-              <th>Line</th>
+              <th>Route</th>
               <th>Time</th>
               <th>Notes</th>
               <th>Actions</th>
@@ -609,15 +644,15 @@
       </div>
     </div>
 
-    <!-- Missing Car Reports -->
-    <div class="section">
+    <!-- Subway-only reports -->
+    <div class="section subway-admin-only">
       <div class="activity-heading">
-        <h2>Missing Car Reports</h2>
+        <h2>Missing Fleet Reports</h2>
         <button id="refreshMissingReportsButton" class="filter-button" type="button">Refresh</button>
       </div>
 
       <div class="filters">
-        <input id="missingReportSearch" type="search" placeholder="Search car, fleet, line, notes, or platform">
+        <input id="missingReportSearch" type="search" placeholder="Search vehicle, fleet, route, notes, or platform">
         <select id="missingReportStatusFilter">
           <option value="">All statuses</option>
           <option value="pending">Pending</option>
@@ -633,9 +668,9 @@
         <table>
           <thead>
             <tr>
-              <th>Car</th>
+              <th>Vehicle</th>
               <th>Fleet Guess</th>
-              <th>Line</th>
+              <th>Route</th>
               <th>Notes</th>
               <th>Platform</th>
               <th>Submitted</th>
@@ -651,14 +686,14 @@
 
 
     <!-- Incorrect Information Reports -->
-    <div class="section">
+    <div class="section subway-admin-only">
       <div class="activity-heading">
         <h2>Incorrect Information Reports</h2>
         <button id="refreshIncorrectReportsButton" class="filter-button" type="button">Refresh</button>
       </div>
 
       <div class="filters">
-        <input id="incorrectReportSearch" type="search" placeholder="Search car, fleet, field, value, notes, or platform">
+        <input id="incorrectReportSearch" type="search" placeholder="Search vehicle, fleet, field, value, notes, or platform">
         <select id="incorrectReportStatusFilter">
           <option value="">All statuses</option>
           <option value="pending">Pending</option>
@@ -690,6 +725,16 @@
           </tbody>
         </table>
       </div>
+    </div>
+
+    <div id="systemAdminExpansionNote" class="section hidden">
+      <h2 id="systemAdminExpansionTitle">System Tools</h2>
+      <p id="systemAdminExpansionText" class="system-only-note"></p>
+    </div>
+
+    <!-- Global Admin -->
+    <div class="workspace-heading" style="margin-top:28px;">
+      <div><h2>Global Admin</h2><p>Account-wide activity and user management.</p></div>
     </div>
 
     <!-- User Management -->
@@ -920,6 +965,7 @@
     let missingCarReports = [];
     let incorrectInformationReports = [];
     let currentAdminProfile = null;
+    let currentAdminSystem = "subway";
 
     let statusResetTimer = null;
 
@@ -1057,9 +1103,7 @@
         error: sightingsError
       } = await supabaseClient
         .from("sightings")
-        .select(
-          "id, user_id, car_number, fleet, line, saved_at, notes"
-        )
+        .select("*")
         .order("saved_at", { ascending: false });
 
       if (sightingsError) {
@@ -1841,7 +1885,7 @@
       if (!filtered.length) {
         const row = document.createElement("tr");
         const cell = document.createElement("td");
-        cell.colSpan = 7;
+        cell.colSpan = 6;
         cell.className = "empty";
         cell.textContent = missingCarReports.length ? "No reports match your filters." : "No missing car reports have been submitted yet.";
         row.appendChild(cell);
@@ -1942,16 +1986,38 @@
       }
     }
 
+
+    function normalizeSystemValue(value) {
+      const raw = String(value ?? "").trim().toLowerCase();
+      if (!raw) return "subway"; // legacy sightings predate multi-system support
+      if (["subway", "nyc subway", "nyct subway"].includes(raw)) return "subway";
+      if (["bus", "nyc bus", "mta bus"].includes(raw)) return "bus";
+      if (["lirr", "long island rail road", "long island railroad"].includes(raw)) return "lirr";
+      if (["metro-north", "metro north", "mnr", "mnr railroad"].includes(raw)) return "metro-north";
+      return raw;
+    }
+
+    function sightingSystem(sighting) {
+      return normalizeSystemValue(sighting?.system ?? sighting?.transit_system ?? sighting?.mode);
+    }
+
+    function systemLabel(value) {
+      const system = normalizeSystemValue(value);
+      return ({ subway: "Subway", bus: "Bus", lirr: "LIRR", "metro-north": "Metro-North" })[system] || (value || "Unknown");
+    }
+
     function loadDashboard(profile) {
+      const systemSightings = sightings.filter(s => sightingSystem(s) === currentAdminSystem);
+
       document.getElementById(
         "totalSightings"
-      ).textContent = sightings.length;
+      ).textContent = systemSightings.length;
 
       document.getElementById(
         "uniqueFleets"
       ).textContent =
         new Set(
-          sightings
+          systemSightings
             .map(s => s.fleet)
             .filter(Boolean)
         ).size;
@@ -1960,8 +2026,8 @@
         "uniqueLines"
       ).textContent =
         new Set(
-          sightings
-            .map(s => s.line)
+          systemSightings
+            .map(s => s.line ?? s.route)
             .filter(Boolean)
         ).size;
 
@@ -1970,7 +2036,7 @@
       document.getElementById(
         "todaySightings"
       ).textContent =
-        sightings.filter(s =>
+        systemSightings.filter(s =>
           s.saved_at &&
           new Date(s.saved_at).toDateString() === today
         ).length;
@@ -1984,20 +2050,21 @@
       const fleetFilter = document.getElementById("fleetFilter")?.value || "";
       const lineFilter = document.getElementById("lineFilter")?.value || "";
 
-      const filteredSightings = sightings.filter(s => {
-        const haystack = [s.car_number, s.fleet, s.line, s.notes]
+      const filteredSightings = systemSightings.filter(s => {
+        const haystack = [systemLabel(sightingSystem(s)), s.car_number, s.vehicle_number, s.fleet, s.line, s.route, s.notes]
           .map(v => v ?? "")
           .join(" ")
           .toLowerCase();
+        const route = s.line ?? s.route ?? "";
         return (!search || haystack.includes(search)) &&
           (!fleetFilter || s.fleet === fleetFilter) &&
-          (!lineFilter || s.line === lineFilter);
+          (!lineFilter || route === lineFilter);
       });
 
       const sightingCount = document.getElementById("sightingResultCount");
       if (sightingCount) {
         sightingCount.textContent =
-          `Showing ${filteredSightings.length} of ${sightings.length} ${sightings.length === 1 ? "sighting" : "sightings"}`;
+          `Showing ${filteredSightings.length} of ${systemSightings.length} ${systemSightings.length === 1 ? "sighting" : "sightings"}`;
       }
 
       if (!filteredSightings.length) {
@@ -2007,7 +2074,7 @@
         cell.colSpan = 6;
         cell.className = "empty";
         cell.textContent =
-          sightings.length ? "No sightings match your filters." : "No sightings have been submitted yet.";
+          systemSightings.length ? "No sightings match your filters." : `No ${systemLabel(currentAdminSystem)} sightings have been submitted yet.`;
 
         row.appendChild(cell);
         table.appendChild(row);
@@ -2019,10 +2086,11 @@
             const row =
               document.createElement("tr");
 
+            const routeValue = sighting.line ?? sighting.route ?? "—";
             const values = [
-              sighting.car_number ?? "—",
+              sighting.car_number ?? sighting.vehicle_number ?? "—",
               sighting.fleet ?? "—",
-              sighting.line ?? "—",
+              routeValue,
               sighting.saved_at
                 ? new Date(
                     sighting.saved_at
@@ -2035,8 +2103,8 @@
               const cell =
                 document.createElement("td");
 
-              if (index === 2) {
-                setRouteCell(cell, sighting.line);
+              if (index === 2 && sightingSystem(sighting) === "subway") {
+                setRouteCell(cell, routeValue);
               } else {
                 cell.textContent = value;
               }
@@ -2083,11 +2151,10 @@
         return;
       }
 
-      const car =
-        sighting.car_number ?? "this sighting";
+      const vehicle = sighting.car_number ?? sighting.vehicle_number ?? "this vehicle";
 
       const confirmed = window.confirm(
-        `Delete sighting for car ${car}?\n\nThis cannot be undone.`
+        `Delete ${systemLabel(sightingSystem(sighting))} sighting for ${vehicle}?\n\nThis cannot be undone.`
       );
 
       if (!confirmed) {
@@ -2126,7 +2193,7 @@
         loadDashboard(
           currentAdminProfile
         );
-        setStatus(`Sighting for car ${car} deleted successfully.`, "success", 3500);
+        setStatus(`Sighting for ${vehicle} deleted successfully.`, "success", 3500);
 
       } catch (error) {
         console.error(
@@ -2513,15 +2580,52 @@
 
       const currentFleet = fleetSelect.value;
       const currentLine = lineSelect.value;
-      const fleets = [...new Set(sightings.map(s => s.fleet).filter(Boolean))].sort();
-      const lines = [...new Set(sightings.map(s => s.line).filter(Boolean))].sort();
+      const systemSightings = sightings.filter(s => sightingSystem(s) === currentAdminSystem);
+      const fleets = [...new Set(systemSightings.map(s => s.fleet).filter(Boolean))].sort();
+      const lines = [...new Set(systemSightings.map(s => s.line ?? s.route).filter(Boolean))].sort();
 
       fleetSelect.innerHTML = '<option value="">All fleets</option>';
-      lineSelect.innerHTML = '<option value="">All lines</option>';
+      lineSelect.innerHTML = '<option value="">All routes</option>';
       fleets.forEach(value => fleetSelect.add(new Option(value, value)));
       lines.forEach(value => lineSelect.add(new Option(value, value)));
       fleetSelect.value = fleets.includes(currentFleet) ? currentFleet : "";
       lineSelect.value = lines.includes(currentLine) ? currentLine : "";
+    }
+
+    function setAdminSystem(system) {
+      currentAdminSystem = normalizeSystemValue(system);
+      document.querySelectorAll("[data-admin-system]").forEach(button => {
+        button.classList.toggle("active", button.dataset.adminSystem === currentAdminSystem);
+      });
+
+      const label = systemLabel(currentAdminSystem);
+      const title = document.getElementById("adminWorkspaceTitle");
+      const subtitle = document.getElementById("adminWorkspaceSubtitle");
+      if (title) title.textContent = `${label} Admin`;
+      if (subtitle) subtitle.textContent = `Manage ${label} sightings${currentAdminSystem === "subway" ? ", reports," : ","} and fleet activity.`;
+
+      document.querySelectorAll(".subway-admin-only").forEach(section => {
+        section.classList.toggle("hidden", currentAdminSystem !== "subway");
+      });
+
+      const expansion = document.getElementById("systemAdminExpansionNote");
+      const expansionTitle = document.getElementById("systemAdminExpansionTitle");
+      const expansionText = document.getElementById("systemAdminExpansionText");
+      if (expansion) expansion.classList.toggle("hidden", currentAdminSystem === "subway");
+      if (expansionTitle) expansionTitle.textContent = `${label} Admin Tools`;
+      if (expansionText) expansionText.textContent = `${label}-specific admin tools will appear here as that system expands. Sightings and system-level statistics above are already scoped to ${label}.`;
+
+      document.getElementById("sightingSearch").value = "";
+      document.getElementById("fleetFilter").value = "";
+      document.getElementById("lineFilter").value = "";
+      populateSightingFilters();
+      loadDashboard(currentAdminProfile);
+    }
+
+    function setupAdminSystemSwitcher() {
+      document.querySelectorAll("[data-admin-system]").forEach(button => {
+        button.addEventListener("click", () => setAdminSystem(button.dataset.adminSystem));
+      });
     }
 
     function setupFilters() {
@@ -2612,6 +2716,7 @@
       refreshSessionDiagnostics();
     }
 
+    setupAdminSystemSwitcher();
     setupFilters();
     startAdminDashboard();
   
