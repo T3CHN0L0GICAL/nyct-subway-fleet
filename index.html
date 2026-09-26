@@ -2049,11 +2049,8 @@
 
     <section id="searchHistoryPanel" class="account-panel hidden">
         <h2>Search History</h2>
-        <div class="account-small-note">Fleet Identifier searches for the current transit system are synced across devices, including searches that returned Not Found.</div>
+        <div class="account-small-note">Fleet Identifier searches for the current transit system are synced across devices.</div>
         <div class="search-history-filters" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
-            <select id="searchHistoryResultFilter" onchange="renderSearchHistory()" aria-label="Filter by result">
-                <option value="all">All results</option><option value="found">Found</option><option value="not-found">Not Found</option>
-            </select>
             <input id="searchHistoryTextFilter" type="search" placeholder="Search number or result" oninput="renderSearchHistory()" aria-label="Search history">
             <button type="button" onclick="loadSearchHistory()">Refresh</button>
             <button type="button" onclick="clearSearchHistory()">Clear Search History</button>
@@ -2187,10 +2184,10 @@ function railroadPickerHostId(system){ return system === "lirr" ? "lirrRailPicke
 function renderRailroadPicker(system){
   const data=railroadData(system), host=document.getElementById(railroadPickerHostId(system)); if(!data||!host) return;
   const label=system === "lirr" ? "Branch" : "Line";
-  host.innerHTML=`<div class="rail-form-grid"><label>${label}<select id="${system}-rail-route" onchange="onRailroadRouteChange('${system}')"><option value="">Choose a ${label.toLowerCase()}</option>${data.routes.map(r=>`<option value="${railEsc(r.id)}">${railEsc(r.name)}</option>`).join("")}</select></label><div><label>Location</label><div class="rail-location-mode"><button type="button" id="${system}-rail-mode-station" class="active" onclick="setRailroadLocationMode('${system}','station')">Search stations</button><button type="button" id="${system}-rail-mode-custom" onclick="setRailroadLocationMode('${system}','custom')">Custom location</button></div><div class="rail-station-picker"><input id="${system}-rail-station" class="sighting-station" type="text" autocomplete="off" disabled placeholder="Choose a ${label.toLowerCase()} first" oninput="searchRailroadStations('${system}')" onfocus="searchRailroadStations('${system}')"><div id="${system}-rail-results" class="rail-station-results hidden"></div></div></div></div><div id="${system}-rail-summary" class="rail-selection-summary">Choose a ${label.toLowerCase()} to begin.</div>`;
+  host.innerHTML=`<div class="rail-form-grid"><label>${label}<select id="${system}-rail-route" onchange="onRailroadRouteChange('${system}')"><option value="">Choose a ${label.toLowerCase()}</option><option value="__NIS__">NIS — Not In Service</option>${data.routes.map(r=>`<option value="${railEsc(r.id)}">${railEsc(r.name)}</option>`).join("")}</select></label><div><label>Location</label><div class="rail-location-mode"><button type="button" id="${system}-rail-mode-station" class="active" onclick="setRailroadLocationMode('${system}','station')">Search stations</button><button type="button" id="${system}-rail-mode-custom" onclick="setRailroadLocationMode('${system}','custom')">Custom location</button></div><div class="rail-station-picker"><input id="${system}-rail-station" class="sighting-station" type="text" autocomplete="off" disabled placeholder="Choose a ${label.toLowerCase()} first" oninput="searchRailroadStations('${system}')" onfocus="searchRailroadStations('${system}')"><div id="${system}-rail-results" class="rail-station-results hidden"></div></div></div></div><div id="${system}-rail-summary" class="rail-selection-summary">Choose a ${label.toLowerCase()} to begin.</div>`;
 }
 function setRailroadLocationMode(system,mode){ const state=railroadPickerState[system]; state.mode=mode; state.station=null; const input=document.getElementById(`${system}-rail-station`), route=document.getElementById(`${system}-rail-route`)?.value; document.getElementById(`${system}-rail-mode-station`)?.classList.toggle("active",mode==="station"); document.getElementById(`${system}-rail-mode-custom`)?.classList.toggle("active",mode==="custom"); document.getElementById(`${system}-rail-results`)?.classList.add("hidden"); if(!input)return; input.value=""; input.disabled=mode==="station" ? !route : false; input.placeholder=mode==="station" ? (route?"Search stations":"Choose a branch/line first") : "Enter a custom location"; updateRailroadSummary(system); }
-function onRailroadRouteChange(system){ const state=railroadPickerState[system]; state.station=null; const input=document.getElementById(`${system}-rail-station`), route=document.getElementById(`${system}-rail-route`)?.value; if(input){input.value="";input.disabled=state.mode==="station"?!route:false;input.placeholder=state.mode==="station"?(route?"Search stations":"Choose a branch/line first"):"Enter a custom location";} document.getElementById(`${system}-rail-results`)?.classList.add("hidden"); updateRailroadSummary(system); }
+function onRailroadRouteChange(system){ const state=railroadPickerState[system]; state.station=null; const input=document.getElementById(`${system}-rail-station`), route=document.getElementById(`${system}-rail-route`)?.value; if(route==="__NIS__"){state.routeId=route;state.mode="custom";document.getElementById(`${system}-rail-mode-station`)?.classList.remove("active");document.getElementById(`${system}-rail-mode-custom`)?.classList.add("active");if(input){input.value="";input.disabled=false;input.placeholder="Enter location (optional)";}document.getElementById(`${system}-rail-results`)?.classList.add("hidden");const summary=document.getElementById(`${system}-rail-summary`);if(summary)summary.innerHTML="<strong>NIS</strong> · Not In Service";return;} if(input){input.value="";input.disabled=state.mode==="station"?!route:false;input.placeholder=state.mode==="station"?(route?"Search stations":"Choose a branch/line first"):"Enter a custom location";} document.getElementById(`${system}-rail-results`)?.classList.add("hidden"); updateRailroadSummary(system); }
 function normalizeRailSearch(v){ return String(v||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim(); }
 function searchRailroadStations(system){ const data=railroadData(system), state=railroadPickerState[system], results=document.getElementById(`${system}-rail-results`), input=document.getElementById(`${system}-rail-station`), rid=document.getElementById(`${system}-rail-route`)?.value; if(!data||!results||!input||state.mode!=="station"||!rid){results?.classList.add("hidden");return;} const allowed=new Set(data.routeStops[rid]||[]), q=normalizeRailSearch(input.value); const matches=data.stations.filter(s=>allowed.has(s.id)&&(!q||normalizeRailSearch(s.name).includes(q))).slice(0,40); results.innerHTML=matches.length?matches.map(s=>`<button type="button" class="rail-station-result" onclick="selectRailroadStation('${system}','${railEsc(s.id)}')"><span class="rail-station-name">${railEsc(s.name)}</span><span class="rail-route-badges">${s.routes.map(x=>railroadBadgeHTML(system,x)).join("")}</span></button>`).join(""):`<div class="station-picker-empty">No matching station on this ${system==="lirr"?"branch":"line"}.</div>`; results.classList.remove("hidden"); }
 function selectRailroadStation(system,id){ const data=railroadData(system), s=data?.stations.find(x=>String(x.id)===String(id)); if(!s)return; railroadPickerState[system].station=s; const input=document.getElementById(`${system}-rail-station`); if(input)input.value=s.name; document.getElementById(`${system}-rail-results`)?.classList.add("hidden"); updateRailroadSummary(system); }
@@ -4321,12 +4318,9 @@ function renderSearchHistory() {
     const status = document.getElementById("searchHistoryStatus");
     const list = document.getElementById("searchHistoryList");
     if (!status || !list) return;
-    const resultFilter = document.getElementById("searchHistoryResultFilter")?.value || "all";
     const textFilter = (document.getElementById("searchHistoryTextFilter")?.value || "").trim().toLowerCase();
 
     const rows = searchHistoryRows.filter(item => {
-        if (resultFilter === "found" && !item.found) return false;
-        if (resultFilter === "not-found" && item.found) return false;
         if (textFilter) {
             const haystack = `${item.search_value || ""} ${item.result_name || ""}`.toLowerCase();
             if (!haystack.includes(textFilter)) return false;
@@ -4342,7 +4336,6 @@ function renderSearchHistory() {
         <div class="report-item">
             <div class="report-item-heading">
                 <div class="report-item-car">${escapeHTML(item.search_value || "—")}</div>
-                <div class="report-status-badge">${item.found ? "Found" : "Not Found"}</div>
             </div>
             <div class="report-item-details">
                 <div class="report-item-label">Result</div>
@@ -5798,13 +5791,10 @@ async function saveSighting() {
 
     refreshAchievementEligibility(session.user);
 
-    // Field workflow: after a fully successful save, clear the searched car
-    // and return focus to the main input so the next car can be entered fast.
-    const mainSearchInput = document.getElementById("carNumber");
-    if (mainSearchInput) {
-        mainSearchInput.value = "";
-        mainSearchInput.focus();
-    }
+    // Field workflow: after a fully successful save, return the identifier to a clean state.
+    pendingSighting=null;
+    const resultBox=document.getElementById("result"); if(resultBox){resultBox.className="result hidden";resultBox.innerHTML="";}
+    const mainSearchInput=document.getElementById("carNumber"); if(mainSearchInput){mainSearchInput.value="";mainSearchInput.focus();}
 }
 
 
@@ -6275,6 +6265,18 @@ async function getRepeatSightingNotice(carNumber) {
 }
 
 
+async function getPrimaryRepeatSightingNotice(vehicleNumber, vehicleLabel = "vehicle") {
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session?.user) return "";
+        const value=String(vehicleNumber);
+        const {data,error}=await supabaseClient.from("sightings").select("id,saved_at").eq("user_id",session.user.id).eq("car_number",value).order("saved_at",{ascending:false});
+        if(error||!data?.length) return "";
+        const last=data[0]?.saved_at?new Date(data[0].saved_at).toLocaleString():"an earlier date";
+        return `<div class="repeat-sighting-notice"><strong>You’ve seen ${escapeHTML(vehicleLabel)} ${escapeHTML(value)} before.</strong>${data.length} previous sighting${data.length===1?"":"s"} · Last seen ${escapeHTML(last)}</div>`;
+    } catch(error){ console.error("Could not check previous sightings:",error); return ""; }
+}
+
 let searchMode = "car";
 
 function setSearchMode(mode) {
@@ -6583,6 +6585,8 @@ async function identifyBus() {
         return;
     }
 
+    const busRepeatNotice = input === "0000" ? "" : await getPrimaryRepeatSightingNotice(input, "bus");
+
     // Bus test vehicle — mirrors the Subway 0000 developer/test rules.
     // This is intentionally isolated from the real fleet, route, and GTFS databases.
     if (input === "0000") {
@@ -6649,6 +6653,7 @@ async function identifyBus() {
     box.innerHTML = `
         <div class="fleet-title">${escapeHTML(data.model)}</div>
         <div class="car-number">Bus number: <strong>${escapeHTML(input)}</strong></div>
+        ${busRepeatNotice}
         <div class="info">
             <div class="label">Builder / manufacturer</div><div>${escapeHTML(data.builder)}</div>
             <div class="label">Years built / delivered</div><div>${escapeHTML(data.years)}</div>
@@ -6671,7 +6676,7 @@ async function identifyBus() {
                     <label for="busRoutePrefix">Route prefix</label>
                     <select id="busRoutePrefix" style="width:100%;padding:12px;font-size:16px;border-radius:9px;" onchange="updateBusRoutePreview()">
                         <option value="">Choose</option>
-                        <option value="B">B</option><option value="Q">Q</option><option value="Bx">Bx</option><option value="M">M</option><option value="S">S</option>
+                        <option value="NIS">NIS</option><option value="B">B</option><option value="Q">Q</option><option value="Bx">Bx</option><option value="M">M</option><option value="S">S</option>
                         <option value="BM">BM</option><option value="BxM">BxM</option><option value="QM">QM</option><option value="SIM">SIM</option><option value="X">X</option>
                     </select>
                 </div>
@@ -7049,6 +7054,8 @@ function refreshBusServiceOptions() {
 }
 
 function buildBusRouteSelection() {
+    const prefix=document.getElementById("busRoutePrefix")?.value || "";
+    if(prefix === "NIS") return {ok:true,base:"NIS",service:"NIS",route:"NIS"};
     const base=rawBusBaseRoute();
     if (!base) return {ok:false,message:"Choose a route prefix and enter the route number."};
     const catalogEntry=getBusRouteCatalogEntry(base);
@@ -7091,6 +7098,19 @@ function updateBusRouteNumberPlaceholder() {
 
 function updateBusRoutePreview() {
     updateBusRouteNumberPlaceholder();
+    const prefix=document.getElementById("busRoutePrefix")?.value || "";
+    const numberInput=document.getElementById("busRouteNumber"), serviceSelect=document.getElementById("busRouteService"), locationInput=document.getElementById("busSightingLocation");
+    if(prefix === "NIS") {
+        if(numberInput){numberInput.value="";numberInput.disabled=true;numberInput.placeholder="Not required for NIS";}
+        if(serviceSelect){serviceSelect.innerHTML='<option value="NIS">Not In Service</option>';serviceSelect.disabled=true;}
+        busLocationMode="custom"; selectedBusStop=null;
+        document.getElementById("busStopModeButton")?.classList.remove("active"); document.getElementById("busCustomModeButton")?.classList.add("active");
+        if(locationInput){locationInput.disabled=false;locationInput.value="";locationInput.placeholder="Enter location (optional)";}
+        const preview=document.getElementById("busRoutePreview"); if(preview)preview.textContent="NIS — Not In Service";
+        const note=document.getElementById("busStopSearchNote"); if(note)note.textContent="NIS sightings do not require a passenger route. Enter a custom location if desired.";
+        document.getElementById("busStopResults")?.classList.add("hidden"); return;
+    }
+    if(numberInput) numberInput.disabled=false;
     selectedBusStop=null;
     document.getElementById("busStopResults")?.classList.add("hidden");
     refreshBusServiceOptions();
@@ -7124,6 +7144,8 @@ async function saveBusSighting() {
     const { error }=await supabaseClient.from("sightings").insert(payload);
     if(error){ console.error("Could not save bus sighting:",error); if(status) status.textContent="Could not save bus sighting. Please try again."; return; }
     if(status) status.textContent=`Saved: bus ${pendingBusSighting.busNumber} on ${selected.route}${location ? ` at ${location}` : ""}.`;
+    pendingBusSighting=null; selectedBusStop=null; busLocationMode="stop";
+    const box=document.getElementById("busResult"); if(box){box.className="result hidden";box.innerHTML="";}
     const input=document.getElementById("busNumber"); if(input){ input.value=""; input.focus(); }
 }
 
@@ -7230,8 +7252,9 @@ async function identifyRailroad(system) {
         recordIdentifierSearch?.(system, input, false, null, null);
         return;
     }
+    const railroadRepeatNotice=await getPrimaryRepeatSightingNotice(input,system==="lirr"?"LIRR vehicle":"Metro-North vehicle");
     box.className="result";
-    box.innerHTML=`<div class="fleet-title">${escapeHTML(fleet.name)}</div><div class="car-number">Vehicle number: <strong>${escapeHTML(input)}</strong></div><div class="info"><div class="label">Builder</div><div>${escapeHTML(fleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(fleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(fleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(fleet.power)}</div><div class="label">Typical system service</div><div>${escapeHTML(fleet.service)}</div><div class="label">Notes</div><div>${escapeHTML(fleet.notes)}</div></div>${railroadSightingFormHTML(system, input, fleet.name, false)}`;
+    box.innerHTML=`<div class="fleet-title">${escapeHTML(fleet.name)}</div><div class="car-number">Vehicle number: <strong>${escapeHTML(input)}</strong></div>${railroadRepeatNotice}<div class="info"><div class="label">Builder</div><div>${escapeHTML(fleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(fleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(fleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(fleet.power)}</div><div class="label">Typical system service</div><div>${escapeHTML(fleet.service)}</div><div class="label">Notes</div><div>${escapeHTML(fleet.notes)}</div></div>${railroadSightingFormHTML(system, input, fleet.name, false)}`;
     renderRailroadPicker(system);
     recordIdentifierSearch?.(system, input, true, fleet.name, {builder:fleet.builder,years:fleet.years});
 }
@@ -7287,17 +7310,19 @@ async function saveRailroadSighting(system, vehicleNumber, fleetName, testMode=f
         line="TEST"; location="TEST Station";
     } else {
         const rid=document.getElementById(`${system}-rail-route`)?.value || "";
+        const state=railroadPickerState[system];
+        const input=document.getElementById(`${system}-rail-station`);
+        if(rid==="__NIS__"){ line="NIS"; location=input?.value.trim() || ""; } else {
         const route=railroadRoute(system,rid);
         if(!route){ if(status) status.textContent=`Choose a ${system==="lirr"?"branch":"line"} first.`; return; }
         line=route.name;
-        const state=railroadPickerState[system];
-        const input=document.getElementById(`${system}-rail-station`);
         if(state.mode==="station"){
             if(!state.station || !(railroadData(system)?.routeStops[rid]||[]).includes(state.station.id)) { if(status) status.textContent="Choose a station from the search results first."; return; }
             location=state.station.name;
         } else {
             location=input?.value.trim() || "";
             if(!location){ if(status) status.textContent="Enter a custom location first."; return; }
+        }
         }
     }
     const {data:{session}}=await supabaseClient.auth.getSession();
@@ -7311,6 +7336,9 @@ async function saveRailroadSighting(system, vehicleNumber, fleetName, testMode=f
     const {error}=await supabaseClient.from("sightings").insert(payload);
     if(error){ console.error("Could not save railroad sighting:",error); if(status) status.textContent="Could not save railroad sighting. Please try again."; return; }
     if(status) status.textContent=`Saved: ${system==="lirr"?"LIRR":"Metro-North"} ${vehicleNumber} on ${line}${location?` at ${location}`:""}.`;
+    railroadPickerState[system]={routeId:"",mode:"station",station:null};
+    const ids=railroadSearchIds(system), box=document.getElementById(ids.result), input=document.getElementById(ids.input);
+    if(box){box.className="result hidden";box.innerHTML="";} if(input){input.value="";input.focus();}
 }
 
 document.getElementById("lirrNumber")?.addEventListener("keydown", e => { if(e.key === "Enter") identifyRailroad("lirr"); });
