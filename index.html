@@ -383,6 +383,26 @@
         margin-top: 4px;
     }
 
+    .history-exception-card {
+        margin: 14px 0;
+        padding: 14px 16px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--panel);
+    }
+    .history-exception-card .history-exception-title {
+        font-weight: 800;
+        margin-bottom: 6px;
+    }
+    .history-exception-card .history-exception-status {
+        font-size: 0.9rem;
+        opacity: 0.78;
+        margin-bottom: 8px;
+    }
+    .history-exception-card .history-exception-text {
+        line-height: 1.45;
+    }
+
     .status-message {
         margin-top: 12px;
         color: var(--fi-muted);
@@ -1527,6 +1547,13 @@
     .rail-integration-card { border:1px solid var(--fi-border); border-radius:14px; padding:16px; background:var(--fi-panel); }
     .rail-integration-card h2 { margin-top:0; }
     .rail-form-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+    .rail-route-row { display:flex; align-items:center; gap:10px; min-width:0; }
+    .rail-route-label { flex:0 0 auto; font-weight:700; }
+    .rail-route-select {
+        flex:1 1 auto; min-width:0; width:auto; padding:10px 12px; font-size:16px;
+        border:1px solid var(--fi-border); border-radius:9px;
+        background:var(--fi-bg); color:var(--fi-text);
+    }
     .rail-station-picker { position:relative; z-index:30; }
     .rail-station-results { position:absolute; z-index:5200; left:0; right:0; top:100%; margin-top:7px; max-height:300px; overflow:auto; background:var(--fi-header); border:1px solid var(--fi-border); border-radius:12px; box-shadow:0 16px 38px rgba(0,0,0,.72); }
     .rail-station-result { width:100%; display:grid; grid-template-columns:minmax(0,1fr) minmax(120px,auto); gap:12px; align-items:center; padding:11px 13px; margin:0!important; border:0!important; border-bottom:1px solid var(--fi-border)!important; border-radius:0!important; background:var(--fi-header)!important; color:var(--fi-text)!important; text-align:left; }
@@ -1541,6 +1568,53 @@
     .rail-selection-summary { margin-top:12px; padding:10px 12px; border:1px solid var(--fi-border); border-radius:10px; color:var(--fi-muted); }
     @media(max-width:560px){ .rail-station-result{grid-template-columns:minmax(0,1fr) minmax(100px,130px)} .rail-route-badges{max-width:130px} }
 
+
+    /* Phase 5.3G-A — database freshness indicator */
+    .database-freshness-card {
+        margin-top: 18px;
+        padding: 14px;
+        border: 1px solid var(--fi-border);
+        border-radius: 14px;
+        background: var(--fi-panel);
+    }
+    .database-freshness-title {
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    .database-freshness-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 7px 0;
+        border-bottom: 1px solid var(--fi-border);
+    }
+    .database-freshness-row:last-of-type { border-bottom: 0; }
+    .database-freshness-row strong { white-space: nowrap; }
+
+    /* Phase 5.3G-C — personal vehicle sighting summary */
+    .vehicle-sighting-summary {
+        margin: 10px 0 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--border, #333);
+        border-radius: 12px;
+        background: rgba(255,255,255,.035);
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+    }
+    .vehicle-sighting-summary .summary-label {
+        font-size: 12px;
+        opacity: .72;
+        margin-bottom: 3px;
+    }
+    .vehicle-sighting-summary .summary-value {
+        font-weight: 700;
+        overflow-wrap: anywhere;
+    }
+    @media (max-width: 560px) {
+        .vehicle-sighting-summary { grid-template-columns: 1fr; gap: 8px; }
+    }
 </style>
 <!-- Phase 5.3F-R2B: universal comparison/reports, railroad reverse search, tools-preserving system switch, settings-only diagnostics -->
 </head>
@@ -1605,6 +1679,14 @@
             <option value="system">System</option>
         </select>
 
+        <div class="database-freshness-card" aria-label="Fleet database freshness">
+            <div class="database-freshness-title">Database freshness</div>
+            <div class="database-freshness-row"><span>Subway</span><strong>Sep 26, 2026</strong></div>
+            <div class="database-freshness-row"><span>Bus</span><strong>Sep 26, 2026</strong></div>
+            <div class="database-freshness-row"><span>LIRR</span><strong>Sep 26, 2026</strong></div>
+            <div class="database-freshness-row"><span>Metro-North</span><strong>Sep 26, 2026</strong></div>
+            <div class="account-small-note" style="margin-top:8px;">Last reviewed fleet and assignment data. Live assignments can change between database updates.</div>
+        </div>
 
         </div>
 
@@ -1627,6 +1709,7 @@
             <div id="busSettingsTools" class="tools-grid-contents hidden">
                 <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
                 <button type="button" onclick="toggleReportsPanel()">My Reports</button>
+                <button type="button" onclick="toggleAchievementsPanel()">Achievements</button>
                 <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
                 <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
                 <button type="button" onclick="toggleLineStatsPanel()">Route Stats</button>
@@ -1636,6 +1719,7 @@
             <div id="railroadSettingsTools" class="tools-grid-contents hidden">
                 <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
                 <button type="button" onclick="toggleReportsPanel()">My Reports</button>
+                <button type="button" onclick="toggleAchievementsPanel()">Achievements</button>
                 <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
                 <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
                 <button type="button" onclick="toggleLineStatsPanel()">Branch / Line Stats</button>
@@ -1825,7 +1909,7 @@
                 <div id="statTotalSightings" class="sightings-stat-value">0</div>
             </div>
             <div class="sightings-stat">
-                <div class="sightings-stat-label">Unique cars</div>
+                <div id="statUniqueVehicleLabel" class="sightings-stat-label">Unique cars</div>
                 <div id="statUniqueCars" class="sightings-stat-value">0</div>
             </div>
             <div class="sightings-stat">
@@ -1837,7 +1921,7 @@
                 <div id="statTopLine" class="sightings-stat-value">—</div>
             </div>
             <div class="sightings-stat">
-                <div class="sightings-stat-label">Most-seen car</div>
+                <div id="statTopVehicleLabel" class="sightings-stat-label">Most-seen car</div>
                 <div id="statTopCar" class="sightings-stat-value">—</div>
             </div>
             <div class="sightings-stat">
@@ -2184,7 +2268,7 @@ function railroadPickerHostId(system){ return system === "lirr" ? "lirrRailPicke
 function renderRailroadPicker(system){
   const data=railroadData(system), host=document.getElementById(railroadPickerHostId(system)); if(!data||!host) return;
   const label=system === "lirr" ? "Branch" : "Line";
-  host.innerHTML=`<div class="rail-form-grid"><label>${label}<select id="${system}-rail-route" onchange="onRailroadRouteChange('${system}')"><option value="">Choose a ${label.toLowerCase()}</option><option value="__NIS__">NIS — Not In Service</option>${data.routes.map(r=>`<option value="${railEsc(r.id)}">${railEsc(r.name)}</option>`).join("")}</select></label><div><label>Location</label><div class="rail-location-mode"><button type="button" id="${system}-rail-mode-station" class="active" onclick="setRailroadLocationMode('${system}','station')">Search stations</button><button type="button" id="${system}-rail-mode-custom" onclick="setRailroadLocationMode('${system}','custom')">Custom location</button></div><div class="rail-station-picker"><input id="${system}-rail-station" class="sighting-station" type="text" autocomplete="off" disabled placeholder="Choose a ${label.toLowerCase()} first" oninput="searchRailroadStations('${system}')" onfocus="searchRailroadStations('${system}')"><div id="${system}-rail-results" class="rail-station-results hidden"></div></div></div></div><div id="${system}-rail-summary" class="rail-selection-summary">Choose a ${label.toLowerCase()} to begin.</div>`;
+  host.innerHTML=`<div class="rail-form-grid"><div class="rail-route-row"><label class="rail-route-label" for="${system}-rail-route">${label}:</label><select class="rail-route-select" id="${system}-rail-route" onchange="onRailroadRouteChange('${system}')"><option value="">Choose a ${label.toLowerCase()}</option><option value="__NIS__">NIS — Not In Service</option>${data.routes.map(r=>`<option value="${railEsc(r.id)}">${railEsc(r.name)}</option>`).join("")}</select></div><div><label>Location</label><div class="rail-location-mode"><button type="button" id="${system}-rail-mode-station" class="active" onclick="setRailroadLocationMode('${system}','station')">Search stations</button><button type="button" id="${system}-rail-mode-custom" onclick="setRailroadLocationMode('${system}','custom')">Custom location</button></div><div class="rail-station-picker"><input id="${system}-rail-station" class="sighting-station" type="text" autocomplete="off" disabled placeholder="Choose a ${label.toLowerCase()} first" oninput="searchRailroadStations('${system}')" onfocus="searchRailroadStations('${system}')"><div id="${system}-rail-results" class="rail-station-results hidden"></div></div></div></div><div id="${system}-rail-summary" class="rail-selection-summary">Choose a ${label.toLowerCase()} to begin.</div>`;
 }
 function setRailroadLocationMode(system,mode){ const state=railroadPickerState[system]; state.mode=mode; state.station=null; const input=document.getElementById(`${system}-rail-station`), route=document.getElementById(`${system}-rail-route`)?.value; document.getElementById(`${system}-rail-mode-station`)?.classList.toggle("active",mode==="station"); document.getElementById(`${system}-rail-mode-custom`)?.classList.toggle("active",mode==="custom"); document.getElementById(`${system}-rail-results`)?.classList.add("hidden"); if(!input)return; input.value=""; input.disabled=mode==="station" ? !route : false; input.placeholder=mode==="station" ? (route?"Search stations":"Choose a branch/line first") : "Enter a custom location"; updateRailroadSummary(system); }
 function onRailroadRouteChange(system){ const state=railroadPickerState[system]; state.station=null; const input=document.getElementById(`${system}-rail-station`), route=document.getElementById(`${system}-rail-route`)?.value; if(route==="__NIS__"){state.routeId=route;state.mode="custom";document.getElementById(`${system}-rail-mode-station`)?.classList.remove("active");document.getElementById(`${system}-rail-mode-custom`)?.classList.add("active");if(input){input.value="";input.disabled=false;input.placeholder="Enter location (optional)";}document.getElementById(`${system}-rail-results`)?.classList.add("hidden");const summary=document.getElementById(`${system}-rail-summary`);if(summary)summary.innerHTML="<strong>NIS</strong> · Not In Service";return;} if(input){input.value="";input.disabled=state.mode==="station"?!route:false;input.placeholder=state.mode==="station"?(route?"Search stations":"Choose a branch/line first"):"Enter a custom location";} document.getElementById(`${system}-rail-results`)?.classList.add("hidden"); updateRailroadSummary(system); }
@@ -2425,6 +2509,8 @@ function openAccountFromSystemMenu() {
     const settingsPanel = document.getElementById("settingsPanel");
     if (!settingsPanel) return;
 
+    // Account & Settings replaces any open Tools workspace/content panel.
+    closeSettingsContentPanels("accountPanel");
     settingsPanel.classList.remove("tools-mode");
     settingsPanel.classList.add("account-settings-mode");
     settingsPanel.classList.remove("hidden");
@@ -3284,11 +3370,11 @@ async function loadPersonalRecords() {
             sightingDay ? escapeHTML(personalRecordDateLabel(sightingDay[0])) : ""),
         personalRecordCard("Most cars spotted in a day", String(carsDay?.[1]?.cars || 0),
             carsDay ? escapeHTML(personalRecordDateLabel(carsDay[0])) : ""),
-        personalRecordCard("Most unique cars in a day", String(uniqueDay?.[1]?.uniqueCars?.size || 0),
+        personalRecordCard(activeFleetSystem === "bus" ? "Most unique buses in a day" : "Most unique cars in a day", String(uniqueDay?.[1]?.uniqueCars?.size || 0),
             uniqueDay ? escapeHTML(personalRecordDateLabel(uniqueDay[0])) : ""),
         personalRecordCard("Longest sighting streak", `${longestStreak} day${longestStreak === 1 ? "" : "s"}`,
             `${dayKeys.length} active day${dayKeys.length === 1 ? "" : "s"} total`),
-        personalRecordCard("Most-seen car", topCar ? `Car ${escapeHTML(topCar[0])}` : "—",
+        personalRecordCard(activeFleetSystem === "bus" ? "Most-seen bus" : "Most-seen car", topCar ? `${activeFleetSystem === "bus" ? "Bus" : "Car"} ${escapeHTML(topCar[0])}` : "—",
             topCar ? `${topCar[1]} sighting${topCar[1] === 1 ? "" : "s"}` : ""),
         personalRecordCard("Most-seen fleet", topFleet ? escapeHTML(topFleet[0]) : "—",
             topFleet ? `${topFleet[1]} train sighting${topFleet[1] === 1 ? "" : "s"}` : ""),
@@ -3296,7 +3382,7 @@ async function loadPersonalRecords() {
             topLine ? `${topLine[1]} sighting${topLine[1] === 1 ? "" : "s"}` : ""),
         personalRecordCard("Most-used station", topStation ? escapeHTML(topStation[0]) : "—",
             topStation ? `${topStation[1]} sighting${topStation[1] === 1 ? "" : "s"}` : "No station data yet"),
-        personalRecordCard("Unique cars collected", String(allUniqueCars.size),
+        personalRecordCard(activeFleetSystem === "bus" ? "Unique buses collected" : "Unique cars collected", String(allUniqueCars.size),
             `${sightings.length} train sighting${sightings.length === 1 ? "" : "s"}`),
         personalRecordCard("First sighting", first?.saved_at ? escapeHTML(new Date(first.saved_at).toLocaleDateString()) : "—",
             first ? `Car ${escapeHTML(first.car_number || "—")} · ${escapeHTML(first.fleet || "Unknown fleet")}` : ""),
@@ -3541,7 +3627,7 @@ async function loadLineStats() {
                     <div class="line-stat-count">${item.count} sighting${item.count === 1 ? "" : "s"}</div>
                 </div>
                 <div class="line-stat-details">
-                    <div><span class="line-stat-detail-label">Unique cars</span><strong>${item.uniqueCars}</strong></div>
+                    <div><span class="line-stat-detail-label">${activeFleetSystem === "bus" ? "Unique buses" : "Unique cars"}</span><strong>${item.uniqueCars}</strong></div>
                     <div><span class="line-stat-detail-label">Fleets seen</span><strong>${item.fleets}</strong></div>
                     <div><span class="line-stat-detail-label">Most-seen fleet</span><strong>${escapeHTML(item.mostSeenFleet)}</strong></div>
                     <div><span class="line-stat-detail-label">Latest sighting</span><strong>${escapeHTML(latestDate)}</strong></div>
@@ -4061,40 +4147,87 @@ async function loadFleetCollection() {
     }).join("");
 }
 
+function collectionProgressCardHTML(item, index, unitLabel) {
+    const remaining = Math.max(0, item.total - item.seen);
+    const plural = unitLabel === "bus" ? "buses" : "vehicles";
+    const collectedText = item.collected?.length ? item.collected.map(escapeHTML).join(", ") : "None yet";
+    const missingPreview = (item.missing || []).slice(0, 40);
+    const missingText = missingPreview.length
+        ? `${missingPreview.map(escapeHTML).join(", ")}${item.missing.length > missingPreview.length ? ` … +${item.missing.length - missingPreview.length} more` : ""}`
+        : "Collection complete";
+    return `<div class="report-item">
+        <button type="button" onclick="toggleCollectionDetails(${index})" aria-expanded="false" id="collectionDetailsButton-${index}" style="width:100%;text-align:left;background:transparent;color:inherit;border:0;padding:0;box-shadow:none;">
+            <div class="report-item-heading"><div class="report-item-car">${escapeHTML(item.name)}</div><div>${item.seen} / ${item.total}</div></div>
+            <div class="report-item-value">${item.percent.toFixed(1)}% collected · ${item.sightings} sighting${item.sightings===1?"":"s"}</div>
+            <div style="height:8px;border:1px solid currentColor;margin-top:10px;overflow:hidden;border-radius:999px;"><div style="height:100%;width:${item.percent.toFixed(2)}%;background:currentColor;"></div></div>
+            <div class="account-small-note" style="margin-top:8px;">Tap for collection details</div>
+        </button>
+        <div id="collectionDetails-${index}" class="hidden" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--fi-border);">
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+                <div><strong>Collected</strong><br>${item.seen}</div><div><strong>Remaining</strong><br>${remaining}</div>
+            </div>
+            <div style="margin-top:14px;"><strong>${unitLabel === "bus" ? "Buses" : "Vehicles"} collected</strong></div>
+            <div class="account-small-note" style="margin-top:5px;line-height:1.6;overflow-wrap:anywhere;">${collectedText}</div>
+            <div style="margin-top:14px;"><strong>${unitLabel === "bus" ? "Buses" : "Vehicles"} remaining</strong></div>
+            <div class="account-small-note" style="margin-top:5px;line-height:1.6;overflow-wrap:anywhere;">${missingText}</div>
+            ${item.excluded ? `<div class="account-small-note" style="margin-top:12px;">${item.excluded} known inactive/historical ${item.excluded===1?unitLabel:plural} excluded from the achievable total.</div>` : ""}
+        </div>
+    </div>`;
+}
+
 async function loadBusFleetCollection(user, status, list) {
-    const { data, error } = await supabaseClient
-        .from("sightings")
-        .select("car_number, fleet, saved_at, line, station")
-        .eq("user_id", user.id);
-    if (error) {
-        console.error("Could not load bus fleet collection:", error);
-        status.textContent = "Could not load your bus fleet collection.";
-        return;
-    }
+    const { data, error } = await supabaseClient.from("sightings").select("car_number, fleet, saved_at, line, station").eq("user_id", user.id);
+    if (error) { console.error("Could not load bus fleet collection:", error); status.textContent = "Could not load your bus fleet collection."; return; }
     const rows = scopeSightingsRows(data || []).filter(r => String(r.fleet || "") !== "TEST");
     const fleetMap = new Map();
     for (const def of busFleetData) {
-        const name = String(def.model || "").trim();
-        if (!name) continue;
-        if (!fleetMap.has(name)) fleetMap.set(name, { def, ranges: [] });
+        const name = String(def.model || "").trim(); if (!name) continue;
+        if (!fleetMap.has(name)) fleetMap.set(name, { ranges: [] });
         fleetMap.get(name).ranges.push(...(def.ranges || []));
     }
+    const inactive = new Set(Object.keys(typeof BUS_STATUS_EXCEPTIONS === "object" ? BUS_STATUS_EXCEPTIONS : {}).map(String));
     const cards = [...fleetMap.entries()].map(([name, entry]) => {
         const valid = new Set();
-        for (const [a,b] of entry.ranges) for (let n=a;n<=b;n++) valid.add(String(n).padStart(n < 100 ? 4 : 1, "0"));
+        for (const [a,b] of entry.ranges) for (let n=a;n<=b;n++) {
+            const raw=String(n), padded=n<100?raw.padStart(4,"0"):raw;
+            if (!inactive.has(raw) && !inactive.has(padded)) valid.add(padded);
+        }
         const fleetRows = rows.filter(r => String(r.fleet || "").trim() === name);
-        const seenRaw = new Set(fleetRows.map(r => String(r.car_number || "").trim()).filter(Boolean));
-        const seen = [...seenRaw].filter(n => valid.has(n) || valid.has(String(Number(n))));
-        const total = valid.size;
-        return { name, seen: seen.length, total, percent: total ? seen.length / total * 100 : 0, sightings: fleetRows.length };
-    }).filter(x => x.total > 0).sort((a,b) => b.seen-a.seen || a.name.localeCompare(b.name));
-    const totalSeen = cards.reduce((n,x)=>n+x.seen,0), totalBuses = cards.reduce((n,x)=>n+x.total,0);
-    status.textContent = `Overall bus collection: ${totalSeen} of ${totalBuses} buses (${totalBuses ? (totalSeen/totalBuses*100).toFixed(1) : "0.0"}%).`;
-    list.innerHTML = cards.map(item => `<div class="report-item">
-        <div class="report-item-heading"><div class="report-item-car">${escapeHTML(item.name)}</div><div>${item.seen} / ${item.total}</div></div>
-        <div class="report-item-value">${item.percent.toFixed(1)}% collected · ${item.sightings} sighting${item.sightings===1?"":"s"}</div>
-        <div style="height:8px;border:1px solid currentColor;margin-top:10px;overflow:hidden;"><div style="height:100%;width:${item.percent.toFixed(2)}%;background:currentColor;"></div></div>
-    </div>`).join("");
+        const seenSet = new Set();
+        for (const r of fleetRows) { const raw=String(r.car_number||"").trim(); const n=Number(raw); const key=n<100?String(n).padStart(4,"0"):String(n); if(valid.has(raw))seenSet.add(raw); else if(valid.has(key))seenSet.add(key); }
+        const collected=[...seenSet].sort((a,b)=>Number(a)-Number(b));
+        const missing=[...valid].filter(n=>!seenSet.has(n)).sort((a,b)=>Number(a)-Number(b));
+        const excluded = entry.ranges.reduce((sum,[a,b])=>sum+[...inactive].filter(x=>{const n=Number(x);return n>=a&&n<=b}).length,0);
+        const total=valid.size, seen=collected.length;
+        return {name,seen,total,percent:total?seen/total*100:0,sightings:fleetRows.length,collected,missing,excluded};
+    }).filter(x=>x.total>0).sort((a,b)=>b.seen-a.seen||a.name.localeCompare(b.name));
+    const totalSeen=cards.reduce((n,x)=>n+x.seen,0), total=cards.reduce((n,x)=>n+x.total,0);
+    status.textContent=`Overall bus collection: ${totalSeen} of ${total} buses (${total?(totalSeen/total*100).toFixed(1):"0.0"}%). Known inactive exceptions are excluded.`;
+    list.innerHTML=cards.map((item,index)=>collectionProgressCardHTML(item,index,"bus")).join("");
+}
+
+function railroadCollectionNumbers(fleet) {
+    const out=new Set(), exclusions=new Set((fleet.exclusions||[]).map(Number));
+    for(const [a,b] of (fleet.ranges||[])) for(let n=a;n<=b;n++) if(!exclusions.has(n)) out.add(String(n));
+    for(const [a,b,step=1] of (fleet.singles||[])) for(let n=a;n<=b;n+=step) if(!exclusions.has(n)) out.add(String(n));
+    return out;
+}
+
+async function loadRailroadFleetCollection(user, status, list) {
+    const system=activeFleetSystem;
+    const {data,error}=await supabaseClient.from("sightings").select("car_number, fleet, saved_at").eq("user_id",user.id);
+    if(error){console.error("Could not load railroad fleet collection:",error);status.textContent=`Could not load your ${activeSystemToolLabel()} fleet collection.`;return;}
+    const rows=scopeSightingsRows(data||[]).filter(r=>String(r.fleet||"")!=="TEST");
+    const cards=(RAILROAD_FLEETS[system]||[]).map(fleet=>{
+        const valid=railroadCollectionNumbers(fleet), fleetRows=rows.filter(r=>String(r.fleet||"").trim()===fleet.name), seenSet=new Set();
+        for(const r of fleetRows){const n=String(r.car_number||"").trim();if(valid.has(n))seenSet.add(n);}
+        const collected=[...seenSet].sort((a,b)=>Number(a)-Number(b)), missing=[...valid].filter(n=>!seenSet.has(n)).sort((a,b)=>Number(a)-Number(b));
+        const total=valid.size, seen=collected.length;
+        return {name:fleet.name,seen,total,percent:total?seen/total*100:0,sightings:fleetRows.length,collected,missing,excluded:(fleet.exclusions||[]).length};
+    }).filter(x=>x.total>0);
+    const totalSeen=cards.reduce((n,x)=>n+x.seen,0), total=cards.reduce((n,x)=>n+x.total,0);
+    status.textContent=`Overall ${activeSystemToolLabel()} collection: ${totalSeen} of ${total} vehicles (${total?(totalSeen/total*100).toFixed(1):"0.0"}%). Known historical/inactive exceptions are excluded.`;
+    list.innerHTML=cards.map((item,index)=>collectionProgressCardHTML(item,index,"vehicle")).join("");
 }
 
 function toggleCollectionDetails(index) {
@@ -4108,18 +4241,34 @@ function toggleCollectionDetails(index) {
     if (note) note.textContent = opening ? "Tap to hide collection details" : "Tap for collection details";
 }
 
-const achievementDefinitions = [
-    { key:"first_sighting", title:"First Sighting", description:"Save your first sighting.", type:"total", target:1 },
-    { key:"sightings_10", title:"10 Sightings", description:"Save 10 sightings.", type:"total", target:10 },
-    { key:"sightings_50", title:"50 Sightings", description:"Save 50 sightings.", type:"total", target:50 },
-    { key:"sightings_100", title:"100 Sightings", description:"Save 100 sightings.", type:"total", target:100 },
-    { key:"unique_10", title:"10 Unique Cars", description:"See 10 different car numbers.", type:"unique", target:10 },
-    { key:"unique_50", title:"50 Unique Cars", description:"See 50 different car numbers.", type:"unique", target:50 },
-    { key:"unique_100", title:"100 Unique Cars", description:"See 100 different car numbers.", type:"unique", target:100 },
-    { key:"streak_3", title:"3-Day Streak", description:"Save a sighting on 3 consecutive calendar days.", type:"streak", target:3 },
-    { key:"streak_7", title:"7-Day Streak", description:"Save a sighting on 7 consecutive calendar days.", type:"streak", target:7 },
-    { key:"streak_30", title:"30-Day Streak", description:"Save a sighting on 30 consecutive calendar days.", type:"streak", target:30 }
-];
+// Phase 5.3G-F — multi-system achievements + Bus terminology audit.
+function achievementSystemPrefix(system = activeFleetSystem) {
+    return system === "subway" ? "" : `${system}_`;
+}
+
+function achievementVehicleTerms(system = activeFleetSystem) {
+    if (system === "bus") return { singular:"bus", plural:"buses", titlePlural:"Buses" };
+    return { singular:"car", plural:"cars", titlePlural:"Cars" };
+}
+
+function achievementDefinitionsForSystem(system = activeFleetSystem) {
+    const prefix = achievementSystemPrefix(system);
+    const terms = achievementVehicleTerms(system);
+    const titlePrefix = system === "subway" ? "" : `${activeSystemToolLabel()} · `;
+    const defs = [
+        { key:"first_sighting", title:"First Sighting", description:`Save your first ${activeSystemToolLabel()} sighting.`, type:"total", target:1 },
+        { key:"sightings_10", title:"10 Sightings", description:`Save 10 ${activeSystemToolLabel()} sightings.`, type:"total", target:10 },
+        { key:"sightings_50", title:"50 Sightings", description:`Save 50 ${activeSystemToolLabel()} sightings.`, type:"total", target:50 },
+        { key:"sightings_100", title:"100 Sightings", description:`Save 100 ${activeSystemToolLabel()} sightings.`, type:"total", target:100 },
+        { key:"unique_10", title:`10 Unique ${terms.titlePlural}`, description:`See 10 different ${terms.singular} numbers.`, type:"unique", target:10 },
+        { key:"unique_50", title:`50 Unique ${terms.titlePlural}`, description:`See 50 different ${terms.singular} numbers.`, type:"unique", target:50 },
+        { key:"unique_100", title:`100 Unique ${terms.titlePlural}`, description:`See 100 different ${terms.singular} numbers.`, type:"unique", target:100 },
+        { key:"streak_3", title:"3-Day Streak", description:`Save a ${activeSystemToolLabel()} sighting on 3 consecutive calendar days.`, type:"streak", target:3 },
+        { key:"streak_7", title:"7-Day Streak", description:`Save a ${activeSystemToolLabel()} sighting on 7 consecutive calendar days.`, type:"streak", target:7 },
+        { key:"streak_30", title:"30-Day Streak", description:`Save a ${activeSystemToolLabel()} sighting on 30 consecutive calendar days.`, type:"streak", target:30 }
+    ];
+    return defs.map(def => ({...def, key:`${prefix}${def.key}`, title:`${titlePrefix}${def.title}`}));
+}
 
 function achievementLongestStreak(rows) {
     const dayKeys=[...new Set((rows||[]).map(r=>{
@@ -4138,8 +4287,9 @@ function achievementLongestStreak(rows) {
     return longest;
 }
 
-
-async function loadAchievementConsistCars(userId) {
+async function loadAchievementConsistCars(userId, system = activeFleetSystem) {
+    // Consist-car expansion is a Subway-only concept. Other systems count the logged vehicle number.
+    if (system !== "subway") return [];
     const { data, error } = await supabaseClient
         .from("sighting_cars")
         .select("car_number")
@@ -4158,7 +4308,7 @@ function achievementValue(def,stats){
     return 0;
 }
 
-async function syncAchievements(user,sightings,earnedRows,consistCars=[]){
+async function syncAchievements(user,sightings,earnedRows,consistCars=[], system = activeFleetSystem){
     const existing=new Set((earnedRows||[]).map(x=>x.achievement_key));
     const stats={
         total:(sightings||[]).length,
@@ -4168,7 +4318,7 @@ async function syncAchievements(user,sightings,earnedRows,consistCars=[]){
         ]).size,
         longestStreak:achievementLongestStreak(sightings||[])
     };
-    const rows=achievementDefinitions
+    const rows=achievementDefinitionsForSystem(system)
         .filter(def=>!existing.has(def.key)&&achievementValue(def,stats)>=def.target)
         .map(def=>({user_id:user.id,achievement_key:def.key}));
     if(!rows.length) return;
@@ -4179,12 +4329,16 @@ async function syncAchievements(user,sightings,earnedRows,consistCars=[]){
 
 async function refreshAchievementEligibility(user){
     if(!user) return;
+    const system=activeFleetSystem;
     const [s,a,consistCars]=await Promise.all([
-        supabaseClient.from("sightings").select("car_number, saved_at").eq("user_id",user.id),
+        supabaseClient.from("sightings").select("car_number, saved_at, fleet, line, station").eq("user_id",user.id),
         supabaseClient.from("user_achievements").select("achievement_key, earned_at").eq("user_id",user.id),
-        loadAchievementConsistCars(user.id)
+        loadAchievementConsistCars(user.id, system)
     ]);
-    if(!s.error&&!a.error) await syncAchievements(user,s.data||[],a.data||[],consistCars);
+    if(!s.error&&!a.error) {
+        const scoped=scopeSightingsRows(s.data||[]);
+        await syncAchievements(user,scoped,a.data||[],consistCars,system);
+    }
 }
 
 async function toggleAchievementsPanel(){
@@ -4198,44 +4352,41 @@ async function toggleAchievementsPanel(){
 async function loadAchievements(){
     const status=document.getElementById("achievementsStatus");
     const list=document.getElementById("achievementsList");
+    const panel=document.getElementById("achievementsPanel");
+    const heading=panel?.querySelector("h2");
+    if(heading) heading.textContent=`${activeSystemToolLabel()} Milestones & Achievements`;
     status.textContent="Loading achievements...";
     list.innerHTML="";
     const {data:{user}}=await supabaseClient.auth.getUser();
     if(!user){status.textContent="Log in to view synced achievements.";return;}
 
+    const system=activeFleetSystem;
     const [s,a,consistCars]=await Promise.all([
-        supabaseClient.from("sightings").select("car_number, saved_at").eq("user_id",user.id),
+        supabaseClient.from("sightings").select("car_number, saved_at, fleet, line, station").eq("user_id",user.id),
         supabaseClient.from("user_achievements").select("achievement_key, earned_at").eq("user_id",user.id),
-        loadAchievementConsistCars(user.id)
+        loadAchievementConsistCars(user.id, system)
     ]);
     if(s.error||a.error){status.textContent="Could not load achievements.";return;}
 
-    await syncAchievements(user,s.data||[],a.data||[],consistCars);
+    const scoped=scopeSightingsRows(s.data||[]);
+    await syncAchievements(user,scoped,a.data||[],consistCars,system);
     const {data:earned,error}=await supabaseClient.from("user_achievements")
         .select("achievement_key, earned_at").eq("user_id",user.id);
     if(error){status.textContent="Could not refresh achievements.";return;}
 
     const map=new Map((earned||[]).map(x=>[x.achievement_key,x.earned_at]));
-    const stats={
-        total:(s.data||[]).length,
-        unique:new Set([
-            ...(s.data||[]).map(x=>String(x.car_number||"").trim()).filter(Boolean),
-            ...(consistCars||[])
-        ]).size,
-        longestStreak:achievementLongestStreak(s.data||[])
-    };
-    const earnedDefinitions=achievementDefinitions.filter(def=>map.has(def.key));
+    const definitions=achievementDefinitionsForSystem(system);
+    const earnedDefinitions=definitions.filter(def=>map.has(def.key));
     const count=earnedDefinitions.length;
 
     if(!count){
-        status.textContent="No achievements earned yet. Keep logging sightings to unlock them.";
+        status.textContent=`No ${activeSystemToolLabel()} achievements earned yet. Keep logging sightings to unlock them.`;
         list.innerHTML="";
         return;
     }
 
-    status.textContent=`${count} achievement${count===1?"":"s"} earned.`;
+    status.textContent=`${count} ${activeSystemToolLabel()} achievement${count===1?"":"s"} earned.`;
     list.innerHTML=earnedDefinitions.map(def=>{
-        const at=map.get(def.key);
         return `<div class="report-item">
             <div class="report-item-heading">
                 <div class="report-item-car">${escapeHTML(def.title)}</div>
@@ -6265,6 +6416,63 @@ async function getRepeatSightingNotice(carNumber) {
 }
 
 
+async function getVehicleSightingSummary(vehicleNumber, system) {
+    try {
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError || !session?.user) return "";
+        const value = String(vehicleNumber);
+        const userId = session.user.id;
+        const sightingsById = new Map();
+
+        const primary = await supabaseClient
+            .from("sightings")
+            .select("id,saved_at")
+            .eq("user_id", userId)
+            .eq("car_number", value);
+        if (primary.error) {
+            console.error("Could not load vehicle sighting summary:", primary.error);
+            return "";
+        }
+        (primary.data || []).forEach(row => sightingsById.set(String(row.id), row));
+
+        // Subway cars can also be present as non-primary cars in Consist Builder.
+        if (system === "subway") {
+            const consist = await supabaseClient
+                .from("sighting_cars")
+                .select("sighting_id")
+                .eq("user_id", userId)
+                .eq("car_number", value);
+            if (!consist.error) {
+                const missingIds = [...new Set((consist.data || []).map(row => row.sighting_id).filter(Boolean).map(String))]
+                    .filter(id => !sightingsById.has(id));
+                if (missingIds.length) {
+                    const linked = await supabaseClient
+                        .from("sightings")
+                        .select("id,saved_at")
+                        .eq("user_id", userId)
+                        .in("id", missingIds);
+                    if (!linked.error) (linked.data || []).forEach(row => sightingsById.set(String(row.id), row));
+                }
+            }
+        }
+
+        const rows = [...sightingsById.values()]
+            .filter(row => row.saved_at)
+            .sort((a,b) => new Date(a.saved_at) - new Date(b.saved_at));
+        if (!rows.length) return "";
+        const first = new Date(rows[0].saved_at).toLocaleString();
+        const last = new Date(rows[rows.length - 1].saved_at).toLocaleString();
+        return `<div class="vehicle-sighting-summary" aria-label="Your sighting history for this vehicle">
+            <div><div class="summary-label">First seen</div><div class="summary-value">${escapeHTML(first)}</div></div>
+            <div><div class="summary-label">Last seen</div><div class="summary-value">${escapeHTML(last)}</div></div>
+            <div><div class="summary-label">Total sightings</div><div class="summary-value">${rows.length}</div></div>
+        </div>`;
+    } catch (error) {
+        console.error("Could not build vehicle sighting summary:", error);
+        return "";
+    }
+}
+
 async function getPrimaryRepeatSightingNotice(vehicleNumber, vehicleLabel = "vehicle") {
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
@@ -6591,6 +6799,15 @@ const busSpecificOverrides = {
     9313: { charging:"1× USB-A + 1× USB-C per pictured charging module", notes:"USB-C configuration directly documented on bus 9313 in Q11 service." }
 };
 
+// Phase 5.3F-U3 — individual current-status exceptions from the September 2026 depot audit.
+// Keep these separate from fleet identity: an out-of-service bus still belongs to its fleet.
+const busStatusExceptions = Object.freeze({
+    1072: { status:"Out of service", note:"Current West Farms roster marks 1072 out of service after a collision with Gun Hill bus 6290 on July 30, 2026." },
+    5280: { status:"Out of service", note:"Current West Farms roster marks 5280 out of service after a collision with a firetruck on August 18, 2026." },
+    6033: { status:"Out of service", note:"Current Casey Stengel roster marks 6033 out of service." },
+    8888: { status:"Out of service", note:"Current Casey Stengel roster marks 8888 out of service." }
+});
+
 function busNumberInRanges(number, ranges) {
     return ranges.some(([a,b]) => number >= a && number <= b);
 }
@@ -6619,6 +6836,7 @@ async function identifyBus() {
     }
 
     const busRepeatNotice = input === "0000" ? "" : await getPrimaryRepeatSightingNotice(input, "bus");
+    const busSightingSummary = input === "0000" ? "" : await getVehicleSightingSummary(input, "bus");
 
     // Bus test vehicle — mirrors the Subway 0000 developer/test rules.
     // This is intentionally isolated from the real fleet, route, and GTFS databases.
@@ -6672,6 +6890,7 @@ async function identifyBus() {
     const data = findBusFleet(number);
     const assignment = getBusAssignment(number);
     const specific = busSpecificOverrides[number] || {};
+    const statusException = busStatusExceptions[number] || null;
     if (!data) {
         recordIdentifierSearch({ system: "bus", searchValue: input, found: false, resultDetails: { reason: "not_in_database" } });
         box.className = "result error";
@@ -6687,6 +6906,8 @@ async function identifyBus() {
         <div class="fleet-title">${escapeHTML(data.model)}</div>
         <div class="car-number">Bus number: <strong>${escapeHTML(input)}</strong></div>
         ${busRepeatNotice}
+        ${busSightingSummary}
+        ${statusException ? `<div class="status-message" style="margin-top:10px;"><strong>${escapeHTML(statusException.status)}</strong> — ${escapeHTML(statusException.note)}</div>` : ""}
         <div class="info">
             <div class="label">Builder / manufacturer</div><div>${escapeHTML(data.builder)}</div>
             <div class="label">Years built / delivered</div><div>${escapeHTML(data.years)}</div>
@@ -6698,7 +6919,7 @@ async function identifyBus() {
             <div class="label">Routes operated by this depot</div><div class="${assignment ? "" : "unknown-value"}">${escapeHTML(assignment?.routes || "Available after the depot assignment is verified")}</div>
             <div class="label">Passenger charging</div><div class="${String(specific.charging || data.charging).toLowerCase().includes("not yet") ? "unknown-value" : ""}">${escapeHTML(specific.charging || data.charging)}</div>
             <div class="label">Maximum speed</div><div class="unknown-value">${escapeHTML(data.maxSpeed)}</div>
-            <div class="label">Other notes / features</div><div>${escapeHTML(specific.notes ? `${data.notes} ${specific.notes}` : data.notes)}</div>
+            <div class="label">Other notes / features</div><div>${escapeHTML(`${specific.notes ? `${data.notes} ${specific.notes}` : data.notes}${statusException ? ` ${statusException.note}` : ""}`)}</div>
         </div>
         <div class="sighting-panel">
             <h3>Log this sighting</h3>
@@ -7186,9 +7407,9 @@ async function saveBusSighting() {
 // Passenger EMU ranges are kept explicit so gaps/renumberings are not silently accepted.
 const RAILROAD_FLEETS = Object.freeze({
     lirr: [
-        { name:"M7", ranges:[[7001,7836]], builder:"Bombardier Transportation", years:"2002–2006", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"LIRR electric territory", notes:"Passenger EMU." },
-        { name:"M9", ranges:[[9001,9202]], builder:"Kawasaki Rail Car", years:"2017–2024", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"LIRR electric territory", notes:"Entered passenger service in 2019." },
-        { name:"M3", ranges:[[9771,9890],[9893,9946]], builder:"Budd / TransitAmerica", years:"1984–1986", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"LIRR electric territory; not used to Grand Central Madison", notes:"9891–9892 are intentionally excluded; that pair was renumbered 9945–9946." },
+        { name:"M7", ranges:[[7001,7836]], exclusions:[7019,7033,7034,7044,7054,7364,7425,7553], builder:"Bombardier Transportation", years:"2002–2006", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"LIRR electric territory", notes:"Passenger EMU. Cars 7019, 7033–7034, 7044, 7054, 7364, 7425, and 7553 are excluded from active identification because they were scrapped after accidents, derailments, or fire damage. Surviving mates were reassigned where applicable." },
+        { name:"M9", ranges:[[9001,9202]], exclusions:[9157,9158], builder:"Kawasaki Rail Car", years:"2017–2024", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"LIRR electric territory", notes:"Entered passenger service in 2019. Cars 9157–9158 are excluded from active identification because published fleet information lists the pair as taken out of service after an incident." },
+        { name:"M3", ranges:[[9771,9890],[9893,9946]], exclusions:[9771,9772,9775,9776,9869,9870,9901,9902,9932], builder:"Budd / TransitAmerica", years:"1984–1986", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"LIRR electric territory; not used to Grand Central Madison", notes:"9891–9892 are intentionally excluded because that pair was renumbered 9945–9946. Several other cars are excluded from active passenger identification for documented disposition changes: 9776 was wrecked and scrapped; 9775 became rail-adhesion car E775; 9870 was retired after the 2013 Brentwood collision/fire; 9869 later became E869; 9772 was subsequently scrapped; 9901–9902 became rail-adhesion cars; and 9932 became E932. Car 9771 is also excluded after its earlier electrical failure removed it from the active pair." },
         { name:"DE30AC", ranges:[[400,423]], builder:"EMD", years:"1997–1999", formation:"Locomotive", power:"Diesel-electric locomotive", service:"LIRR diesel territory", notes:"Passenger locomotive fleet." },
         { name:"DM30AC", ranges:[[500,502],[504,506],[508,510],[512,522]], builder:"EMD", years:"1997–1999", formation:"Locomotive", power:"Dual-mode diesel/third-rail locomotive", service:"LIRR diesel and Penn Station service", notes:"503 and 511 are excluded; 507 was converted and renumbered as DE30AC 423." },
         { name:"C3", ranges:[[4001,4087],[4002,4134],[5001,5023]], builder:"Kawasaki", years:"1997–1999", formation:"Bi-level coach / cab car", power:"Unpowered passenger coach", service:"LIRR diesel territory", notes:"C3 fleet includes trailer and cab-car configurations." }
@@ -7196,7 +7417,9 @@ const RAILROAD_FLEETS = Object.freeze({
     "metro-north": [
         { name:"M7A", ranges:[[4000,4335]], exclusions:[4333], builder:"Bombardier Transportation", years:"2004–2006", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"Hudson and Harlem Lines", notes:"4333 is excluded from active identification after its destruction in the 2015 Valhalla collision." },
         { name:"M3A", ranges:[[8000,8141]], builder:"Budd / TransitAmerica", years:"1983–1985", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"Hudson and Harlem Lines", notes:"Legacy Metro-North EMU fleet." },
-        { name:"M8", ranges:[[9100,9421],[9500,9519],[9600,9623],[9700,9738]], singles:[[9460,9476,2],[9560,9590,2]], builder:"Kawasaki Rail Car", years:"2009–2022", formation:"Married pairs plus unpowered single cars", power:"Electric multiple unit (third rail / AC catenary)", service:"New Haven Line and branches", notes:"Certain even-numbered cars in the 9460 and 9560 series are unpowered single cars." }
+        { name:"M8", ranges:[[9100,9421],[9500,9519],[9600,9623],[9700,9738]], singles:[[9460,9476,2],[9560,9590,2]], builder:"Kawasaki Rail Car", years:"2009–2022", formation:"Married pairs plus unpowered single cars", power:"Electric multiple unit (third rail / AC catenary)", service:"New Haven Line and branches", notes:"Certain even-numbered cars in the 9460 and 9560 series are unpowered single cars." },
+        { name:"P32AC-DM", ranges:[[201,220],[222,224],[226,231],[250,250]], builder:"GE Transportation", years:"1995–2001", formation:"Locomotive", power:"Dual-mode diesel-electric / third-rail locomotive", service:"Metro-North Hudson, Harlem and connecting non-electrified services into Grand Central Terminal", notes:"Legacy Genesis dual-mode fleet now being replaced by SC42-DM Chargers. Locomotive 225 was renumbered 250 in 2026 for the America 250 commemorative scheme, so 225 is not treated as a separate active locomotive. Locomotive 221 is excluded from active Metro-North identification after leaving the fleet in September 2026 for preservation/excursion service. Units 228–231 are Connecticut DOT-owned." },
+        { name:"SC42-DM", ranges:[[301,333]], builder:"Siemens Mobility", years:"2024–present", formation:"Locomotive", power:"Dual-mode diesel-electric / third-rail locomotive", service:"Metro-North non-electrified territory and Grand Central Terminal service", notes:"Entered passenger service in September 2025 and is replacing the GE P32AC-DM fleet. The full 33-locomotive group is numbered 301–333; locomotives 328–333 are Connecticut DOT-owned units." }
     ]
 });
 
@@ -7250,6 +7473,49 @@ function sightingBelongsToActiveSystem(row) {
 function scopeSightingsRows(rows) { return (rows||[]).filter(sightingBelongsToActiveSystem); }
 function activeSystemToolLabel() { return activeFleetSystem==="bus"?"Bus":activeFleetSystem==="lirr"?"LIRR":activeFleetSystem==="metro-north"?"Metro-North":"Subway"; }
 
+// Phase 5.3G-B — known railroad number exceptions and history/status cards.
+// These records are intentionally separate from active fleet ranges so an excluded number
+// can still be recognized and explained instead of falling through as an unknown vehicle.
+const RAILROAD_NUMBER_EXCEPTIONS = Object.freeze({
+    lirr: Object.freeze({
+        7019:{fleet:"M7",status:"Scrapped / not active",history:"Excluded from active M7 identification after accident or damage-related retirement."},
+        7033:{fleet:"M7",status:"Scrapped / not active",history:"Excluded from active M7 identification after accident or damage-related retirement."},
+        7034:{fleet:"M7",status:"Scrapped / not active",history:"Excluded from active M7 identification after accident or damage-related retirement."},
+        7044:{fleet:"M7",status:"Scrapped / not active",history:"Excluded from active M7 identification after accident or damage-related retirement."},
+        7054:{fleet:"M7",status:"Scrapped / not active",history:"Excluded from active M7 identification after accident or damage-related retirement."},
+        7364:{fleet:"M7",status:"Scrapped / not active",history:"Excluded from active M7 identification after accident or damage-related retirement."},
+        7425:{fleet:"M7",status:"Scrapped / not active",history:"Excluded from active M7 identification after accident or damage-related retirement."},
+        7553:{fleet:"M7",status:"Scrapped / not active",history:"Excluded from active M7 identification after accident or damage-related retirement."},
+        9157:{fleet:"M9",status:"Out of active service",history:"This M9 is excluded from active identification after an incident involving cars 9157–9158."},
+        9158:{fleet:"M9",status:"Out of active service",history:"This M9 is excluded from active identification after an incident involving cars 9157–9158."},
+        9771:{fleet:"M3",status:"Not active",history:"Excluded from active passenger identification after an electrical failure removed its pair from service."},
+        9772:{fleet:"M3",status:"Scrapped / not active",history:"Excluded from active passenger identification; the car was subsequently scrapped."},
+        9775:{fleet:"M3",status:"Converted",history:"Former M3 car 9775 was converted to rail-adhesion car E775."},
+        9776:{fleet:"M3",status:"Wrecked and scrapped",history:"Former M3 car 9776 was wrecked and scrapped, so it is not part of the active passenger fleet."},
+        9869:{fleet:"M3",status:"Converted",history:"Former M3 car 9869 was converted to rail-adhesion car E869."},
+        9870:{fleet:"M3",status:"Retired",history:"Retired after the 2013 Brentwood collision and fire."},
+        9891:{fleet:"M3",status:"Renumbered",history:"The former 9891–9892 pair was renumbered 9945–9946; search the current numbers for active identification."},
+        9892:{fleet:"M3",status:"Renumbered",history:"The former 9891–9892 pair was renumbered 9945–9946; search the current numbers for active identification."},
+        9901:{fleet:"M3",status:"Converted",history:"Former M3 car 9901 was converted for rail-adhesion service."},
+        9902:{fleet:"M3",status:"Converted",history:"Former M3 car 9902 was converted for rail-adhesion service."},
+        9932:{fleet:"M3",status:"Converted",history:"Former M3 car 9932 was converted to rail-adhesion car E932."},
+        503:{fleet:"DM30AC",status:"Not active",history:"This number is intentionally excluded from the active DM30AC identification ranges."},
+        507:{fleet:"DM30AC",status:"Converted / renumbered",history:"DM30AC 507 was converted and renumbered as DE30AC 423."},
+        511:{fleet:"DM30AC",status:"Not active",history:"This number is intentionally excluded from the active DM30AC identification ranges."}
+    }),
+    "metro-north": Object.freeze({
+        4333:{fleet:"M7A",status:"Destroyed / not active",history:"4333 is excluded from active identification after its destruction in the 2015 Valhalla collision."},
+        221:{fleet:"P32AC-DM",status:"Preserved / no longer active Metro-North equipment",history:"Locomotive 221 left the active Metro-North fleet in September 2026 for preservation and excursion service."},
+        225:{fleet:"P32AC-DM",status:"Renumbered",history:"Locomotive 225 was renumbered 250 in 2026 for the America 250 commemorative scheme. Search 250 for its current active number."}
+    })
+});
+function findRailroadNumberException(system, number) {
+    return RAILROAD_NUMBER_EXCEPTIONS[system]?.[number] || null;
+}
+function railroadExceptionCardHTML(exception) {
+    return `<div class="history-exception-card"><div class="history-exception-title">History / Status</div><div class="history-exception-status">${escapeHTML(exception.status)}</div><div class="history-exception-text">${escapeHTML(exception.history)}</div></div>`;
+}
+
 function railroadNumberInFleet(number, fleet) {
     if (fleet.exclusions?.includes(number)) return false;
     if (fleet.ranges?.some(([a,b]) => number >= a && number <= b)) return true;
@@ -7279,14 +7545,24 @@ async function identifyRailroad(system) {
 
     const number=Number(input), fleet=findRailroadFleet(system,number);
     if (!fleet) {
+        const exception=findRailroadNumberException(system,number);
+        if(exception){
+            const parentFleet=findRailroadFleetByName(system,exception.fleet);
+            const exceptionSightingSummary=await getVehicleSightingSummary(input,system);
+            box.className="result";
+            box.innerHTML=`<div class="fleet-title">${escapeHTML(exception.fleet)}</div><div class="car-number">Vehicle number: <strong>${escapeHTML(input)}</strong></div>${exceptionSightingSummary}${railroadExceptionCardHTML(exception)}${parentFleet?`<div class="info"><div class="label">Builder</div><div>${escapeHTML(parentFleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(parentFleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(parentFleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(parentFleet.power)}</div></div>`:""}`;
+            recordIdentifierSearch({system,searchValue:input,found:true,resultName:exception.fleet,resultDetails:{knownException:true,status:exception.status}});
+            return;
+        }
         box.className="result";
         box.innerHTML=`<div class="fleet-title unknown-value">Unknown railroad vehicle</div><div class="car-number">Number: <strong>${escapeHTML(input)}</strong></div><div class="status-message">This number is not in the verified ${system === "lirr" ? "LIRR" : "Metro-North"} passenger fleet dataset yet.</div>`;
-        recordIdentifierSearch?.(system, input, false, null, null);
+        recordIdentifierSearch({system,searchValue:input,found:false,resultDetails:{knownException:false}});
         return;
     }
     const railroadRepeatNotice=await getPrimaryRepeatSightingNotice(input,system==="lirr"?"LIRR vehicle":"Metro-North vehicle");
+    const railroadSightingSummary=await getVehicleSightingSummary(input,system);
     box.className="result";
-    box.innerHTML=`<div class="fleet-title">${escapeHTML(fleet.name)}</div><div class="car-number">Vehicle number: <strong>${escapeHTML(input)}</strong></div>${railroadRepeatNotice}<div class="info"><div class="label">Builder</div><div>${escapeHTML(fleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(fleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(fleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(fleet.power)}</div><div class="label">Typical system service</div><div>${escapeHTML(fleet.service)}</div><div class="label">Notes</div><div>${escapeHTML(fleet.notes)}</div></div>${railroadSightingFormHTML(system, input, fleet.name, false)}`;
+    box.innerHTML=`<div class="fleet-title">${escapeHTML(fleet.name)}</div><div class="car-number">Vehicle number: <strong>${escapeHTML(input)}</strong></div>${railroadRepeatNotice}${railroadSightingSummary}<div class="info"><div class="label">Builder</div><div>${escapeHTML(fleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(fleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(fleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(fleet.power)}</div><div class="label">Typical system service</div><div>${escapeHTML(fleet.service)}</div><div class="label">Notes</div><div>${escapeHTML(fleet.notes)}</div></div>${railroadSightingFormHTML(system, input, fleet.name, false)}`;
     renderRailroadPicker(system);
     recordIdentifierSearch?.(system, input, true, fleet.name, {builder:fleet.builder,years:fleet.years});
 }
@@ -7593,6 +7869,7 @@ async function identify() {
     recordSearchHistory(input, fleet);
 
     const repeatSightingNotice = await getRepeatSightingNotice(input);
+    const vehicleSightingSummary = await getVehicleSightingSummary(input, "subway");
     const unitHistoryNotice = linkedUnitHistoryNotice(
         pendingSighting.linkedUnit,
         pendingSighting.linkedUnitHistory
@@ -7610,6 +7887,7 @@ async function identify() {
         </div>
 
         ${repeatSightingNotice}
+        ${vehicleSightingSummary}
         ${unitHistoryNotice}
 
     `;
@@ -8204,6 +8482,8 @@ function mostCommonValue(items, key) {
 function updateSightingsStats() {
     const totalEl = document.getElementById("statTotalSightings");
     const uniqueEl = document.getElementById("statUniqueCars");
+    const uniqueLabelEl = document.getElementById("statUniqueVehicleLabel");
+    const topVehicleLabelEl = document.getElementById("statTopVehicleLabel");
     const fleetEl = document.getElementById("statTopFleet");
     const lineEl = document.getElementById("statTopLine");
     const topCarEl = document.getElementById("statTopCar");
@@ -8224,6 +8504,8 @@ function updateSightingsStats() {
     ).size;
 
     if (totalEl) totalEl.textContent = String(total);
+    if (uniqueLabelEl) uniqueLabelEl.textContent = activeFleetSystem === "bus" ? "Unique buses" : "Unique cars";
+    if (topVehicleLabelEl) topVehicleLabelEl.textContent = activeFleetSystem === "bus" ? "Most-seen bus" : "Most-seen car";
     if (uniqueEl) uniqueEl.textContent = String(uniqueCars);
     if (fleetEl) fleetEl.textContent = mostCommonValue(mySightingsData, "fleet");
     if (lineEl) {
@@ -8233,7 +8515,7 @@ function updateSightingsStats() {
 
     if (topCarEl) {
         const topCar = mostCommonValue(mySightingsData, "car_number");
-        topCarEl.textContent = topCar === "—" ? "—" : `Car ${topCar}`;
+        topCarEl.textContent = topCar === "—" ? "—" : `${activeFleetSystem === "bus" ? "Bus" : "Car"} ${topCar}`;
     }
 
     const validDates = mySightingsData
@@ -8438,17 +8720,21 @@ function renderMySightings(data) {
         ? `${data.length} saved sighting${data.length === 1 ? "" : "s"}`
         : `${data.length} of ${mySightingsData.length} sightings shown`;
 
+    const system = activeFleetSystem || "subway";
+    const routeLabel = system === "bus" ? "Route" : system === "lirr" ? "Branch" : system === "metro-north" ? "Line" : "Line";
+    const vehicleLabel = system === "bus" ? "Bus" : (system === "lirr" || system === "metro-north") ? "Vehicle" : "Car";
+
     list.innerHTML = data.map(sighting => {
         const date = sighting.saved_at ? new Date(sighting.saved_at).toLocaleString() : "";
         return `
             <div id="sighting-${Number(sighting.id)}" style="padding:14px 0;border-bottom:1px solid var(--fi-border);">
-                <div style="font-size:20px;font-weight:bold;">${escapeHTML(sighting.fleet)} — Car ${escapeHTML(sighting.car_number)}</div>
-                <div style="margin-top:5px;">Line: <strong id="sighting-line-${Number(sighting.id)}">${lineDisplayHTML(sighting.line)}</strong></div>
-                ${sighting.station ? `<div style="margin-top:5px;"><strong>Station:</strong> ${escapeHTML(sighting.station)}</div>` : ""}
+                <div style="font-size:20px;font-weight:bold;">${escapeHTML(sighting.fleet)} — ${vehicleLabel} ${escapeHTML(sighting.car_number)}</div>
+                <div style="margin-top:5px;">${routeLabel}: <strong id="sighting-line-${Number(sighting.id)}">${system === "subway" ? lineDisplayHTML(sighting.line) : escapeHTML(sighting.line || "—")}</strong></div>
+                ${sighting.station ? `<div style="margin-top:5px;"><strong>Location:</strong> ${escapeHTML(sighting.station)}</div>` : ""}
                 ${sighting.notes ? `<div class="sighting-note-display"><strong>Notes:</strong> ${escapeHTML(sighting.notes)}</div>` : ""}
                 <div class="account-small-note" style="margin-top:5px;">${escapeHTML(date)}</div>
                 <div class="sighting-actions">
-                    <button type="button" onclick='openEditSighting(${Number(sighting.id)}, ${JSON.stringify(sighting.fleet)}, ${JSON.stringify(sighting.line)}, ${JSON.stringify(sighting.station || "")}, ${JSON.stringify(sighting.notes || "")})'>Edit</button>
+                    <button type="button" onclick="openEditSighting(${Number(sighting.id)})">Edit</button>
                     <button type="button" onclick="deleteSighting(${Number(sighting.id)})">Delete</button>
                 </div>
                 <div id="edit-sighting-${Number(sighting.id)}" class="sighting-edit-box hidden"></div>
@@ -8479,30 +8765,55 @@ function editLineOptionsHTML(fleet, currentLine) {
     `).join("");
 }
 
-function openEditSighting(id, fleet, currentLine, currentStation = "", currentNotes = "") {
+function sightingEditSystem() { return activeFleetSystem || "subway"; }
+function toLocalDateTimeValue(value) {
+    if (!value) return "";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+}
+function railroadEditOptionsHTML(system,currentLine){
+    const data=railroadData(system);
+    const options=(data?.routes||[]).map(r=>`<option value="${escapeHTML(r.name)}" ${r.name===currentLine?"selected":""}>${escapeHTML(r.name)}</option>`).join("");
+    const nis=`<option value="NIS" ${currentLine==="NIS"?"selected":""}>NIS — Not In Service</option>`;
+    const custom=currentLine && currentLine!=="NIS" && !(data?.routes||[]).some(r=>r.name===currentLine) ? `<option value="${escapeHTML(currentLine)}" selected>${escapeHTML(currentLine)}</option>` : "";
+    return custom+nis+options;
+}
+function busEditRouteControlHTML(currentLine,id){
+    return `<input id="edit-line-${id}" type="text" maxlength="20" autocomplete="off" value="${escapeHTML(currentLine||"")}" placeholder="Example: B46 or NIS">`;
+}
+
+function openEditSighting(id) {
+    const sighting=mySightingsData.find(row=>Number(row.id)===Number(id));
     const box = document.getElementById(`edit-sighting-${id}`);
-    if (!box) return;
+    if (!box || !sighting) return;
+    const system=sightingEditSystem();
+    const routeLabel=system==="bus"?"Route":system==="lirr"?"Branch":"Line";
+    let routeControl;
+    if(system==="subway") routeControl=`<select id="edit-line-${id}">${editLineOptionsHTML(sighting.fleet,sighting.line)}</select>`;
+    else if(system==="bus") routeControl=busEditRouteControlHTML(sighting.line,id);
+    else routeControl=`<select id="edit-line-${id}">${railroadEditOptionsHTML(system,sighting.line)}</select>`;
 
     box.classList.remove("hidden");
     box.innerHTML = `
-        <label for="edit-line-${id}">Line</label>
-        <select id="edit-line-${id}">
-            ${editLineOptionsHTML(fleet, currentLine)}
-        </select>
+        <label for="edit-line-${id}">${routeLabel}</label>
+        ${routeControl}
 
-        <label for="edit-station-${id}" style="margin-top:12px;">Station (optional)</label>
-        <input id="edit-station-${id}" type="text" maxlength="100" autocomplete="off" placeholder="Example: Broadway Junction" value="${escapeHTML(currentStation)}">
+        <label for="edit-station-${id}" style="margin-top:12px;">Location (optional)</label>
+        <input id="edit-station-${id}" type="text" maxlength="100" autocomplete="off" placeholder="Station, stop, or custom location" value="${escapeHTML(sighting.station || "")}">
+
+        <label for="edit-datetime-${id}" style="margin-top:12px;">Date &amp; time spotted</label>
+        <input id="edit-datetime-${id}" type="datetime-local" value="${escapeHTML(toLocalDateTimeValue(sighting.saved_at))}" style="width:100%;padding:12px;font-size:16px;border-radius:9px;">
 
         <label for="edit-notes-${id}" style="margin-top:12px;">Notes (optional)</label>
-        <textarea id="edit-notes-${id}" maxlength="1000" placeholder="Add notes about this sighting.">${escapeHTML(currentNotes)}</textarea>
+        <textarea id="edit-notes-${id}" maxlength="1000" placeholder="Add notes about this sighting.">${escapeHTML(sighting.notes || "")}</textarea>
 
+        <div class="account-small-note" style="margin-top:8px;">Vehicle number and fleet stay locked so editing a sighting cannot change its identity.</div>
         <div class="sighting-actions">
             <button type="button" onclick="saveSightingEdit(${id})">Save Changes</button>
             <button type="button" onclick="cancelSightingEdit(${id})">Cancel</button>
         </div>
-
-        <div id="edit-status-${id}" class="status-message"></div>
-    `;
+        <div id="edit-status-${id}" class="status-message"></div>`;
 }
 
 function cancelSightingEdit(id) {
@@ -8513,40 +8824,38 @@ function cancelSightingEdit(id) {
 }
 
 async function saveSightingEdit(id) {
-    const select = document.getElementById(`edit-line-${id}`);
+    const sighting=mySightingsData.find(row=>Number(row.id)===Number(id));
+    const lineInput = document.getElementById(`edit-line-${id}`);
     const stationInput = document.getElementById(`edit-station-${id}`);
+    const datetimeInput = document.getElementById(`edit-datetime-${id}`);
     const notesInput = document.getElementById(`edit-notes-${id}`);
     const status = document.getElementById(`edit-status-${id}`);
+    if (!sighting || !lineInput) return;
 
-    if (!select) return;
-
-    const newLine = select.value;
+    const system=sightingEditSystem();
+    const newLine = lineInput.value.trim();
     const newStation = stationInput?.value.trim() || "";
     const newNotes = notesInput?.value.trim() || "";
-
-    if (status) {
-        status.textContent = "Saving changes...";
+    const rawDate=datetimeInput?.value || "";
+    if(!newLine){ if(status) status.textContent=`Choose or enter a ${system==="bus"?"route":system==="lirr"?"branch":"line"}.`; return; }
+    if(system==="bus" && newLine!=="NIS"){
+        const key=String(newLine).toUpperCase().replace(/\s+/g,"");
+        const valid=Object.keys(BUS_ROUTE_SERVICE_MAP||{}).some(route=>String(route).toUpperCase()===key);
+        if(!valid){ if(status) status.textContent="Enter a valid bus route or NIS."; return; }
     }
+    if(!rawDate){ if(status) status.textContent="Choose the date and time spotted."; return; }
+    const date=new Date(rawDate);
+    if(Number.isNaN(date.getTime())){ if(status) status.textContent="That date/time is not valid."; return; }
+    if(date.getTime()>Date.now()+60000){ if(status) status.textContent="A sighting can't be dated in the future."; return; }
 
-    const { error } = await supabaseClient
-        .from("sightings")
-        .update({ line: newLine, station: newStation || null, notes: newNotes || null })
-        .eq("id", Number(id));
-
+    if (status) status.textContent = "Saving changes...";
+    const updatePayload={line:newLine,station:newStation||null,notes:newNotes||null,saved_at:date.toISOString()};
+    const { error } = await supabaseClient.from("sightings").update(updatePayload).eq("id", Number(id));
     if (error) {
         console.error("Could not update sighting:", error);
-
-        if (status) {
-            status.textContent = "Could not update sighting. Please try again.";
-        }
+        if (status) status.textContent = "Could not update sighting. Please try again.";
         return;
     }
-
-    const lineDisplay = document.getElementById(`sighting-line-${id}`);
-    if (lineDisplay) {
-        lineDisplay.innerHTML = lineDisplayHTML(newLine);
-    }
-
     cancelSightingEdit(id);
     await loadMySightings();
 }
