@@ -2321,6 +2321,44 @@
 </footer>
 
 <script>
+// Android Phase B2 — native-aware connectivity.
+// Capacitor WebViews can report navigator.onLine differently from installed PWAs,
+// so native Android uses @capacitor/network as the authoritative status.
+let fiNativeNetworkConnected = null;
+function fiIsNativeShell() {
+    try {
+        const p = window.Capacitor?.getPlatform?.();
+        return p === "android" || p === "ios";
+    } catch (_) { return false; }
+}
+function fiIsOfflineNow() {
+    if (fiIsNativeShell() && fiNativeNetworkConnected !== null) {
+        return fiNativeNetworkConnected === false;
+    }
+    return navigator.onLine === false;
+}
+async function fiInitNativeNetwork() {
+    if (!fiIsNativeShell()) return;
+    try {
+        const cap = window.Capacitor;
+        const Network = cap?.Plugins?.Network || cap?.registerPlugin?.("Network");
+        if (!Network) return;
+        const status = await Network.getStatus();
+        fiNativeNetworkConnected = !!status.connected;
+        await Network.addListener?.("networkStatusChange", status => {
+            const wasOffline = fiNativeNetworkConnected === false;
+            fiNativeNetworkConnected = !!status.connected;
+            if (wasOffline && fiNativeNetworkConnected) {
+                // Reuse the app's existing online retry path.
+                window.dispatchEvent(new Event("online"));
+            }
+        });
+    } catch (_) {
+        fiNativeNetworkConnected = null;
+    }
+}
+fiInitNativeNetwork();
+
 
 
 const savedTheme = localStorage.getItem("fleetIdentifierTheme") || "dark";
@@ -3524,6 +3562,8 @@ async function loadPersonalRecords() {
 let trainsetHistoryRows = [];
 
 async function toggleTrainsetHistoryPanel() {
+    if (fiIsOfflineNow()) return null; // B2: skip cloud-only toggleTrainsetHistoryPanel while offline
+
     const panel = document.getElementById("trainsetHistoryPanel");
     if (!panel) return;
     const opening = panel.classList.contains("hidden");
@@ -3533,6 +3573,8 @@ async function toggleTrainsetHistoryPanel() {
 }
 
 async function loadTrainsetHistory() {
+    if (fiIsOfflineNow()) return null; // B2: skip cloud-only loadTrainsetHistory while offline
+
     const status = document.getElementById("trainsetHistoryStatus");
     const list = document.getElementById("trainsetHistoryList");
     const pairings = document.getElementById("trainsetPairings");
@@ -4525,6 +4567,8 @@ async function loadAchievements(){
 }
 
 async function toggleSearchHistoryPanel() {
+    if (fiIsOfflineNow()) return null; // B2: skip cloud-only toggleSearchHistoryPanel while offline
+
     const panel = document.getElementById("searchHistoryPanel");
     const opening = panel.classList.contains("hidden");
     closeSettingsContentPanels(opening ? "searchHistoryPanel" : "");
@@ -4552,6 +4596,8 @@ async function recordIdentifierSearch({ system, searchValue, found, resultName =
 }
 
 async function recordSearchHistory(carNumber, fleet) {
+    if (fiIsOfflineNow()) return null; // B2: skip cloud-only recordSearchHistory while offline
+
     try {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return;
@@ -4569,6 +4615,8 @@ async function recordSearchHistory(carNumber, fleet) {
 let searchHistoryRows = [];
 
 async function loadSearchHistory() {
+    if (fiIsOfflineNow()) return null; // B2: skip cloud-only loadSearchHistory while offline
+
     const status = document.getElementById("searchHistoryStatus");
     const list = document.getElementById("searchHistoryList");
     if (!status || !list) return;
@@ -4626,6 +4674,8 @@ function renderSearchHistory() {
 }
 
 async function rerunSearchHistoryEntry(id) {
+    if (fiIsOfflineNow()) return null; // B2: skip cloud-only rerunSearchHistoryEntry while offline
+
     const item = searchHistoryRows.find(row => Number(row.id) === Number(id));
     if (!item) return;
     const system = item.system || activeFleetSystem;
@@ -4665,6 +4715,8 @@ async function rerunSearchHistoryEntry(id) {
 }
 
 async function clearSearchHistory() {
+    if (fiIsOfflineNow()) return null; // B2: skip cloud-only clearSearchHistory while offline
+
     const status = document.getElementById("searchHistoryStatus");
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) { if (status) status.textContent = "Log in to clear synced search history."; return; }
@@ -5578,6 +5630,8 @@ function getConsistLimit(fleet) {
 }
 
 async function getLinkedUnitHistory(linkedUnit) {
+    if (fiIsOfflineNow()) return ""; // B2.1: optional display content is blank offline
+
     if (!linkedUnit?.verified || !Array.isArray(linkedUnit.cars) || !linkedUnit.cars.length) return null;
 
     try {
@@ -6097,7 +6151,7 @@ function queueOfflineSighting(item) {
     queue.push(queued); writeOfflineSightingQueue(queue); return queued;
 }
 function isLikelyNetworkError(error) {
-    if (!navigator.onLine) return true;
+    if (fiIsOfflineNow()) return true;
     const msg = String(error?.message || error || "").toLowerCase();
     return /fetch|network|offline|failed to fetch|load failed|connection|timeout/.test(msg);
 }
@@ -6127,7 +6181,7 @@ async function uploadQueuedSighting(item) {
 }
 let offlineSyncRunning=false;
 async function syncOfflineSightings() {
-    if(offlineSyncRunning || !navigator.onLine) return;
+    if(offlineSyncRunning || fiIsOfflineNow()) return;
     const queue=readOfflineSightingQueue(); if(!queue.length) return;
     offlineSyncRunning=true;
     try{
@@ -6640,6 +6694,8 @@ async function logEasterEggEvent(codeLabel) {
 }
 
 async function getRepeatSightingNotice(carNumber) {
+    if (fiIsOfflineNow()) return ""; // B2.1: optional display content is blank offline
+
     try {
         const { data: { session }, error: sessionError } =
             await supabaseClient.auth.getSession();
@@ -6833,6 +6889,8 @@ async function openVehicleTimeline(vehicleNumber, system) {
 }
 
 async function openLocationHistory(locationName, system = activeFleetSystem || "subway") {
+    if (fiIsOfflineNow()) return null; // B2: skip cloud-only openLocationHistory while offline
+
     const existing=document.getElementById("locationHistoryOverlay");
     if(existing) existing.remove();
     const location=String(locationName||"").trim();
@@ -6885,6 +6943,8 @@ document.addEventListener("click",event=>{
 });
 
 async function getPrimaryRepeatSightingNotice(vehicleNumber, vehicleLabel = "vehicle") {
+    if (fiIsOfflineNow()) return ""; // B2.1: optional display content is blank offline
+
     try {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session?.user) return "";
