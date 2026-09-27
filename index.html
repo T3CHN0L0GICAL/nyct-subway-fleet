@@ -1495,11 +1495,30 @@
     #settingsPanel.account-settings-mode #busSettingsTools,
     #settingsPanel.account-settings-mode #railroadSettingsTools { display: none !important; }
     #settingsPanel.tools-mode #sessionDiagnostics { display: none !important; }
+
+    /* Android Phase B1-A — Tools workspace navigation */
+    #settingsPanel.tools-mode.subtool-active #toolsPanelTitle,
+    #settingsPanel.tools-mode.subtool-active #toolsNavGrid { display:none !important; }
+    .subtool-back-row, .tools-root-back-row { margin:0 0 16px; }
+    .subtool-back-row button, .tools-root-back-row button { width:auto; min-width:0; }
+    /* Native shells use the OS back action. Browser + installed PWA keep
+       visible in-app Back/Tools controls so users can never get trapped. */
+    .native-navigation .subtool-back-row,
+    .native-navigation .tools-root-back-row { display:none !important; }
+
     #settingsPanel.tools-mode #sharedAccountSettings,
     #settingsPanel.tools-mode #accountPanel,
     #settingsPanel.tools-mode #databaseFreshnessCard { display: none !important; }
 
 
+
+
+    /* Android Phase B1-B2 — navigation controls belong above view content. */
+    .account-root-back-row { margin:0 0 16px; }
+    .account-root-back-row button { width:auto; min-width:0; }
+    #settingsPanel.account-settings-mode #toolsRootBackRow { display:none !important; }
+    #settingsPanel.tools-mode #accountRootBackRow { display:none !important; }
+    .native-navigation .account-root-back-row { display:none !important; }
 
     /* Phase 5.3F-D — bus route badges + searchable stop picker */
     .bus-route-badge { display:inline-flex; align-items:center; justify-content:center; min-width:42px; height:28px; padding:0 10px; border-radius:999px; color:#fff; font-weight:900; font-size:12px; line-height:1; white-space:nowrap; letter-spacing:-.01em; }
@@ -1708,7 +1727,7 @@
                 <button type="button" class="system-switcher-option" onclick="openAccountFromSystemMenu()"><span>Account & Settings</span></button>
             </div>
         </div>
-        <button type="button" onclick="toggleSettings()" aria-controls="settingsPanel">Tools</button>
+        <button id="headerToolsButton" type="button" onclick="toggleSettings()" aria-controls="settingsPanel">Tools</button>
         <button id="signedOutSettingsButton" class="hidden" type="button" onclick="toggleSignedOutSettings()" aria-controls="settingsPanel">Settings</button>
     </div>
 
@@ -2626,6 +2645,7 @@ function openAccountFromSystemMenu() {
     if (sessionDiagnosticsEnabled()) refreshSessionDiagnostics();
 
     updateFocusMode();
+    syncToolsWorkspaceNavigation();
 }
 
 document.addEventListener("click", event => {
@@ -2648,6 +2668,7 @@ function toggleSettings() {
     } else {
         settingsPanel.classList.remove("account-settings-mode");
         settingsPanel.classList.add("tools-mode");
+        settingsPanel.classList.remove("subtool-active");
         settingsPanel.classList.remove("hidden");
 
         // Tools are system-specific; account management and diagnostics stay in Account & Settings.
@@ -8609,6 +8630,201 @@ function closeSettingsContentPanels(exceptId = "") {
     });
 }
 
+const toolsSubtoolPanelIds = [
+    "sightingsHubPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel",
+    "fleetCollectionPanel", "fleetBreakdownPanel", "lineStatsPanel", "depotStatsPanel",
+    "fleetComparisonPanel", "trainsetHistoryPanel"
+];
+
+let fiBackNavigationApplying = false;
+let fiLastNavigationKey = "identifier";
+
+function fleetNavigationPlatform() {
+    return typeof getFleetIdentifierPlatform === "function" ? getFleetIdentifierPlatform() : "web";
+}
+
+function currentFleetNavigationKey() {
+    const settingsPanel = document.getElementById("settingsPanel");
+    if (!settingsPanel || settingsPanel.classList.contains("hidden")) return "identifier";
+    if (settingsPanel.classList.contains("tools-mode")) {
+        const activeId = toolsSubtoolPanelIds.find(id => {
+            const panel = document.getElementById(id);
+            return panel && !panel.classList.contains("hidden");
+        });
+        return activeId ? `subtool:${activeId}` : "tools";
+    }
+    if (settingsPanel.classList.contains("account-settings-mode")) return "settings";
+    return "identifier";
+}
+
+function exitToolsToIdentifier() {
+    closeSettingsContentPanels();
+    const settingsPanel = document.getElementById("settingsPanel");
+    if (!settingsPanel) return;
+    settingsPanel.classList.add("hidden");
+    settingsPanel.classList.remove("tools-mode", "subtool-active", "account-settings-mode");
+    updateFocusMode();
+    syncToolsWorkspaceNavigation();
+}
+
+function returnToToolsMenu() {
+    closeSettingsContentPanels();
+    const settingsPanel = document.getElementById("settingsPanel");
+    if (!settingsPanel) return;
+    settingsPanel.classList.remove("subtool-active", "account-settings-mode");
+    settingsPanel.classList.add("tools-mode");
+    settingsPanel.classList.remove("hidden");
+    updateFocusMode();
+    syncToolsWorkspaceNavigation();
+}
+
+function applyFleetNavigationKey(key) {
+    fiBackNavigationApplying = true;
+    try {
+        if (key === "identifier") {
+            exitToolsToIdentifier();
+            return;
+        }
+        if (key === "tools") {
+            returnToToolsMenu();
+            return;
+        }
+        if (key === "settings") {
+            const settingsPanel = document.getElementById("settingsPanel");
+            if (!settingsPanel) return;
+            closeSettingsContentPanels();
+            settingsPanel.classList.remove("hidden", "tools-mode", "subtool-active");
+            settingsPanel.classList.add("account-settings-mode");
+            updateFocusMode();
+            syncToolsWorkspaceNavigation();
+            return;
+        }
+        if (key.startsWith("subtool:")) {
+            const id = key.slice(8);
+            const panel = document.getElementById(id);
+            if (!panel) { returnToToolsMenu(); return; }
+            const settingsPanel = document.getElementById("settingsPanel");
+            closeSettingsContentPanels(id);
+            settingsPanel?.classList.remove("hidden", "account-settings-mode");
+            settingsPanel?.classList.add("tools-mode", "subtool-active");
+            panel.classList.remove("hidden");
+            updateFocusMode();
+            syncToolsWorkspaceNavigation();
+        }
+    } finally {
+        queueMicrotask(() => { fiBackNavigationApplying = false; fiLastNavigationKey = currentFleetNavigationKey(); });
+    }
+}
+
+function handleFleetSystemBack() {
+    const key = currentFleetNavigationKey();
+    if (key.startsWith("subtool:")) { returnToToolsMenu(); return true; }
+    if (key === "tools" || key === "settings") { exitToolsToIdentifier(); return true; }
+    return false;
+}
+
+function syncToolsWorkspaceNavigation() {
+    const settingsPanel = document.getElementById("settingsPanel");
+    if (!settingsPanel) return;
+
+    const toolsWorkspaceOpen =
+        !settingsPanel.classList.contains("hidden") &&
+        settingsPanel.classList.contains("tools-mode");
+
+    const active = toolsWorkspaceOpen &&
+        toolsSubtoolPanelIds.some(id => {
+            const panel = document.getElementById(id);
+            return panel && !panel.classList.contains("hidden");
+        });
+
+    settingsPanel.classList.toggle("subtool-active", active);
+    document.getElementById("headerToolsButton")?.classList.toggle("hidden", toolsWorkspaceOpen);
+}
+
+function syncFleetHistoryState() {
+    if (fiBackNavigationApplying) return;
+    const key = currentFleetNavigationKey();
+    if (key === fiLastNavigationKey) return;
+    fiLastNavigationKey = key;
+    const platform = fleetNavigationPlatform();
+    if (platform === "pwa") {
+        history.pushState({ ...(history.state || {}), fiNavigationKey:key }, "");
+    }
+}
+
+function installFleetBackNavigation() {
+    const platform = fleetNavigationPlatform();
+    document.documentElement.classList.toggle("native-navigation", platform === "android" || platform === "ios");
+    document.documentElement.classList.toggle("pwa-navigation", platform === "pwa");
+
+    const title = document.getElementById("toolsPanelTitle");
+    if (title && !document.getElementById("toolsRootBackRow")) {
+        const row = document.createElement("div");
+        row.id = "toolsRootBackRow";
+        row.className = "tools-root-back-row";
+        row.innerHTML = '<button type="button" onclick="exitToolsToIdentifier()" aria-label="Back">← Back</button>';
+        title.parentNode.insertBefore(row, title);
+    }
+
+
+    const sharedAccountSettings = document.getElementById("sharedAccountSettings");
+    if (sharedAccountSettings && !document.getElementById("accountRootBackRow")) {
+        const row = document.createElement("div");
+        row.id = "accountRootBackRow";
+        row.className = "account-root-back-row";
+        row.innerHTML = '<button type="button" onclick="exitToolsToIdentifier()" aria-label="Back">← Back</button>';
+        sharedAccountSettings.parentNode.insertBefore(row, sharedAccountSettings);
+    }
+
+    toolsSubtoolPanelIds.forEach(id => {
+        const panel = document.getElementById(id);
+        if (!panel || panel.querySelector(":scope > .subtool-back-row")) return;
+        const row = document.createElement("div");
+        row.className = "subtool-back-row";
+        row.innerHTML = '<button type="button" onclick="returnToToolsMenu()" aria-label="Back to Tools">← Tools</button>';
+        panel.insertBefore(row, panel.firstChild);
+    });
+
+    const settingsPanel = document.getElementById("settingsPanel");
+    if (settingsPanel) {
+        new MutationObserver(() => {
+            syncToolsWorkspaceNavigation();
+            syncFleetHistoryState();
+        }).observe(settingsPanel, { attributes:true, subtree:true, attributeFilter:["class"] });
+    }
+
+    /* PWAs do not consistently expose a usable system Back gesture/button.
+       They intentionally keep the same visible Back/Tools controls as web. */
+
+    if (platform === "android" || platform === "ios") {
+        // @capacitor/app is installed in the native project. In a plain
+        // (non-bundled) HTML build, resolve it from Capacitor's runtime
+        // registry, falling back to registerPlugin when needed.
+        const capacitor = window.Capacitor;
+        const appPlugin =
+            capacitor?.Plugins?.App ||
+            capacitor?.registerPlugin?.("App");
+
+        if (appPlugin?.addListener) {
+            appPlugin.addListener("backButton", () => {
+                // Consume native Back while an in-app workspace is open.
+                if (handleFleetSystemBack()) return;
+
+                // Identifier is the root of the app. Only here should
+                // Android's Back action leave/minimize the app.
+                if (platform === "android") {
+                    appPlugin.minimizeApp?.();
+                }
+            });
+        }
+    }
+
+    fiLastNavigationKey = currentFleetNavigationKey();
+    syncToolsWorkspaceNavigation();
+}
+
+window.addEventListener("DOMContentLoaded", installFleetBackNavigation);
+
 function toggleAccountPanel() {
     const panel = document.getElementById("accountPanel");
     const opening = panel.classList.contains("hidden");
@@ -10140,6 +10356,10 @@ async function initializeAuth() {
     await renderAuthState(data?.session || null);
 
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        // Navigation rules are identical signed in or signed out. Re-sync the
+        // shared Tools workspace after auth UI changes so neither state can
+        // leave the header Tools button or subtool layout stale.
+        queueMicrotask(() => syncToolsWorkspaceNavigation?.());
         writeSessionDiagnosticsLog({
             lastAuthEvent: event || "UNKNOWN",
             lastAuthEventAt: new Date().toISOString()
