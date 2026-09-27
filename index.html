@@ -1709,6 +1709,7 @@
             </div>
         </div>
         <button type="button" onclick="toggleSettings()" aria-controls="settingsPanel">Tools</button>
+        <button id="signedOutSettingsButton" class="hidden" type="button" onclick="toggleSignedOutSettings()" aria-controls="settingsPanel">Settings</button>
     </div>
 
     <section id="systemComingSoon" class="system-placeholder hidden" aria-live="polite">
@@ -2559,6 +2560,25 @@ function selectFleetSystem(system) {
     }
     updateFocusMode();
     window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function toggleSignedOutSettings() {
+    const settingsPanel = document.getElementById("settingsPanel");
+    if (!settingsPanel) return;
+
+    const alreadyOpenInAccountMode =
+        !settingsPanel.classList.contains("hidden") &&
+        settingsPanel.classList.contains("account-settings-mode");
+
+    if (alreadyOpenInAccountMode) {
+        settingsPanel.classList.add("hidden");
+        settingsPanel.classList.remove("account-settings-mode");
+        closeSettingsContentPanels();
+        updateFocusMode();
+        return;
+    }
+
+    openAccountFromSystemMenu();
 }
 
 function openAccountFromSystemMenu() {
@@ -10018,11 +10038,13 @@ async function renderAuthState(session) {
     const signedInView = document.getElementById("signedInView");
 
     const topMini = document.getElementById("topAccountMini");
+    const signedOutSettingsButton = document.getElementById("signedOutSettingsButton");
 
     if (!session?.user) {
         signedOutView.classList.remove("hidden");
         signedInView.classList.add("hidden");
         topMini?.classList.add("hidden");
+        signedOutSettingsButton?.classList.remove("hidden");
         closeSystemSwitcher();
         return;
     }
@@ -10033,6 +10055,7 @@ async function renderAuthState(session) {
     signedOutView.classList.add("hidden");
     signedInView.classList.remove("hidden");
     topMini?.classList.remove("hidden");
+    signedOutSettingsButton?.classList.add("hidden");
 
     document.getElementById("signedInName").textContent =
         profile.displayName;
