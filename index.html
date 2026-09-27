@@ -5854,6 +5854,82 @@ function getRequestedSightingTimestamp() {
     return { ok: true, value: date.toISOString() };
 }
 
+
+// Phase 5.3H-A — Offline Reliability
+// Sightings that cannot reach Supabase are retained locally and retried when
+// connectivity returns. Each queued item keeps the field timestamp so a later
+// sync does not rewrite history as the reconnect time.
+const OFFLINE_SIGHTING_QUEUE_KEY = "fleetIdentifierOfflineSightingsV1";
+
+function readOfflineSightingQueue() {
+    try { return JSON.parse(localStorage.getItem(OFFLINE_SIGHTING_QUEUE_KEY) || "[]"); }
+    catch (_) { return []; }
+}
+function writeOfflineSightingQueue(items) {
+    localStorage.setItem(OFFLINE_SIGHTING_QUEUE_KEY, JSON.stringify(items));
+}
+function makeOfflineQueueId() {
+    return (crypto?.randomUUID?.() || `offline-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+}
+function queueOfflineSighting(item) {
+    const queue = readOfflineSightingQueue();
+    const queued = { ...item, queue_id: makeOfflineQueueId(), queued_at: new Date().toISOString() };
+    queue.push(queued); writeOfflineSightingQueue(queue); return queued;
+}
+function isLikelyNetworkError(error) {
+    if (!navigator.onLine) return true;
+    const msg = String(error?.message || error || "").toLowerCase();
+    return /fetch|network|offline|failed to fetch|load failed|connection|timeout/.test(msg);
+}
+async function sightingAlreadySynced(item) {
+    const p=item.payload;
+    let q=supabaseClient.from("sightings").select("id").eq("user_id",p.user_id).eq("car_number",String(p.car_number)).eq("fleet",p.fleet).eq("line",p.line).eq("saved_at",p.saved_at).limit(1);
+    const {data,error}=await q;
+    if(error) throw error;
+    return data?.[0]?.id || null;
+}
+async function uploadQueuedSighting(item) {
+    let sightingId = await sightingAlreadySynced(item);
+    if(!sightingId){
+        const {data,error}=await supabaseClient.from("sightings").insert(item.payload).select("id").single();
+        if(error) throw error; sightingId=data?.id;
+    }
+    if(item.system==="subway" && sightingId && Array.isArray(item.consistCars) && item.consistCars.length){
+        const {data:existing,error:checkError}=await supabaseClient.from("sighting_cars").select("car_number").eq("sighting_id",sightingId);
+        if(checkError) throw checkError;
+        const have=new Set((existing||[]).map(x=>String(x.car_number)));
+        const rows=item.consistCars.filter(c=>!have.has(String(c))).map((car,index)=>{
+            const match=identifyNumeric(Number(car));
+            return {sighting_id:sightingId,user_id:item.payload.user_id,car_number:String(car),fleet:match?.[0]||item.payload.fleet,position:index+1};
+        });
+        if(rows.length){ const {error}=await supabaseClient.from("sighting_cars").insert(rows); if(error) throw error; }
+    }
+}
+let offlineSyncRunning=false;
+async function syncOfflineSightings() {
+    if(offlineSyncRunning || !navigator.onLine) return;
+    const queue=readOfflineSightingQueue(); if(!queue.length) return;
+    offlineSyncRunning=true;
+    try{
+        const {data:{session}}=await supabaseClient.auth.getSession();
+        if(!session?.user) return;
+        const remaining=[];
+        for(const item of queue){
+            if(item.payload?.user_id!==session.user.id){ remaining.push(item); continue; }
+            try { await uploadQueuedSighting(item); }
+            catch(err){ console.warn("Pending sighting sync failed:",err); remaining.push(item); if(isLikelyNetworkError(err)) break; }
+        }
+        // Preserve items after an early network failure plus items belonging to another account.
+        const handled=new Set(remaining.map(x=>x.queue_id));
+        const notVisited=queue.filter(x=>!handled.has(x.queue_id) && x.payload?.user_id!==session.user.id);
+        writeOfflineSightingQueue([...remaining, ...notVisited.filter(x=>!handled.has(x.queue_id))]);
+    } finally { offlineSyncRunning=false; }
+}
+window.addEventListener("online", ()=>setTimeout(syncOfflineSightings, 500));
+window.addEventListener("load", ()=>setTimeout(syncOfflineSightings, 1500));
+
+function offlineFieldTimestamp(requestedValue){ return requestedValue || new Date().toISOString(); }
+
 async function saveSighting() {
     if (!pendingSighting) return;
 
@@ -5898,7 +5974,7 @@ async function saveSighting() {
     // saved_at represents when the train was actually spotted. For a normal
     // field log, let the database default it to now. For an imported/past
     // sighting, save the user-selected historical timestamp instead.
-    if (requestedTimestamp.value) sightingPayload.saved_at = requestedTimestamp.value;
+    sightingPayload.saved_at = offlineFieldTimestamp(requestedTimestamp.value);
 
     const { data: sighting, error } = await supabaseClient
         .from("sightings")
@@ -5908,6 +5984,14 @@ async function saveSighting() {
 
     if (error || !sighting?.id) {
         console.error("Could not save sighting:", error);
+        if (isLikelyNetworkError(error)) {
+            queueOfflineSighting({system:"subway",payload:sightingPayload,consistCars});
+            if(status) status.textContent="Saved on this device — Pending sync.";
+            pendingSighting=null;
+            const resultBox=document.getElementById("result"); if(resultBox){resultBox.className="result hidden";resultBox.innerHTML="";}
+            const mainSearchInput=document.getElementById("carNumber"); if(mainSearchInput){mainSearchInput.value="";mainSearchInput.focus();}
+            return;
+        }
         if (status) status.textContent = "Could not save sighting. Please try again.";
         return;
     }
@@ -7397,9 +7481,20 @@ async function saveBusSighting() {
     const notes=document.getElementById("busSightingNotes")?.value.trim() || "";
     const location=document.getElementById("busSightingLocation")?.value.trim() || "";
     const payload={ user_id:session.user.id, car_number:pendingBusSighting.busNumber, fleet:pendingBusSighting.fleet, line:selected.route, station:location||null, notes:notes||null };
-    if(requestedTimestamp.value) payload.saved_at=requestedTimestamp.value;
+    payload.saved_at=offlineFieldTimestamp(requestedTimestamp.value);
     const { error }=await supabaseClient.from("sightings").insert(payload);
-    if(error){ console.error("Could not save bus sighting:",error); if(status) status.textContent="Could not save bus sighting. Please try again."; return; }
+    if(error){
+        console.error("Could not save bus sighting:",error);
+        if(isLikelyNetworkError(error)){
+            queueOfflineSighting({system:"bus",payload});
+            if(status) status.textContent="Saved on this device — Pending sync.";
+            pendingBusSighting=null; selectedBusStop=null; busLocationMode="stop";
+            const box=document.getElementById("busResult"); if(box){box.className="result hidden";box.innerHTML="";}
+            const input=document.getElementById("busNumber"); if(input){input.value="";input.focus();}
+            return;
+        }
+        if(status) status.textContent="Could not save bus sighting. Please try again."; return;
+    }
     if(status) status.textContent=`Saved: bus ${pendingBusSighting.busNumber} on ${selected.route}${location ? ` at ${location}` : ""}.`;
     pendingBusSighting=null; selectedBusStop=null; busLocationMode="stop";
     const box=document.getElementById("busResult"); if(box){box.className="result hidden";box.innerHTML="";}
@@ -7643,10 +7738,21 @@ async function saveRailroadSighting(system, vehicleNumber, fleetName, testMode=f
     if(!requested.ok){ if(status) status.textContent=requested.message; return; }
     const notes=document.getElementById(`${system}-rail-notes`)?.value.trim() || "";
     const payload={user_id:session.user.id,car_number:String(vehicleNumber),fleet:fleetName,line,station:location||null,notes:notes||null};
-    if(requested.value) payload.saved_at=requested.value;
+    payload.saved_at=offlineFieldTimestamp(requested.value);
     if(status) status.textContent=requested.value?"Saving past railroad sighting...":"Saving railroad sighting...";
     const {error}=await supabaseClient.from("sightings").insert(payload);
-    if(error){ console.error("Could not save railroad sighting:",error); if(status) status.textContent="Could not save railroad sighting. Please try again."; return; }
+    if(error){
+        console.error("Could not save railroad sighting:",error);
+        if(isLikelyNetworkError(error)){
+            queueOfflineSighting({system,payload});
+            if(status) status.textContent="Saved on this device — Pending sync.";
+            railroadPickerState[system]={routeId:"",mode:"station",station:null};
+            const ids=railroadSearchIds(system), box=document.getElementById(ids.result), input=document.getElementById(ids.input);
+            if(box){box.className="result hidden";box.innerHTML="";} if(input){input.value="";input.focus();}
+            return;
+        }
+        if(status) status.textContent="Could not save railroad sighting. Please try again."; return;
+    }
     if(status) status.textContent=`Saved: ${system==="lirr"?"LIRR":"Metro-North"} ${vehicleNumber} on ${line}${location?` at ${location}`:""}.`;
     railroadPickerState[system]={routeId:"",mode:"station",station:null};
     const ids=railroadSearchIds(system), box=document.getElementById(ids.result), input=document.getElementById(ids.input);
