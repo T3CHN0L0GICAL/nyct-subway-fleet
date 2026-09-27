@@ -1723,6 +1723,18 @@
     <section id="settingsPanel" class="settings-panel hidden">
         <div id="sharedAccountSettings">
         <h2>Account &amp; Settings</h2>
+
+        <div id="signedOutSystemSettings" class="hidden" style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--fi-border);">
+            <label style="display:block;margin-bottom:8px;">System</label>
+            <div class="settings-nav-grid" style="margin-top:0;">
+                <button type="button" data-signed-out-system="subway" onclick="selectSignedOutFleetSystem('subway')">🚇 Subway</button>
+                <button type="button" data-signed-out-system="bus" onclick="selectSignedOutFleetSystem('bus')">🚌 Bus</button>
+                <button type="button" data-signed-out-system="lirr" onclick="selectSignedOutFleetSystem('lirr')">🚆 LIRR</button>
+                <button type="button" data-signed-out-system="metro-north" onclick="selectSignedOutFleetSystem('metro-north')">🚆 Metro-North</button>
+            </div>
+            <div class="account-small-note" style="margin-top:8px;">Choose which Fleet Identifier to use.</div>
+        </div>
+
         <label for="themeSelect">Appearance</label>
         <select id="themeSelect" onchange="setTheme(this.value)">
             <option value="dark">Dark</option>
@@ -2560,6 +2572,19 @@ function selectFleetSystem(system) {
     }
     updateFocusMode();
     window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function selectSignedOutFleetSystem(system) {
+    if (!FLEET_SYSTEMS[system]) return;
+    selectFleetSystem(system);
+
+    // The signed-out Settings system picker is a navigation shortcut:
+    // after choosing a system, return directly to that system's Identifier.
+    const settingsPanel = document.getElementById("settingsPanel");
+    settingsPanel?.classList.add("hidden");
+    settingsPanel?.classList.remove("account-settings-mode", "tools-mode");
+    closeSettingsContentPanels();
+    updateFocusMode();
 }
 
 function toggleSignedOutSettings() {
@@ -10039,12 +10064,14 @@ async function renderAuthState(session) {
 
     const topMini = document.getElementById("topAccountMini");
     const signedOutSettingsButton = document.getElementById("signedOutSettingsButton");
+    const signedOutSystemSettings = document.getElementById("signedOutSystemSettings");
 
     if (!session?.user) {
         signedOutView.classList.remove("hidden");
         signedInView.classList.add("hidden");
         topMini?.classList.add("hidden");
         signedOutSettingsButton?.classList.remove("hidden");
+        signedOutSystemSettings?.classList.remove("hidden");
         closeSystemSwitcher();
         return;
     }
@@ -10056,6 +10083,7 @@ async function renderAuthState(session) {
     signedInView.classList.remove("hidden");
     topMini?.classList.remove("hidden");
     signedOutSettingsButton?.classList.add("hidden");
+    signedOutSystemSettings?.classList.add("hidden");
 
     document.getElementById("signedInName").textContent =
         profile.displayName;
