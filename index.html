@@ -1496,7 +1496,8 @@
     #settingsPanel.account-settings-mode #railroadSettingsTools { display: none !important; }
     #settingsPanel.tools-mode #sessionDiagnostics { display: none !important; }
     #settingsPanel.tools-mode #sharedAccountSettings,
-    #settingsPanel.tools-mode #accountPanel { display: none !important; }
+    #settingsPanel.tools-mode #accountPanel,
+    #settingsPanel.tools-mode #databaseFreshnessCard { display: none !important; }
 
 
 
@@ -1678,15 +1679,6 @@
             <option value="light">Light</option>
             <option value="system">System</option>
         </select>
-
-        <div class="database-freshness-card" aria-label="Fleet database freshness">
-            <div class="database-freshness-title">Database freshness</div>
-            <div class="database-freshness-row"><span>Subway</span><strong>Sep 26, 2026</strong></div>
-            <div class="database-freshness-row"><span>Bus</span><strong>Sep 26, 2026</strong></div>
-            <div class="database-freshness-row"><span>LIRR</span><strong>Sep 26, 2026</strong></div>
-            <div class="database-freshness-row"><span>Metro-North</span><strong>Sep 26, 2026</strong></div>
-            <div class="account-small-note" style="margin-top:8px;">Last reviewed fleet and assignment data. Live assignments can change between database updates.</div>
-        </div>
 
         </div>
 
@@ -1889,6 +1881,15 @@
             </div>
         </div>
     </section>
+
+    <div id="databaseFreshnessCard" class="database-freshness-card" aria-label="Fleet database freshness">
+        <div class="database-freshness-title">Database freshness</div>
+        <div class="database-freshness-row"><span>Subway</span><strong>Sep 26, 2026</strong></div>
+        <div class="database-freshness-row"><span>Bus</span><strong>Sep 26, 2026</strong></div>
+        <div class="database-freshness-row"><span>LIRR</span><strong>Sep 26, 2026</strong></div>
+        <div class="database-freshness-row"><span>Metro-North</span><strong>Sep 26, 2026</strong></div>
+        <div class="account-small-note" style="margin-top:8px;">Last reviewed fleet and assignment data. Live assignments can change between database updates.</div>
+    </div>
 
     <section id="sightingsHubPanel" class="account-panel hidden">
         <h2>Sightings Hub</h2>
@@ -2595,6 +2596,9 @@ const STATION_WORD_ALIASES = {
     "sq": "square", "ctr": "center",
     "hts": "heights", "plz": "plaza",
     "ft": "fort", "pk": "park",
+    // Compass directions are interchangeable in Subway station search.
+    // Display names remain unchanged; this only normalizes matching.
+    "n": "north", "s": "south", "e": "east", "w": "west",
     "1st": "1", "2nd": "2", "3rd": "3", "4th": "4", "5th": "5", "6th": "6", "7th": "7", "8th": "8", "9th": "9", "10th": "10", "11th": "11", "12th": "12"
 };
 
