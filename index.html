@@ -1616,6 +1616,55 @@
     @media (max-width: 560px) {
         .vehicle-sighting-summary { grid-template-columns: 1fr; gap: 8px; }
     }
+
+/* Phase 5.3H-B — Vehicle Timeline */
+.vehicle-timeline-button{margin-top:10px;width:100%;}
+.vehicle-total-sightings-button{appearance:none;width:100%;text-align:left;color:inherit;background:transparent;border:1px solid #3a3a3a;border-radius:10px;padding:8px;cursor:pointer;font:inherit;}
+.vehicle-total-sightings-button:hover,.vehicle-total-sightings-button:focus-visible{background:rgba(255,255,255,.06);border-color:#666;outline:none;}
+.vehicle-total-sightings-button .summary-value::after{content:"  ›";opacity:.7;}
+.search-history-rerun{cursor:pointer;}
+.search-history-rerun:hover,.search-history-rerun:focus-visible{border-color:#666;background:rgba(255,255,255,.04);outline:none;}
+.vehicle-timeline-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;z-index:10000;padding:16px;}
+.vehicle-timeline-panel{width:min(680px,100%);max-height:82vh;overflow:auto;background:#111;border:1px solid #444;border-radius:20px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.55);}
+.vehicle-timeline-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
+.vehicle-timeline-head h3{margin:0;font-size:1.15rem;}
+.vehicle-timeline-close{border-radius:999px;min-width:40px;height:40px;padding:0 12px;}
+.vehicle-timeline-list{display:grid;gap:10px;}
+.vehicle-timeline-entry{border:1px solid #333;border-radius:14px;padding:12px;background:#171717;}
+.vehicle-timeline-entry strong{display:block;margin-bottom:5px;}
+.vehicle-timeline-meta{opacity:.82;font-size:.92rem;line-height:1.45;}
+
+.vehicle-timeline-notes{margin-top:7px;white-space:pre-wrap;}
+/* Phase 5.3I-A — Location History */
+/* Phase 5.3I-C — Database Changelog */
+.database-freshness-button {
+    width: 100%;
+    appearance: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    border-left: 0;
+    border-right: 0;
+    border-top: 0;
+}
+.database-freshness-button:hover, .database-freshness-button:focus-visible { background: var(--fi-soft-bg); }
+.database-changelog-entry { padding: 14px 0; border-bottom: 1px solid var(--fi-border); }
+.database-changelog-entry:last-child { border-bottom: 0; }
+.database-changelog-version { font-weight: 700; }
+.database-changelog-date { margin-top: 3px; }
+.database-changelog-entry ul { margin: 8px 0 0 20px; padding: 0; }
+.database-changelog-entry li { margin: 5px 0; }
+
+/* Phase 5.3I-B — Share Sighting: Bus, LIRR, and Metro-North */
+.location-history-link{appearance:none;background:none;border:0;color:inherit;font:inherit;font-weight:700;padding:0;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;cursor:pointer;text-align:left;}
+.location-history-link:hover{opacity:.78;}
+.location-history-count{opacity:.72;font-size:.88rem;margin-top:2px;}
+
+/* Phase 5.3H-C — surprise sightings / assignment context */
+.outside-assignment-badge{display:inline-flex;align-items:center;margin-top:7px;padding:5px 9px;border:1px solid #666;border-radius:999px;font-size:.78rem;font-weight:750;letter-spacing:.01em;background:#202020;}
+.outside-assignment-note{margin-top:6px;font-size:.82rem;opacity:.78;line-height:1.4;}
 </style>
 <!-- Phase 5.3F-R2B: universal comparison/reports, railroad reverse search, tools-preserving system switch, settings-only diagnostics -->
 </head>
@@ -1884,12 +1933,21 @@
 
     <div id="databaseFreshnessCard" class="database-freshness-card" aria-label="Fleet database freshness">
         <div class="database-freshness-title">Database freshness</div>
-        <div class="database-freshness-row"><span>Subway</span><strong>Sep 26, 2026</strong></div>
-        <div class="database-freshness-row"><span>Bus</span><strong>Sep 26, 2026</strong></div>
-        <div class="database-freshness-row"><span>LIRR</span><strong>Sep 26, 2026</strong></div>
-        <div class="database-freshness-row"><span>Metro-North</span><strong>Sep 26, 2026</strong></div>
-        <div class="account-small-note" style="margin-top:8px;">Last reviewed fleet and assignment data. Live assignments can change between database updates.</div>
+        <button type="button" class="database-freshness-row database-freshness-button" onclick="openDatabaseChangelog('subway')"><span>Subway</span><strong>Sep 26, 2026 ›</strong></button>
+        <button type="button" class="database-freshness-row database-freshness-button" onclick="openDatabaseChangelog('bus')"><span>Bus</span><strong>Sep 26, 2026 ›</strong></button>
+        <button type="button" class="database-freshness-row database-freshness-button" onclick="openDatabaseChangelog('lirr')"><span>LIRR</span><strong>Sep 26, 2026 ›</strong></button>
+        <button type="button" class="database-freshness-row database-freshness-button" onclick="openDatabaseChangelog('metro-north')"><span>Metro-North</span><strong>Sep 26, 2026 ›</strong></button>
+        <div class="account-small-note" style="margin-top:8px;">Last reviewed fleet and assignment data. Live assignments can change between database updates. Tap a system to view its changelog.</div>
     </div>
+
+    <section id="databaseChangelogPanel" class="account-panel hidden" aria-live="polite">
+        <div class="account-section-heading-row">
+            <h2 id="databaseChangelogTitle">Database Changelog</h2>
+            <button type="button" onclick="closeDatabaseChangelog()">Back</button>
+        </div>
+        <div id="databaseChangelogMeta" class="account-small-note"></div>
+        <div id="databaseChangelogList" style="margin-top:12px;"></div>
+    </section>
 
     <section id="sightingsHubPanel" class="account-panel hidden">
         <h2>Sightings Hub</h2>
@@ -4488,7 +4546,7 @@ function renderSearchHistory() {
     if (!rows.length) { list.innerHTML = '<div class="account-small-note">No searches match these filters.</div>'; return; }
 
     list.innerHTML = rows.map(item => `
-        <div class="report-item">
+        <div class="report-item search-history-rerun" role="button" tabindex="0" aria-label="Search again for ${escapeHTML(item.search_value || "vehicle")}" onclick="rerunSearchHistoryEntry(${Number(item.id)})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();rerunSearchHistoryEntry(${Number(item.id)});}">
             <div class="report-item-heading">
                 <div class="report-item-car">${escapeHTML(item.search_value || "—")}</div>
             </div>
@@ -4499,6 +4557,45 @@ function renderSearchHistory() {
                 <div class="report-item-value">${escapeHTML(item.created_at ? new Date(item.created_at).toLocaleString() : "—")}</div>
             </div>
         </div>`).join("");
+}
+
+async function rerunSearchHistoryEntry(id) {
+    const item = searchHistoryRows.find(row => Number(row.id) === Number(id));
+    if (!item) return;
+    const system = item.system || activeFleetSystem;
+    const value = String(item.search_value || "").trim();
+    if (!value || !FLEET_SYSTEMS[system]) return;
+
+    // Search History is system-exclusive, but honor the row's stored system if needed.
+    if (system !== activeFleetSystem) selectFleetSystem(system);
+
+    // Leave Tools and return to the Identifier before replaying the search.
+    const settingsPanel = document.getElementById("settingsPanel");
+    if (settingsPanel) {
+        settingsPanel.classList.add("hidden");
+        settingsPanel.classList.remove("tools-mode", "account-settings-mode");
+    }
+    closeSettingsContentPanels();
+    document.body.classList.remove("focus-mode");
+    renderFleetSystem();
+
+    if (system === "subway") {
+        if (searchMode !== "car") setSearchMode("car");
+        const input = document.getElementById("carNumber");
+        if (input) input.value = value;
+        await identify();
+    } else if (system === "bus") {
+        const input = document.getElementById("busNumber");
+        if (input) input.value = value;
+        await identifyBus();
+    } else {
+        if ((railroadSearchModes[system] || "car") !== "car") setRailroadSearchMode(system, "car");
+        const ids = railroadSearchIds(system);
+        const input = document.getElementById(ids.input);
+        if (input) input.value = value;
+        await identifyRailroad(system);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 async function clearSearchHistory() {
@@ -5073,6 +5170,63 @@ const subwayCurrentLineFleets = {
     "Franklin S":["R68"],
     "Rockaway S":["R211A"]
 };
+
+// Phase 5.3H-C — compare a saved sighting with the app's currently listed normal assignments.
+// This is intentionally advisory: assignments can change, so a mismatch is never treated as invalid.
+const railroadListedFleetRoutes = Object.freeze({
+    lirr: {
+        "M7":["Babylon Branch","Hempstead Branch","Ronkonkoma Branch","Long Beach Branch","Far Rockaway Branch","West Hempstead Branch","Port Washington Branch","Port Jefferson Branch","City Terminal Zone"],
+        "M9":["Babylon Branch","Hempstead Branch","Ronkonkoma Branch","Long Beach Branch","Far Rockaway Branch","West Hempstead Branch","Port Washington Branch","Port Jefferson Branch","City Terminal Zone"],
+        "M3":["Babylon Branch","Hempstead Branch","Ronkonkoma Branch","Long Beach Branch","Far Rockaway Branch","West Hempstead Branch","Port Washington Branch","Port Jefferson Branch","City Terminal Zone"],
+        "DE30AC":["Oyster Bay Branch","Ronkonkoma Branch","Montauk Branch","Port Jefferson Branch","Greenport Service"],
+        "DM30AC":["Oyster Bay Branch","Ronkonkoma Branch","Montauk Branch","Port Jefferson Branch","Greenport Service","City Terminal Zone"],
+        "C3":["Oyster Bay Branch","Ronkonkoma Branch","Montauk Branch","Port Jefferson Branch","Greenport Service"]
+    },
+    "metro-north": {
+        "M7A":["Hudson","Harlem"],
+        "M3A":["Hudson","Harlem"],
+        "M8":["New Haven","New Canaan"],
+        "P32AC-DM":["Hudson","Harlem"],
+        "SC42-DM":["Hudson","Harlem"]
+    }
+});
+function normalizedListedService(value){ return String(value||"").trim().replace(/\s+/g," ").toUpperCase(); }
+function busListedRoutesForVehicle(number){
+    const assignment=getBusAssignment(Number(number));
+    if(!assignment?.routes) return null;
+    const text=String(assignment.routes).replace(/;[^,]*/g, m=>m.replace(/^;/,','));
+    const matches=text.match(/(?:BxM|SIM|QM|BM|Bx|[BQMSX])\d+(?:\s+(?:SBS|LTD|RUSH))?/gi)||[];
+    return [...new Set(matches.map(normalizedListedService))];
+}
+function sightingAssignmentStatus(system,row){
+    const fleet=String(row?.fleet||"").trim(), service=String(row?.line||"").trim();
+    if(!fleet||!service||fleet==="TEST"||service==="TEST"||normalizedListedService(service)==="NIS") return {checkable:false,outside:false};
+    if(system==="subway") {
+        const hasListing=Object.values(subwayCurrentLineFleets).some(fleets=>fleets.includes(fleet));
+        if(!hasListing) return {checkable:false,outside:false};
+        const allowed=(subwayCurrentLineFleets[service]||[]).includes(fleet);
+        return {checkable:true,outside:!allowed};
+    }
+    if(system==="bus") {
+        const allowed=busListedRoutesForVehicle(row?.car_number);
+        if(!allowed?.length) return {checkable:false,outside:false};
+        return {checkable:true,outside:!allowed.includes(normalizedListedService(service))};
+    }
+    if(system==="lirr"||system==="metro-north") {
+        const allowed=railroadListedFleetRoutes[system]?.[fleet];
+        if(!allowed?.length) return {checkable:false,outside:false};
+        const route=railroadRoute(system,service);
+        const name=route?.name||service;
+        return {checkable:true,outside:!allowed.some(x=>normalizedListedService(x)===normalizedListedService(name))};
+    }
+    return {checkable:false,outside:false};
+}
+function outsideAssignmentHTML(system,row){
+    const state=sightingAssignmentStatus(system,row);
+    if(!state.outside) return "";
+    return `<div><span class="outside-assignment-badge">Outside listed assignment</span><div class="outside-assignment-note">This sighting does not match the app’s currently listed normal assignment. It is still valid; assignments, reroutes, loans, and special moves can change.</div></div>`;
+}
+
 
 let subwayLineFleetsReturnHTML = "";
 
@@ -6553,13 +6707,116 @@ async function getVehicleSightingSummary(vehicleNumber, system) {
         return `<div class="vehicle-sighting-summary" aria-label="Your sighting history for this vehicle">
             <div><div class="summary-label">First seen</div><div class="summary-value">${escapeHTML(first)}</div></div>
             <div><div class="summary-label">Last seen</div><div class="summary-value">${escapeHTML(last)}</div></div>
-            <div><div class="summary-label">Total sightings</div><div class="summary-value">${rows.length}</div></div>
+            <button type="button" class="vehicle-total-sightings-button" onclick="openVehicleTimeline('${escapeHTML(value)}','${escapeHTML(system)}')" aria-label="Open timeline for ${rows.length} sighting${rows.length === 1 ? "" : "s"}">
+                <div class="summary-label">Total sightings</div><div class="summary-value">${rows.length}</div>
+            </button>
         </div>`;
     } catch (error) {
         console.error("Could not build vehicle sighting summary:", error);
         return "";
     }
 }
+
+async function openVehicleTimeline(vehicleNumber, system) {
+    const existing=document.getElementById("vehicleTimelineOverlay");
+    if(existing) existing.remove();
+    const overlay=document.createElement("div");
+    overlay.id="vehicleTimelineOverlay";
+    overlay.className="vehicle-timeline-overlay";
+    overlay.innerHTML=`<section class="vehicle-timeline-panel" role="dialog" aria-modal="true" aria-label="Vehicle timeline">
+        <div class="vehicle-timeline-head"><h3>${system === "bus" ? "Bus" : "Vehicle"} ${escapeHTML(String(vehicleNumber))} Timeline</h3><button type="button" class="secondary-button vehicle-timeline-close" aria-label="Close timeline">×</button></div>
+        <div id="vehicleTimelineBody" class="vehicle-timeline-list"><div class="muted">Loading sightings…</div></div>
+    </section>`;
+    document.body.appendChild(overlay);
+    const close=()=>overlay.remove();
+    overlay.querySelector(".vehicle-timeline-close").addEventListener("click",close);
+    overlay.addEventListener("click",e=>{if(e.target===overlay) close();});
+    const body=overlay.querySelector("#vehicleTimelineBody");
+    try {
+        const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
+        if(sessionError||!session?.user){body.innerHTML='<div class="muted">Sign in to view your vehicle timeline.</div>';return;}
+        const userId=session.user.id,value=String(vehicleNumber),byId=new Map();
+        const primary=await supabaseClient.from("sightings").select("id,car_number,fleet,line,station,notes,saved_at").eq("user_id",userId).eq("car_number",value);
+        if(primary.error) throw primary.error;
+        (primary.data||[]).forEach(row=>byId.set(String(row.id),row));
+        if(system==="subway"){
+            const consist=await supabaseClient.from("sighting_cars").select("sighting_id").eq("user_id",userId).eq("car_number",value);
+            if(!consist.error){
+                const ids=[...new Set((consist.data||[]).map(r=>r.sighting_id).filter(Boolean).map(String))].filter(id=>!byId.has(id));
+                if(ids.length){
+                    const linked=await supabaseClient.from("sightings").select("id,car_number,fleet,line,station,notes,saved_at").eq("user_id",userId).in("id",ids);
+                    if(!linked.error)(linked.data||[]).forEach(row=>byId.set(String(row.id),row));
+                }
+            }
+        }
+        const rows=[...byId.values()].sort((a,b)=>new Date(b.saved_at||0)-new Date(a.saved_at||0));
+        if(!rows.length){body.innerHTML='<div class="muted">No saved sightings for this vehicle yet.</div>';return;}
+        body.innerHTML=rows.map(row=>{
+            const when=row.saved_at?new Date(row.saved_at).toLocaleString():"Date unavailable";
+            const service=row.line?escapeHTML(String(row.line)):"No service recorded";
+            const rawLocation=row.station?String(row.station):"";
+            const location=rawLocation?`<button type="button" class="location-history-link" data-location="${escapeHTML(encodeURIComponent(rawLocation))}" data-location-system="${escapeHTML(system)}">${escapeHTML(rawLocation)}</button>`:"No location recorded";
+            const notes=row.notes?`<div class="vehicle-timeline-notes">${escapeHTML(String(row.notes))}</div>`:"";
+            const assignment=outsideAssignmentHTML(system,row);
+            return `<article class="vehicle-timeline-entry"><strong>${escapeHTML(when)}</strong><div class="vehicle-timeline-meta">${service} · ${location}</div>${assignment}${notes}</article>`;
+        }).join("");
+    } catch(error){
+        console.error("Could not load vehicle timeline:",error);
+        body.innerHTML='<div class="muted">Could not load the timeline right now.</div>';
+    }
+}
+
+async function openLocationHistory(locationName, system = activeFleetSystem || "subway") {
+    const existing=document.getElementById("locationHistoryOverlay");
+    if(existing) existing.remove();
+    const location=String(locationName||"").trim();
+    if(!location) return;
+    const overlay=document.createElement("div");
+    overlay.id="locationHistoryOverlay";
+    overlay.className="vehicle-timeline-overlay";
+    overlay.innerHTML=`<section class="vehicle-timeline-panel" role="dialog" aria-modal="true" aria-label="Location history">
+        <div class="vehicle-timeline-head"><h3>${escapeHTML(location)} History</h3><button type="button" class="secondary-button vehicle-timeline-close" aria-label="Close location history">×</button></div>
+        <div id="locationHistoryBody" class="vehicle-timeline-list"><div class="muted">Loading sightings…</div></div>
+    </section>`;
+    document.body.appendChild(overlay);
+    const close=()=>overlay.remove();
+    overlay.querySelector(".vehicle-timeline-close").addEventListener("click",close);
+    overlay.addEventListener("click",e=>{if(e.target===overlay) close();});
+    const body=overlay.querySelector("#locationHistoryBody");
+    try {
+        const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
+        if(sessionError||!session?.user){body.innerHTML='<div class="muted">Sign in to view your location history.</div>';return;}
+        const result=await supabaseClient.from("sightings")
+            .select("id,car_number,fleet,line,station,notes,saved_at")
+            .eq("user_id",session.user.id)
+            .eq("station",location)
+            .order("saved_at",{ascending:false});
+        if(result.error) throw result.error;
+        const rows=scopeSightingsRows(result.data||[],system);
+        if(!rows.length){body.innerHTML='<div class="muted">No saved sightings at this location yet.</div>';return;}
+        body.innerHTML=`<div class="location-history-count">${rows.length} saved sighting${rows.length===1?"":"s"} at this location</div>`+rows.map(row=>{
+            const when=row.saved_at?new Date(row.saved_at).toLocaleString():"Date unavailable";
+            const vehicleLabel=system==="bus"?"Bus":(system==="lirr"||system==="metro-north")?"Vehicle":"Car";
+            const serviceLabel=system==="bus"?"Route":system==="lirr"?"Branch":"Line";
+            const service=row.line?escapeHTML(String(row.line)):"No service recorded";
+            const notes=row.notes?`<div class="vehicle-timeline-notes">${escapeHTML(String(row.notes))}</div>`:"";
+            const assignment=outsideAssignmentHTML(system,row);
+            return `<article class="vehicle-timeline-entry"><strong>${escapeHTML(when)}</strong><div class="vehicle-timeline-meta">${escapeHTML(row.fleet||"Unknown fleet")} · ${vehicleLabel} ${escapeHTML(row.car_number||"—")}<br>${serviceLabel}: ${service}</div>${assignment}${notes}</article>`;
+        }).join("");
+    } catch(error){
+        console.error("Could not load location history:",error);
+        body.innerHTML='<div class="muted">Could not load the location history right now.</div>';
+    }
+}
+
+document.addEventListener("click",event=>{
+    const button=event.target.closest?.(".location-history-link");
+    if(!button) return;
+    const encoded=button.dataset.location||"";
+    let location="";
+    try{location=decodeURIComponent(encoded);}catch{location=encoded;}
+    openLocationHistory(location,button.dataset.locationSystem||activeFleetSystem||"subway");
+});
 
 async function getPrimaryRepeatSightingNotice(vehicleNumber, vehicleLabel = "vehicle") {
     try {
@@ -7009,6 +7266,7 @@ async function identifyBus() {
             <div class="label">Maximum speed</div><div class="unknown-value">${escapeHTML(data.maxSpeed)}</div>
             <div class="label">Other notes / features</div><div>${escapeHTML(`${specific.notes ? `${data.notes} ${specific.notes}` : data.notes}${statusException ? ` ${statusException.note}` : ""}`)}</div>
         </div>
+        ${shareIdentifierActionsHTML("bus", input, data.model)}
         <div class="sighting-panel">
             <h3>Log this sighting</h3>
             <div>What route did you see bus <strong>${escapeHTML(input)}</strong> on?</div>
@@ -7495,7 +7753,10 @@ async function saveBusSighting() {
         }
         if(status) status.textContent="Could not save bus sighting. Please try again."; return;
     }
-    if(status) status.textContent=`Saved: bus ${pendingBusSighting.busNumber} on ${selected.route}${location ? ` at ${location}` : ""}.`;
+    if(status) {
+        const outside=sightingAssignmentStatus("bus",payload).outside;
+        status.textContent=`Saved: bus ${pendingBusSighting.busNumber} on ${selected.route}${location ? ` at ${location}` : ""}.${outside ? " Outside listed assignment." : ""}`;
+    }
     pendingBusSighting=null; selectedBusStop=null; busLocationMode="stop";
     const box=document.getElementById("busResult"); if(box){box.className="result hidden";box.innerHTML="";}
     const input=document.getElementById("busNumber"); if(input){ input.value=""; input.focus(); }
@@ -7661,7 +7922,7 @@ async function identifyRailroad(system) {
     const railroadRepeatNotice=await getPrimaryRepeatSightingNotice(input,system==="lirr"?"LIRR vehicle":"Metro-North vehicle");
     const railroadSightingSummary=await getVehicleSightingSummary(input,system);
     box.className="result";
-    box.innerHTML=`<div class="fleet-title">${escapeHTML(fleet.name)}</div><div class="car-number">Vehicle number: <strong>${escapeHTML(input)}</strong></div>${railroadRepeatNotice}${railroadSightingSummary}<div class="info"><div class="label">Builder</div><div>${escapeHTML(fleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(fleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(fleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(fleet.power)}</div><div class="label">Typical system service</div><div>${escapeHTML(fleet.service)}</div><div class="label">Notes</div><div>${escapeHTML(fleet.notes)}</div></div>${railroadSightingFormHTML(system, input, fleet.name, false)}`;
+    box.innerHTML=`<div class="fleet-title">${escapeHTML(fleet.name)}</div><div class="car-number">Vehicle number: <strong>${escapeHTML(input)}</strong></div>${railroadRepeatNotice}${railroadSightingSummary}<div class="info"><div class="label">Builder</div><div>${escapeHTML(fleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(fleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(fleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(fleet.power)}</div><div class="label">Typical system service</div><div>${escapeHTML(fleet.service)}</div><div class="label">Notes</div><div>${escapeHTML(fleet.notes)}</div></div>${shareIdentifierActionsHTML(system, input, fleet.name)}${railroadSightingFormHTML(system, input, fleet.name, false)}`;
     renderRailroadPicker(system);
     recordIdentifierSearch?.(system, input, true, fleet.name, {builder:fleet.builder,years:fleet.years});
 }
@@ -8840,7 +9101,8 @@ function renderMySightings(data) {
             <div id="sighting-${Number(sighting.id)}" style="padding:14px 0;border-bottom:1px solid var(--fi-border);">
                 <div style="font-size:20px;font-weight:bold;">${escapeHTML(sighting.fleet)} — ${vehicleLabel} ${escapeHTML(sighting.car_number)}</div>
                 <div style="margin-top:5px;">${routeLabel}: <strong id="sighting-line-${Number(sighting.id)}">${system === "subway" ? lineDisplayHTML(sighting.line) : escapeHTML(sighting.line || "—")}</strong></div>
-                ${sighting.station ? `<div style="margin-top:5px;"><strong>Location:</strong> ${escapeHTML(sighting.station)}</div>` : ""}
+                ${outsideAssignmentHTML(system,sighting)}
+                ${sighting.station ? `<div style="margin-top:5px;"><strong>Location:</strong> <button type="button" class="location-history-link" data-location="${escapeHTML(encodeURIComponent(String(sighting.station)))}" data-location-system="${escapeHTML(system)}">${escapeHTML(sighting.station)}</button></div>` : ""}
                 ${sighting.notes ? `<div class="sighting-note-display"><strong>Notes:</strong> ${escapeHTML(sighting.notes)}</div>` : ""}
                 <div class="account-small-note" style="margin-top:5px;">${escapeHTML(date)}</div>
                 <div class="sighting-actions">
@@ -8850,6 +9112,157 @@ function renderMySightings(data) {
                 <div id="edit-sighting-${Number(sighting.id)}" class="sighting-edit-box hidden"></div>
             </div>`;
     }).join("");
+}
+
+
+
+// Phase 5.3I-B1 — Match Subway's two explicit share controls on Bus and railroad Identifier results.
+function shareIdentifierActionsHTML(system, vehicleNumber, fleetName) {
+    const safeSystem = escapeHTML(String(system));
+    const safeNumber = escapeHTML(String(vehicleNumber));
+    const safeFleet = escapeHTML(String(fleetName));
+    const statusId = `shareIdentifierStatus-${safeSystem}`;
+    return `<div class="report-box">
+        <div class="sighting-actions">
+            <button type="button" onclick="shareIdentifierSighting('${safeSystem}','${safeNumber}','${safeFleet}')">Share Sighting</button>
+            <button type="button" onclick="copyIdentifierSighting('${safeSystem}','${safeNumber}','${safeFleet}')">Copy to Clipboard</button>
+        </div>
+        <div id="${statusId}" class="status-message"></div>
+    </div>`;
+}
+
+function buildIdentifierShareText(system, vehicleNumber, fleetName) {
+    if (system === "bus") {
+        const number = Number(vehicleNumber);
+        const fleet = findBusFleet(number);
+        const assignment = getBusAssignment(number);
+        const lines = [
+            `${fleetName} — Bus ${vehicleNumber}`,
+            fleet?.builder ? `Builder / manufacturer: ${fleet.builder}` : "",
+            fleet?.years ? `Years built / delivered: ${fleet.years}` : "",
+            fleet?.displayRange || fleet?.ranges ? `Number range(s): ${fleet.displayRange || busRangeText(fleet.ranges)}` : "",
+            assignment?.depot ? `Current depot assignment: ${assignment.depot}` : "",
+            assignment?.routes ? `Routes operated by this depot: ${assignment.routes}` : "",
+            "",
+            "Fleet Identifier"
+        ];
+        return lines.filter((part, index) => part !== "" || index === lines.length - 2).join("\n");
+    }
+    const fleet = findRailroadFleetByName(system, fleetName);
+    const systemLabel = system === "lirr" ? "LIRR" : "Metro-North";
+    const lines = [
+        `${fleetName} — ${systemLabel} vehicle ${vehicleNumber}`,
+        fleet?.builder ? `Builder: ${fleet.builder}` : "",
+        fleet?.years ? `Years built: ${fleet.years}` : "",
+        fleet?.formation ? `Formation: ${fleet.formation}` : "",
+        fleet?.power ? `Power: ${fleet.power}` : "",
+        fleet?.service ? `Typical system service: ${fleet.service}` : "",
+        fleet?.notes ? `Notes: ${fleet.notes}` : "",
+        "",
+        "Fleet Identifier"
+    ];
+    return lines.filter((part, index) => part !== "" || index === lines.length - 2).join("\n");
+}
+
+async function copyTextWithFallback(text) {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+    }
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    const copied = document.execCommand("copy");
+    area.remove();
+    if (!copied) throw new Error("Clipboard copy was not available.");
+}
+
+async function copyIdentifierSighting(system, vehicleNumber, fleetName) {
+    const status = document.getElementById(`shareIdentifierStatus-${system}`);
+    try {
+        await copyTextWithFallback(buildIdentifierShareText(system, vehicleNumber, fleetName));
+        if (status) status.textContent = "Sighting copied to clipboard!";
+    } catch (error) {
+        console.error("Could not copy sighting:", error);
+        if (status) status.textContent = "Could not copy sighting. Please try again.";
+    }
+}
+
+async function shareIdentifierSighting(system, vehicleNumber, fleetName) {
+    const status = document.getElementById(`shareIdentifierStatus-${system}`);
+    const text = buildIdentifierShareText(system, vehicleNumber, fleetName);
+    const title = system === "bus" ? `${fleetName} — Bus ${vehicleNumber}` : `${fleetName} — Vehicle ${vehicleNumber}`;
+    if (status) status.textContent = "";
+    try {
+        if (navigator.share) {
+            await navigator.share({ title, text });
+            if (status) status.textContent = "Sighting shared.";
+            return;
+        }
+        await copyTextWithFallback(text);
+        if (status) status.textContent = "Sharing isn't available here, so the sighting was copied to your clipboard.";
+    } catch (error) {
+        if (error?.name === "AbortError") return;
+        console.error("Could not share sighting:", error);
+        if (status) status.textContent = "Could not share sighting. Please try again.";
+    }
+}
+
+// Phase 5.3I-B — Share Sighting (Bus, LIRR, Metro-North)
+function shareSightingText(sighting, system) {
+    const vehicleLabel = system === "bus" ? "Bus" : "Car";
+    const serviceLabel = system === "bus" ? "Route" : system === "lirr" ? "Branch" : "Line";
+    const systemLabel = system === "bus" ? "Bus" : system === "lirr" ? "LIRR" : "Metro-North";
+    const parts = [
+        `${systemLabel} sighting`,
+        `${sighting.fleet || "Fleet unknown"} • ${vehicleLabel} ${sighting.car_number || "—"}`,
+        `${serviceLabel}: ${sighting.line || "—"}`,
+        sighting.station ? `Location: ${sighting.station}` : null,
+        sighting.saved_at ? `Spotted: ${new Date(sighting.saved_at).toLocaleString()}` : null,
+        sighting.notes ? `Notes: ${sighting.notes}` : null
+    ].filter(Boolean);
+    return parts.join("\n");
+}
+
+async function shareSavedSighting(id) {
+    const system = activeFleetSystem || "subway";
+    if (system === "subway") return;
+    const sighting = (mySightingsData || []).find(item => Number(item.id) === Number(id));
+    if (!sighting) return;
+
+    const systemLabel = system === "bus" ? "Bus" : system === "lirr" ? "LIRR" : "Metro-North";
+    const title = `${systemLabel} sighting — ${sighting.car_number || ""}`.trim();
+    const text = shareSightingText(sighting, system);
+
+    try {
+        if (navigator.share) {
+            await navigator.share({ title, text });
+            return;
+        }
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+            window.alert("Sighting copied to your clipboard.");
+            return;
+        }
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+        window.alert("Sighting copied to your clipboard.");
+    } catch (error) {
+        if (error?.name === "AbortError") return;
+        console.error("Could not share sighting:", error);
+        window.alert("Could not share this sighting. Please try again.");
+    }
 }
 
 function getDivisionForFleet(fleet) {
@@ -9777,6 +10190,85 @@ function initializeRouteDropdowns() {
 document.addEventListener("DOMContentLoaded", initializeRouteDropdowns);
 
 
+
+// Phase 5.3I-C — Database Changelog. This is the app's own reviewed dataset history,
+// not a claim that assignments cannot change between review dates.
+const databaseChangelog = {
+    subway: [
+        { version: "Subway DB 2026.09.1", date: "Sep 26, 2026", changes: [
+            "Reviewed current fleet identification data and assignment notes.",
+            "Updated current Subway route-assignment layer used by interactive service bullets.",
+            "Kept the G assignment list limited to the currently listed R211A and R211T fleets."
+        ]}
+    ],
+    bus: [
+        { version: "Bus DB 2026.09.3", date: "Sep 26, 2026", changes: [
+            "Completed the current passenger-service depot assignment overlay used by Fleet Identifier.",
+            "Updated individual vehicle status exceptions separately from fleet identity.",
+            "Expanded current fleet number-range coverage and depot registry data."
+        ]},
+        { version: "Bus DB 2026.09.2", date: "Sep 26, 2026", changes: [
+            "Updated Meredith Avenue from active-depot treatment after the depot closure/vacate change already reviewed for this database.",
+            "Expanded depot assignment coverage across the remaining current operating depots."
+        ]},
+        { version: "Bus DB 2026.09.1", date: "Sep 26, 2026", changes: [
+            "Added broader current bus fleet range coverage beyond the original test vehicles.",
+            "Corrected the MCI D4500CL secondary number block and expanded the XE60 range used by the Identifier."
+        ]}
+    ],
+    lirr: [
+        { version: "LIRR DB 2026.09.2", date: "Sep 26, 2026", changes: [
+            "Added known M7 and M9 inactive/damaged vehicle exceptions so documented numbers identify with a History / Status explanation instead of appearing unknown.",
+            "Kept inactive historical exceptions out of achievable Fleet Collection totals."
+        ]},
+        { version: "LIRR DB 2026.09.1", date: "Sep 26, 2026", changes: [
+            "Added current M3, M7, M9, DE30AC, DM30AC, and C3 fleet identification coverage.",
+            "Added M3 renumbering, conversion, retirement, and damage-history exceptions already documented in the app."
+        ]}
+    ],
+    "metro-north": [
+        { version: "Metro-North DB 2026.09.2", date: "Sep 26, 2026", changes: [
+            "Added the SC42-DM fleet and retained P32AC-DM identification during the replacement transition.",
+            "Added known P32 renumbering/departure exceptions without treating old and new identities as separate active locomotives.",
+            "Kept known inactive historical exceptions out of achievable Fleet Collection totals."
+        ]},
+        { version: "Metro-North DB 2026.09.1", date: "Sep 26, 2026", changes: [
+            "Added M3A, M7A, and M8 fleet identification coverage.",
+            "Added the documented M7A 4333 History / Status exception so the number identifies with context instead of appearing unknown."
+        ]}
+    ]
+};
+
+function databaseChangelogSystemLabel(system) {
+    return system === "lirr" ? "LIRR" : system === "metro-north" ? "Metro-North" : system === "bus" ? "Bus" : "Subway";
+}
+
+function openDatabaseChangelog(system) {
+    const panel = document.getElementById("databaseChangelogPanel");
+    const card = document.getElementById("databaseFreshnessCard");
+    const title = document.getElementById("databaseChangelogTitle");
+    const meta = document.getElementById("databaseChangelogMeta");
+    const list = document.getElementById("databaseChangelogList");
+    if (!panel || !list) return;
+    const entries = databaseChangelog[system] || [];
+    const label = databaseChangelogSystemLabel(system);
+    if (title) title.textContent = `${label} Database Changelog`;
+    if (meta) meta.textContent = "Changes to Fleet Identifier's reviewed fleet, assignment, and exception data. Live assignments can change between database updates.";
+    list.innerHTML = entries.length ? entries.map(entry => `
+        <div class="database-changelog-entry">
+            <div class="database-changelog-version">${escapeHTML(entry.version)}</div>
+            <div class="account-small-note database-changelog-date">${escapeHTML(entry.date)}</div>
+            <ul>${entry.changes.map(change => `<li>${escapeHTML(change)}</li>`).join("")}</ul>
+        </div>`).join("") : `<div class="account-small-note">No changelog entries yet.</div>`;
+    card?.classList.add("hidden");
+    panel.classList.remove("hidden");
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function closeDatabaseChangelog() {
+    document.getElementById("databaseChangelogPanel")?.classList.add("hidden");
+    document.getElementById("databaseFreshnessCard")?.classList.remove("hidden");
+}
 
 // Keep dynamically-rendered Subway result bullets interactive across result restoration/re-renders.
 // One delegated listener stays attached to #result, so Back to result does not create dead bullets.
