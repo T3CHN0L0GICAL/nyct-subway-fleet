@@ -6922,7 +6922,9 @@ async function openLocationHistory(locationName, system = activeFleetSystem || "
             const when=row.saved_at?new Date(row.saved_at).toLocaleString():"Date unavailable";
             const vehicleLabel=system==="bus"?"Bus":(system==="lirr"||system==="metro-north")?"Vehicle":"Car";
             const serviceLabel=system==="bus"?"Route":system==="lirr"?"Branch":"Line";
-            const service=row.line?escapeHTML(String(row.line)):"No service recorded";
+            const service = row.line
+                ? (system === "subway" ? lineDisplayHTML(String(row.line)) : escapeHTML(String(row.line)))
+                : "No service recorded";
             const notes=row.notes?`<div class="vehicle-timeline-notes">${escapeHTML(String(row.notes))}</div>`:"";
             const assignment=outsideAssignmentHTML(system,row);
             return `<article class="vehicle-timeline-entry"><strong>${escapeHTML(when)}</strong><div class="vehicle-timeline-meta">${escapeHTML(row.fleet||"Unknown fleet")} · ${vehicleLabel} ${escapeHTML(row.car_number||"—")}<br>${serviceLabel}: ${service}</div>${assignment}${notes}</article>`;
@@ -8542,8 +8544,15 @@ document
 
 <script>
 if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js");
+    window.addEventListener("load", async () => {
+        try {
+            const registration = await navigator.serviceWorker.register("./service-worker.js");
+            // Phase C1 — explicitly check for a newer worker on every app load.
+            // A failed update check must never block the app or offline startup.
+            try { await registration.update(); } catch (_) {}
+        } catch (error) {
+            console.warn("Service worker registration failed:", error);
+        }
     });
 }
 </script>
