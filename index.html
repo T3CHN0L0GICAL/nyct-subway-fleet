@@ -6204,6 +6204,41 @@ window.addEventListener("load", ()=>setTimeout(syncOfflineSightings, 1500));
 
 function offlineFieldTimestamp(requestedValue){ return requestedValue || new Date().toISOString(); }
 
+const SIGHTING_SUCCESS_DELAY_MS = 3000;
+
+function resetIdentifierAfterSave(system) {
+    window.setTimeout(() => {
+        if (system === "subway") {
+            pendingSighting = null;
+            const box = document.getElementById("result");
+            if (box) { box.className = "result hidden"; box.innerHTML = ""; }
+            const input = document.getElementById("carNumber");
+            if (input) { input.value = ""; input.focus(); }
+            return;
+        }
+
+        if (system === "bus") {
+            pendingBusSighting = null;
+            selectedBusStop = null;
+            busLocationMode = "stop";
+            const box = document.getElementById("busResult");
+            if (box) { box.className = "result hidden"; box.innerHTML = ""; }
+            const input = document.getElementById("busNumber");
+            if (input) { input.value = ""; input.focus(); }
+            return;
+        }
+
+        if (system === "lirr" || system === "metro-north") {
+            railroadPickerState[system] = {routeId:"", mode:"station", station:null};
+            const ids = railroadSearchIds(system);
+            const box = document.getElementById(ids.result);
+            const input = document.getElementById(ids.input);
+            if (box) { box.className = "result hidden"; box.innerHTML = ""; }
+            if (input) { input.value = ""; input.focus(); }
+        }
+    }, SIGHTING_SUCCESS_DELAY_MS);
+}
+
 async function saveSighting() {
     if (!pendingSighting) return;
 
@@ -6261,9 +6296,7 @@ async function saveSighting() {
         if (isLikelyNetworkError(error)) {
             queueOfflineSighting({system:"subway",payload:sightingPayload,consistCars});
             if(status) status.textContent="Saved on this device — Pending sync.";
-            pendingSighting=null;
-            const resultBox=document.getElementById("result"); if(resultBox){resultBox.className="result hidden";resultBox.innerHTML="";}
-            const mainSearchInput=document.getElementById("carNumber"); if(mainSearchInput){mainSearchInput.value="";mainSearchInput.focus();}
+            resetIdentifierAfterSave("subway");
             return;
         }
         if (status) status.textContent = "Could not save sighting. Please try again.";
@@ -6304,10 +6337,8 @@ async function saveSighting() {
 
     refreshAchievementEligibility(session.user);
 
-    // Field workflow: after a fully successful save, return the identifier to a clean state.
-    pendingSighting=null;
-    const resultBox=document.getElementById("result"); if(resultBox){resultBox.className="result hidden";resultBox.innerHTML="";}
-    const mainSearchInput=document.getElementById("carNumber"); if(mainSearchInput){mainSearchInput.value="";mainSearchInput.focus();}
+    // Keep the success output visible long enough to read, then return to a clean Identifier.
+    resetIdentifierAfterSave("subway");
 }
 
 
@@ -7874,9 +7905,7 @@ async function saveBusSighting() {
         if(isLikelyNetworkError(error)){
             queueOfflineSighting({system:"bus",payload});
             if(status) status.textContent="Saved on this device — Pending sync.";
-            pendingBusSighting=null; selectedBusStop=null; busLocationMode="stop";
-            const box=document.getElementById("busResult"); if(box){box.className="result hidden";box.innerHTML="";}
-            const input=document.getElementById("busNumber"); if(input){input.value="";input.focus();}
+            resetIdentifierAfterSave("bus");
             return;
         }
         if(status) status.textContent="Could not save bus sighting. Please try again."; return;
@@ -7885,9 +7914,7 @@ async function saveBusSighting() {
         const outside=sightingAssignmentStatus("bus",payload).outside;
         status.textContent=`Saved: bus ${pendingBusSighting.busNumber} on ${selected.route}${location ? ` at ${location}` : ""}.${outside ? " Outside listed assignment." : ""}`;
     }
-    pendingBusSighting=null; selectedBusStop=null; busLocationMode="stop";
-    const box=document.getElementById("busResult"); if(box){box.className="result hidden";box.innerHTML="";}
-    const input=document.getElementById("busNumber"); if(input){ input.value=""; input.focus(); }
+    resetIdentifierAfterSave("bus");
 }
 
 
@@ -8135,17 +8162,13 @@ async function saveRailroadSighting(system, vehicleNumber, fleetName, testMode=f
         if(isLikelyNetworkError(error)){
             queueOfflineSighting({system,payload});
             if(status) status.textContent="Saved on this device — Pending sync.";
-            railroadPickerState[system]={routeId:"",mode:"station",station:null};
-            const ids=railroadSearchIds(system), box=document.getElementById(ids.result), input=document.getElementById(ids.input);
-            if(box){box.className="result hidden";box.innerHTML="";} if(input){input.value="";input.focus();}
+            resetIdentifierAfterSave(system);
             return;
         }
         if(status) status.textContent="Could not save railroad sighting. Please try again."; return;
     }
     if(status) status.textContent=`Saved: ${system==="lirr"?"LIRR":"Metro-North"} ${vehicleNumber} on ${line}${location?` at ${location}`:""}.`;
-    railroadPickerState[system]={routeId:"",mode:"station",station:null};
-    const ids=railroadSearchIds(system), box=document.getElementById(ids.result), input=document.getElementById(ids.input);
-    if(box){box.className="result hidden";box.innerHTML="";} if(input){input.value="";input.focus();}
+    resetIdentifierAfterSave(system);
 }
 
 document.getElementById("lirrNumber")?.addEventListener("keydown", e => { if(e.key === "Enter") identifyRailroad("lirr"); });
@@ -9662,11 +9685,132 @@ function openEditSighting(id) {
         <textarea id="edit-notes-${id}" maxlength="1000" placeholder="Add notes about this sighting.">${escapeHTML(sighting.notes || "")}</textarea>
 
         <div class="account-small-note" style="margin-top:8px;">Vehicle number and fleet stay locked so editing a sighting cannot change its identity.</div>
+        ${system === "subway" ? `
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--fi-border);">
+            <label for="edit-consist-${id}">Add cars to consist</label>
+            <input id="edit-consist-${id}" type="text" inputmode="numeric" autocomplete="off" placeholder="Example: 4050, 4051, 4052, 4053, 4054">
+            <div class="account-small-note" style="margin-top:6px;">Add cars you saw later on the same train. Existing cars will not be duplicated.</div>
+            <div class="sighting-actions">
+                <button type="button" onclick="addCarsToExistingSighting(${id})">Add Cars</button>
+            </div>
+            <div id="edit-consist-status-${id}" class="status-message"></div>
+        </div>` : ""}
         <div class="sighting-actions">
             <button type="button" onclick="saveSightingEdit(${id})">Save Changes</button>
             <button type="button" onclick="cancelSightingEdit(${id})">Cancel</button>
         </div>
         <div id="edit-status-${id}" class="status-message"></div>`;
+}
+
+async function addCarsToExistingSighting(id) {
+    const sighting = mySightingsData.find(row => Number(row.id) === Number(id));
+    const input = document.getElementById(`edit-consist-${id}`);
+    const status = document.getElementById(`edit-consist-status-${id}`);
+    if (!sighting || !input || sightingEditSystem() !== "subway") return;
+
+    const requested = [...new Set(
+        String(input.value || "")
+            .split(/[\s,;+]+/)
+            .map(value => value.trim())
+            .filter(Boolean)
+    )];
+
+    if (!requested.length) {
+        if (status) status.textContent = "Enter at least one car number to add.";
+        return;
+    }
+
+    const invalid = requested.find(car => !/^\d+$/.test(car));
+    if (invalid) {
+        if (status) status.textContent = `“${invalid}” is not a valid car number.`;
+        return;
+    }
+
+    const wrongFleet = requested.find(car => {
+        const match = identifyNumeric(Number(car));
+        return !match || match[0] !== sighting.fleet;
+    });
+    if (wrongFleet) {
+        if (status) status.textContent = `Car ${wrongFleet} does not match this ${sighting.fleet} sighting.`;
+        return;
+    }
+
+    if (status) status.textContent = "Adding cars...";
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session?.user) {
+        if (status) status.textContent = "You need to be signed in to update this sighting.";
+        return;
+    }
+
+    const { data: existingRows, error: existingError } = await supabaseClient
+        .from("sighting_cars")
+        .select("car_number, position")
+        .eq("sighting_id", Number(id))
+        .eq("user_id", session.user.id)
+        .order("position", { ascending: true });
+
+    if (existingError) {
+        console.error("Could not load existing consist:", existingError);
+        if (status) status.textContent = "Could not load this consist. Please try again.";
+        return;
+    }
+
+    const rows = existingRows || [];
+    const existingCars = new Set(rows.map(row => String(row.car_number)));
+
+    // Older single-car sightings may not yet have a sighting_cars row.
+    // Seed the original car first so the updated consist remains complete.
+    const carsToInsert = [];
+    let nextPosition = rows.reduce((max, row) => Math.max(max, Number(row.position) || 0), 0) + 1;
+
+    if (!existingCars.has(String(sighting.car_number))) {
+        carsToInsert.push({
+            sighting_id: Number(id),
+            user_id: session.user.id,
+            car_number: String(sighting.car_number),
+            fleet: sighting.fleet,
+            position: nextPosition++
+        });
+        existingCars.add(String(sighting.car_number));
+    }
+
+    for (const car of requested) {
+        if (existingCars.has(car)) continue;
+        carsToInsert.push({
+            sighting_id: Number(id),
+            user_id: session.user.id,
+            car_number: car,
+            fleet: sighting.fleet,
+            position: nextPosition++
+        });
+        existingCars.add(car);
+    }
+
+    const newlyAdded = carsToInsert.filter(row => String(row.car_number) !== String(sighting.car_number)).length;
+    if (!newlyAdded) {
+        if (status) status.textContent = "Those cars are already part of this sighting.";
+        return;
+    }
+
+    const { error } = await supabaseClient.from("sighting_cars").insert(carsToInsert);
+    if (error) {
+        console.error("Could not add consist cars:", error);
+        if (status) status.textContent = "Could not add those cars. Please try again.";
+        return;
+    }
+
+    if (status) status.textContent = `Added ${newlyAdded} car${newlyAdded === 1 ? "" : "s"} to this sighting.`;
+    input.value = "";
+
+    // Refresh the saved sighting so Hub stats, consist filters, Trainset History,
+    // timelines, and collection progress see the expanded consist immediately.
+    await loadMySightings();
+
+    // Re-open the edit panel after the Hub refresh so the success result remains visible.
+    openEditSighting(id);
+    const refreshedStatus = document.getElementById(`edit-consist-status-${id}`);
+    if (refreshedStatus) refreshedStatus.textContent = `Added ${newlyAdded} car${newlyAdded === 1 ? "" : "s"} to this sighting.`;
 }
 
 function cancelSightingEdit(id) {
