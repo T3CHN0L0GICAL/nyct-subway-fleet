@@ -5492,6 +5492,27 @@ function getVerifiedLinkedUnit(fleet, carNumber) {
     const car = Number(carNumber);
     if (!Number.isInteger(car)) return null;
 
+    // TEST trainset: two fixed verified units so the complete two-set
+    // consist workflow can be tested without using a real fleet.
+    if (fleet === "TEST") {
+        const testUnits = [
+            ["0000", "0001", "0002", "0003", "0004"],
+            ["0005", "0006", "0007", "0008", "0009"]
+        ];
+        const entered = String(carNumber).padStart(4, "0");
+        const cars = testUnits.find(unit => unit.includes(entered));
+        if (cars) {
+            return {
+                fleet,
+                cars,
+                searchedPosition: cars.indexOf(entered) + 1,
+                size: cars.length,
+                verified: true,
+                maxUnitsPerTrain: 2
+            };
+        }
+    }
+
     const makeSequentialUnit = (rangeStart, rangeEnd, size, maxUnitsPerTrain = 2) => {
         if (car < rangeStart || car > rangeEnd) return null;
         const start = rangeStart + Math.floor((car - rangeStart) / size) * size;
@@ -5928,7 +5949,11 @@ async function addCoupledUnit() {
         return;
     }
 
-    const match = identifyNumeric(Number(value));
+    const isTestSecondUnit =
+        pendingSighting.fleet === "TEST" &&
+        ["0005", "0006", "0007", "0008", "0009"].includes(value.padStart(4, "0"));
+
+    const match = isTestSecondUnit ? ["TEST", null] : identifyNumeric(Number(value));
     if (!match) {
         if (message) message.textContent = `Car ${value} is not in the current Fleet Identifier database.`;
         return;
@@ -5940,7 +5965,8 @@ async function addCoupledUnit() {
         return;
     }
 
-    const second = getVerifiedLinkedUnit(fleet, value);
+    const normalizedValue = fleet === "TEST" ? value.padStart(4, "0") : value;
+    const second = getVerifiedLinkedUnit(fleet, normalizedValue);
     if (!second?.verified) {
         if (message) message.textContent = `A verified linked unit could not be determined for car ${value}.`;
         return;
@@ -8203,7 +8229,9 @@ async function identify() {
             carNumber: "0000",
             fleet: "TEST",
             line: null,
-            consistCars: ["0000"]
+            consistCars: ["0000"],
+            linkedUnit: getVerifiedLinkedUnit("TEST", "0000"),
+            coupledUnit: null
         };
 
         resultBox.className = "result";
@@ -8231,6 +8259,8 @@ async function identify() {
                     <button type="button" class="line-button" data-line="TEST" onclick="chooseLine('TEST')">TEST</button>
                 </div>
 
+                ${consistBuilderHTML()}
+
                 <label for="sightingStation" style="margin-top:12px;">Station (optional)</label>
                 <input id="sightingStation" class="sighting-station" type="text" maxlength="100" autocomplete="off" placeholder="Example: Broadway Junction">
 
@@ -8241,6 +8271,7 @@ async function identify() {
                 <div id="sightingStatus" class="status-message"></div>
             </div>
         `;
+        renderPendingConsist();
         return;
     }
 
@@ -9768,7 +9799,16 @@ function previewEditVerifiedSet(id) {
     if (status) status.textContent = "";
     if (!value) return;
 
-    const match = identifyNumeric(Number(value));
+    const normalizedValue = value.padStart(4, "0");
+    const testUnit =
+        sighting.fleet === "TEST"
+            ? getVerifiedLinkedUnit("TEST", normalizedValue)
+            : null;
+
+    const match = testUnit
+        ? ["TEST", null]
+        : identifyNumeric(Number(value));
+
     if (!match) {
         if (status) status.textContent = `Car ${value} is not in the current Fleet Identifier database.`;
         return;
@@ -9780,17 +9820,18 @@ function previewEditVerifiedSet(id) {
         return;
     }
 
-    const unit = getVerifiedLinkedUnit(fleet, value);
+    const unit = testUnit || getVerifiedLinkedUnit(fleet, value);
+    const pickerValue = fleet === "TEST" ? normalizedValue : value;
     if (!unit?.verified) {
         editConsistPickerState.set(Number(id), {
             fleet,
-            entered: value,
+            entered: pickerValue,
             unit: null,
-            selected: new Set([value])
+            selected: new Set([pickerValue])
         });
         preview.innerHTML = `
             <span class="consist-chip primary selected">
-                ${escapeHTML(value)} ✓
+                ${escapeHTML(pickerValue)} ✓
             </span>`;
         if (status) status.textContent = "No verified linked-set table is available for this car, so only the entered car can be added.";
         return;
@@ -9798,9 +9839,9 @@ function previewEditVerifiedSet(id) {
 
     editConsistPickerState.set(Number(id), {
         fleet,
-        entered: value,
+        entered: pickerValue,
         unit,
-        selected: new Set([value])
+        selected: new Set([pickerValue])
     });
     renderEditVerifiedSet(id);
 }
@@ -9849,6 +9890,9 @@ async function addCarsToExistingSighting(id) {
     }
 
     const wrongFleet = requested.find(car => {
+        if (sighting.fleet === "TEST" && getVerifiedLinkedUnit("TEST", String(car).padStart(4, "0"))) {
+            return false;
+        }
         const match = identifyNumeric(Number(car));
         return !match || match[0] !== sighting.fleet;
     });
