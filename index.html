@@ -9688,10 +9688,14 @@ function openEditSighting(id) {
         ${system === "subway" ? `
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--fi-border);">
             <label for="edit-consist-${id}">Add cars to consist</label>
-            <input id="edit-consist-${id}" type="text" inputmode="numeric" autocomplete="off" placeholder="Example: 4050, 4051, 4052, 4053, 4054">
-            <div class="account-small-note" style="margin-top:6px;">Add cars you saw later on the same train. Existing cars will not be duplicated.</div>
+            <input id="edit-consist-${id}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+                   placeholder="Enter one car number"
+                   oninput="this.value=this.value.replace(/\\D+/g,''); previewEditVerifiedSet(${id})"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();addCarsToExistingSighting(${id});}">
+            <div class="account-small-note" style="margin-top:6px;">Enter one car. If it belongs to a verified linked set, the rest of that set will appear below so you can select the cars you saw.</div>
+            <div id="edit-consist-preview-${id}" class="consist-cars"></div>
             <div class="sighting-actions">
-                <button type="button" onclick="addCarsToExistingSighting(${id})">Add Cars</button>
+                <button type="button" onclick="addCarsToExistingSighting(${id})">Add Selected Cars</button>
             </div>
             <div id="edit-consist-status-${id}" class="status-message"></div>
         </div>` : ""}
@@ -9702,27 +9706,145 @@ function openEditSighting(id) {
         <div id="edit-status-${id}" class="status-message"></div>`;
 }
 
+const editConsistPickerState = new Map();
+
+function renderEditVerifiedSet(id) {
+    const state = editConsistPickerState.get(Number(id));
+    const preview = document.getElementById(`edit-consist-preview-${id}`);
+    if (!preview) return;
+
+    if (!state?.unit?.verified) {
+        preview.innerHTML = "";
+        return;
+    }
+
+    const entered = state.entered;
+    const unit = state.unit;
+
+    preview.innerHTML = `
+        <div style="width:100%;margin-top:6px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                <div style="font-size:12px;font-weight:800;">Verified Linked Unit</div>
+                <button type="button"
+                        style="padding:6px 10px;font-size:12px;"
+                        onclick="toggleEditVerifiedSetAll(${Number(id)})">
+                    ${unit.cars.every(car => state.selected.has(car)) ? "Clear" : "All"}
+                </button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:7px;">
+                ${unit.cars.map(car => {
+                    const selected = state.selected.has(car);
+                    const primary = car === entered;
+                    return `
+                        <button type="button"
+                                class="consist-chip ${primary ? "primary" : ""} ${selected ? "selected" : ""}"
+                                onclick="${primary ? "" : `toggleEditVerifiedSetCar(${Number(id)}, '${escapeHTML(car)}')`}"
+                                aria-pressed="${selected ? "true" : "false"}"
+                                ${primary ? "disabled" : ""}>
+                            ${escapeHTML(car)}
+                            <span style="font-size:11px;opacity:.7;">${escapeHTML(linkedUnitPositionLabel(unit, car))}</span>
+                            ${selected ? "✓" : ""}
+                        </button>
+                    `;
+                }).join("")}
+            </div>
+            <div class="consist-summary">
+                Verified ${escapeHTML(state.fleet)} linked unit: ${unit.cars.map(escapeHTML).join(" · ")}.
+                Select the cars you want to add to this existing sighting.
+            </div>
+        </div>`;
+}
+
+function previewEditVerifiedSet(id) {
+    const sighting = mySightingsData.find(row => Number(row.id) === Number(id));
+    const input = document.getElementById(`edit-consist-${id}`);
+    const status = document.getElementById(`edit-consist-status-${id}`);
+    const preview = document.getElementById(`edit-consist-preview-${id}`);
+    if (!sighting || !input || !preview) return;
+
+    const value = String(input.value || "").replace(/\D+/g, "");
+    editConsistPickerState.delete(Number(id));
+    preview.innerHTML = "";
+    if (status) status.textContent = "";
+    if (!value) return;
+
+    const match = identifyNumeric(Number(value));
+    if (!match) {
+        if (status) status.textContent = `Car ${value} is not in the current Fleet Identifier database.`;
+        return;
+    }
+
+    const [fleet] = match;
+    if (fleet !== sighting.fleet) {
+        if (status) status.textContent = `Car ${value} is an ${fleet}, not an ${sighting.fleet}.`;
+        return;
+    }
+
+    const unit = getVerifiedLinkedUnit(fleet, value);
+    if (!unit?.verified) {
+        editConsistPickerState.set(Number(id), {
+            fleet,
+            entered: value,
+            unit: null,
+            selected: new Set([value])
+        });
+        preview.innerHTML = `
+            <span class="consist-chip primary selected">
+                ${escapeHTML(value)} ✓
+            </span>`;
+        if (status) status.textContent = "No verified linked-set table is available for this car, so only the entered car can be added.";
+        return;
+    }
+
+    editConsistPickerState.set(Number(id), {
+        fleet,
+        entered: value,
+        unit,
+        selected: new Set([value])
+    });
+    renderEditVerifiedSet(id);
+}
+
+function toggleEditVerifiedSetCar(id, carNumber) {
+    const state = editConsistPickerState.get(Number(id));
+    if (!state?.unit?.verified) return;
+
+    const car = String(carNumber);
+    if (!state.unit.cars.includes(car) || car === state.entered) return;
+
+    if (state.selected.has(car)) state.selected.delete(car);
+    else state.selected.add(car);
+
+    renderEditVerifiedSet(id);
+}
+
+function toggleEditVerifiedSetAll(id) {
+    const state = editConsistPickerState.get(Number(id));
+    if (!state?.unit?.verified) return;
+
+    const complete = state.unit.cars.every(car => state.selected.has(car));
+    if (complete) {
+        state.selected = new Set([state.entered]);
+    } else {
+        state.selected = new Set(state.unit.cars);
+    }
+    renderEditVerifiedSet(id);
+}
+
 async function addCarsToExistingSighting(id) {
     const sighting = mySightingsData.find(row => Number(row.id) === Number(id));
     const input = document.getElementById(`edit-consist-${id}`);
     const status = document.getElementById(`edit-consist-status-${id}`);
     if (!sighting || !input || sightingEditSystem() !== "subway") return;
 
-    const requested = [...new Set(
-        String(input.value || "")
-            .split(/[\s,;+]+/)
-            .map(value => value.trim())
-            .filter(Boolean)
-    )];
+    const state = editConsistPickerState.get(Number(id));
+    const typed = String(input.value || "").replace(/\D+/g, "");
+    const requested = state
+        ? [...state.selected]
+        : (typed ? [typed] : []);
 
     if (!requested.length) {
-        if (status) status.textContent = "Enter at least one car number to add.";
-        return;
-    }
-
-    const invalid = requested.find(car => !/^\d+$/.test(car));
-    if (invalid) {
-        if (status) status.textContent = `“${invalid}” is not a valid car number.`;
+        if (status) status.textContent = "Enter a car number and select at least one car to add.";
         return;
     }
 
@@ -9758,9 +9880,6 @@ async function addCarsToExistingSighting(id) {
 
     const rows = existingRows || [];
     const existingCars = new Set(rows.map(row => String(row.car_number)));
-
-    // Older single-car sightings may not yet have a sighting_cars row.
-    // Seed the original car first so the updated consist remains complete.
     const carsToInsert = [];
     let nextPosition = rows.reduce((max, row) => Math.max(max, Number(row.position) || 0), 0) + 1;
 
@@ -9775,7 +9894,13 @@ async function addCarsToExistingSighting(id) {
         existingCars.add(String(sighting.car_number));
     }
 
-    for (const car of requested) {
+    // If this is a verified unit, preserve the verified set order regardless
+    // of the order in which its buttons were tapped.
+    const orderedRequested = state?.unit?.verified
+        ? state.unit.cars.filter(car => state.selected.has(car))
+        : requested;
+
+    for (const car of orderedRequested) {
         if (existingCars.has(car)) continue;
         carsToInsert.push({
             sighting_id: Number(id),
@@ -9787,7 +9912,10 @@ async function addCarsToExistingSighting(id) {
         existingCars.add(car);
     }
 
-    const newlyAdded = carsToInsert.filter(row => String(row.car_number) !== String(sighting.car_number)).length;
+    const newlyAdded = carsToInsert.filter(
+        row => String(row.car_number) !== String(sighting.car_number)
+    ).length;
+
     if (!newlyAdded) {
         if (status) status.textContent = "Those cars are already part of this sighting.";
         return;
@@ -9800,17 +9928,17 @@ async function addCarsToExistingSighting(id) {
         return;
     }
 
-    if (status) status.textContent = `Added ${newlyAdded} car${newlyAdded === 1 ? "" : "s"} to this sighting.`;
     input.value = "";
+    editConsistPickerState.delete(Number(id));
 
-    // Refresh the saved sighting so Hub stats, consist filters, Trainset History,
-    // timelines, and collection progress see the expanded consist immediately.
     await loadMySightings();
 
-    // Re-open the edit panel after the Hub refresh so the success result remains visible.
     openEditSighting(id);
     const refreshedStatus = document.getElementById(`edit-consist-status-${id}`);
-    if (refreshedStatus) refreshedStatus.textContent = `Added ${newlyAdded} car${newlyAdded === 1 ? "" : "s"} to this sighting.`;
+    if (refreshedStatus) {
+        refreshedStatus.textContent =
+            `Added ${newlyAdded} car${newlyAdded === 1 ? "" : "s"} to this sighting.`;
+    }
 }
 
 function cancelSightingEdit(id) {
