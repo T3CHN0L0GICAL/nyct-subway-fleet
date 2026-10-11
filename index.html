@@ -152,7 +152,7 @@
 
     button {
         padding: 14px 22px;
-        font-size: 17px;
+        font-size: 18px;
         font-weight: bold;
         border: 1px solid #555;
         border-radius: 9px;
@@ -426,6 +426,12 @@
         margin: 8px 0;
     }
 
+    .alert-report-link { display:block; margin-top:10px; font:inherit; text-align:left; color:var(--fi-text); text-decoration:underline; cursor:pointer; background:transparent; border:0; padding:0; }
+    .alert-report-form { margin-top:10px; padding:12px; border:1px solid var(--fi-border); border-radius:10px; background:var(--fi-header); }
+    .alert-report-form textarea { width:100%; min-height:78px; margin:8px 0; padding:10px; border:1px solid var(--fi-border); border-radius:8px; background:var(--fi-bg); color:var(--fi-text); font:inherit; }
+    .alert-report-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .alert-report-small { color:var(--fi-muted); font-size:12px; line-height:1.45; }
+
     /* NYC Subway route bullets */
     .route-bullet {
         --bullet-bg: #808183;
@@ -473,6 +479,14 @@
         flex-wrap: wrap;
         vertical-align: middle;
     }
+
+    /* Smaller bullets used only inside Subway route/schedule notices. */
+    .station-schedule-status .route-bullet {
+        width: 25px;
+        height: 25px;
+        font-size: 15px;
+    }
+    .station-schedule-status .route-bullet.route-sir { font-size: 10px; }
 
     /* Phase 5.3F-S1 — interactive Subway service bullets / Line Fleets */
     .route-bullet-button {
@@ -944,6 +958,21 @@
         margin-bottom: 3px;
     }
 
+    .recent-sighting-alert {
+        margin: 10px 0;
+        padding: 10px 12px;
+        border: 1px solid #d9a441;
+        border-radius: 10px;
+        background: rgba(217,164,65,.10);
+        color: var(--fi-text);
+        line-height: 1.45;
+    }
+
+    .recent-sighting-alert strong {
+        display: block;
+        margin-bottom: 3px;
+    }
+
     /* Custom route dropdowns — allows real route bullets inside menus */
     select.route-select-enhanced {
       position: absolute !important;
@@ -1090,6 +1119,8 @@
     .station-picker-meta { margin-top: 4px; color: #aaa; font-size: 12px; }
     .station-picker-empty { padding: 11px; color: #aaa; font-size: 13px; }
     .station-picker-loading { margin-top: 6px; color: var(--fi-muted); font-size: 12px; }
+    .station-schedule-status { margin-top: 6px; color: var(--fi-muted); font-size: 12px; }
+    .station-schedule-status.unusual { color: #d8a24a; font-weight: 700; }
     html[data-theme="light"] .station-picker-menu { background: #fff; border-color: #ccc; box-shadow: 0 10px 28px rgba(0,0,0,.18); }
     html[data-theme="light"] .station-picker-option { color: #000; }
     html[data-theme="light"] .station-picker-option:hover,
@@ -1493,12 +1524,15 @@
     #settingsPanel.account-settings-mode #sharedSettingsTools,
     #settingsPanel.account-settings-mode #subwaySettingsTools,
     #settingsPanel.account-settings-mode #busSettingsTools,
-    #settingsPanel.account-settings-mode #railroadSettingsTools { display: none !important; }
+    #settingsPanel.account-settings-mode #railroadSettingsTools,
+    #settingsPanel.account-settings-mode #testSettingsTools { display: none !important; }
+    #toolsPanelTitle.test-tools-title { color: #ff3b30 !important; }
     #settingsPanel.tools-mode #sessionDiagnostics { display: none !important; }
 
     /* Android Phase B1-A — Tools workspace navigation */
     #settingsPanel.tools-mode.subtool-active #toolsPanelTitle,
     #settingsPanel.tools-mode.subtool-active #toolsNavGrid { display:none !important; }
+    #testTimePanel.hidden { display:none !important; }
     .subtool-back-row, .tools-root-back-row { margin:0 0 16px; }
     .subtool-back-row button, .tools-root-back-row button { width:auto; min-width:0; }
     /* Native shells use the OS back action. Browser + installed PWA keep
@@ -1643,6 +1677,7 @@
 .vehicle-total-sightings-button .summary-value::after{content:"  ›";opacity:.7;}
 .search-history-rerun{cursor:pointer;}
 .search-history-rerun:hover,.search-history-rerun:focus-visible{border-color:#666;background:rgba(255,255,255,.04);outline:none;}
+.subway-test-mode-indicator{color:#d00000;}
 .vehicle-timeline-overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;z-index:10000;padding:16px;}
 .vehicle-timeline-panel{width:min(680px,100%);max-height:82vh;overflow:auto;background:#111;border:1px solid #444;border-radius:20px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.55);}
 .vehicle-timeline-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
@@ -1684,6 +1719,50 @@
 /* Phase 5.3H-C — surprise sightings / assignment context */
 .outside-assignment-badge{display:inline-flex;align-items:center;margin-top:7px;padding:5px 9px;border:1px solid #666;border-radius:999px;font-size:.78rem;font-weight:750;letter-spacing:.01em;background:#202020;}
 .outside-assignment-note{margin-top:6px;font-size:.82rem;opacity:.78;line-height:1.4;}
+
+    /* Latest update notice in Account & Settings */
+    .latest-update-card {
+        margin-top: 18px;
+        padding: 14px;
+        border: 1px solid var(--fi-border);
+        border-radius: 12px;
+        background: var(--fi-header);
+        color: var(--fi-text);
+    }
+    .latest-update-heading {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 8px;
+        font-size: 16px;
+        font-weight: 800;
+    }
+    .latest-update-beta {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #a83d3d;
+        border-radius: 999px;
+        padding: 3px 7px;
+        background: #3a2020;
+        color: #ff7777;
+        font-size: 10px;
+        line-height: 1.2;
+        font-weight: 900;
+        letter-spacing: .06em;
+    }
+    .latest-update-card p {
+        margin: 0;
+        color: var(--fi-muted);
+        font-size: 13px;
+        line-height: 1.5;
+    }
+    html[data-theme="light"] .latest-update-beta {
+        background: #fff0f0;
+        color: #a32626;
+        border-color: #d99b9b;
+    }
+
 </style>
 <!-- Phase 5.3F-R2B: universal comparison/reports, railroad reverse search, tools-preserving system switch, settings-only diagnostics -->
 </head>
@@ -1697,6 +1776,8 @@
     </div>
 
     <p id="searchModeDescription">Enter a subway car number to identify its fleet.</p>
+
+    <div id="subwayTestModeIndicator" class="subway-test-mode-indicator hidden" style="margin-top:6px;font-size:.82rem;font-weight:800;letter-spacing:.04em;color:#ff3b30;text-align:center;line-height:1.35;">TEST MODE<br>SIMULATED DATA</div>
 </header>
 
 <main>
@@ -1789,16 +1870,122 @@
                 <button type="button" onclick="toggleDepotStatsPanel()">Depot Stats</button>
                 <button type="button" onclick="toggleFleetComparisonPanel()">Fleet Comparison</button>
             </div>
-            <div id="railroadSettingsTools" class="tools-grid-contents hidden">
+            <div id="lirrSettingsTools" class="tools-grid-contents hidden">
                 <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
                 <button type="button" onclick="toggleReportsPanel()">My Reports</button>
                 <button type="button" onclick="toggleAchievementsPanel()">Achievements</button>
                 <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
                 <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
-                <button type="button" onclick="toggleLineStatsPanel()">Branch / Line Stats</button>
+                <button type="button" onclick="toggleLineStatsPanel()">Branch Stats</button>
                 <button type="button" onclick="toggleFleetComparisonPanel()">Fleet Comparison</button>
             </div>
+            <div id="metroNorthSettingsTools" class="tools-grid-contents hidden">
+                <button type="button" onclick="toggleSightingsHub()">Sightings Hub</button>
+                <button type="button" onclick="toggleReportsPanel()">My Reports</button>
+                <button type="button" onclick="toggleAchievementsPanel()">Achievements</button>
+                <button type="button" onclick="toggleFleetCollectionPanel()">Fleet Collection</button>
+                <button type="button" onclick="toggleFleetBreakdownPanel()">Fleet Breakdown</button>
+                <button type="button" onclick="toggleLineStatsPanel()">Line Stats</button>
+                <button type="button" onclick="toggleFleetComparisonPanel()">Fleet Comparison</button>
+            </div>
+            <div id="testSettingsTools" class="tools-grid-contents hidden">
+                <div id="testSharedSettingsTools" class="tools-grid-contents">
+                    <button type="button" onclick="toggleTestTimePanel()">Test Time</button>
+                    <button type="button" onclick="toggleTestRecentSightingPanel()">Test Recent Sighting Alert</button>
+                    <button type="button" onclick="toggleTestMyReportsPanel()">Test My Reports</button>
+                </div>
+                <div id="testSubwaySettingsTools" class="tools-grid-contents">
+                    <button type="button" onclick="toggleSightingsHub()">Test Sightings Hub</button>
+                    <button type="button" onclick="toggleSearchHistoryPanel()">Test Search History</button>
+                    <button type="button" onclick="toggleAchievementsPanel()">Test Achievements</button>
+                    <button type="button" onclick="toggleFleetCollectionPanel()">Test Fleet Collection</button>
+                    <button type="button" onclick="toggleFleetBreakdownPanel()">Test Fleet Breakdown</button>
+                    <button type="button" onclick="toggleLineStatsPanel()">Test Line Stats</button>
+                    <button type="button" onclick="toggleFleetComparisonPanel()">Test Fleet Comparison</button>
+                    <button id="testTrainsetHistoryTool" type="button" onclick="toggleTrainsetHistoryPanel()">Test Trainset History</button>
+                </div>
+                <div id="testBusSettingsTools" class="tools-grid-contents hidden">
+                    <button type="button" onclick="toggleSightingsHub()">Test Sightings Hub</button>
+                    <button type="button" onclick="toggleSearchHistoryPanel()">Test Search History</button>
+                    <button type="button" onclick="toggleAchievementsPanel()">Test Achievements</button>
+                    <button type="button" onclick="toggleFleetCollectionPanel()">Test Fleet Collection</button>
+                    <button type="button" onclick="toggleFleetBreakdownPanel()">Test Fleet Breakdown</button>
+                    <button type="button" onclick="toggleLineStatsPanel()">Test Route Stats</button>
+                    <button type="button" onclick="toggleFleetComparisonPanel()">Test Fleet Comparison</button>
+                    <button id="testDepotStatsTool" type="button" onclick="toggleDepotStatsPanel()">Test Depot Stats</button>
+                </div>
+                <div id="testRailroadSettingsTools" class="tools-grid-contents hidden">
+                    <button type="button" onclick="toggleSightingsHub()">Test Sightings Hub</button>
+                    <button type="button" onclick="toggleSearchHistoryPanel()">Test Search History</button>
+                    <button type="button" onclick="toggleAchievementsPanel()">Test Achievements</button>
+                    <button type="button" onclick="toggleFleetCollectionPanel()">Test Fleet Collection</button>
+                    <button type="button" onclick="toggleFleetBreakdownPanel()">Test Fleet Breakdown</button>
+                    <button type="button" onclick="toggleLineStatsPanel()">Test Branch / Line Stats</button>
+                    <button type="button" onclick="toggleFleetComparisonPanel()">Test Fleet Comparison</button>
+                </div>
+            </div>
         </div>
+
+        <section id="testMyReportsPanel" class="hidden account-panel">
+            <div class="subtool-back-row"><button type="button" onclick="returnToToolsMenu()" aria-label="Back to Test Tools">← Test Tools</button></div>
+            <h2>Test My Reports</h2>
+            <div class="account-small-note">Reports submitted while Test Mode is enabled are stored only in this browser for testing. They are not sent to Supabase and will never appear in the real admin dashboard.</div>
+            <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" onclick="loadTestMyReports()">Refresh</button>
+                <button type="button" onclick="clearTestMyReports()">Clear Test Reports</button>
+            </div>
+            <div id="testMyReportsStatus" class="status-message">Loading test reports...</div>
+            <div id="testMyReportsList" class="reports-list"></div>
+        </section>
+
+        <section id="testTimePanel" class="hidden">
+            <div class="subtool-back-row"><button type="button" onclick="returnToToolsMenu()" aria-label="Back to Test Tools">← Test Tools</button></div>
+            <h2>Test Time</h2>
+            <div class="account-small-note" style="margin-bottom:12px;">Change the simulated current date and time for Test Mode. This affects schedule-aware Subway notifications and test sighting timestamps without changing your device clock.</div>
+            <label for="testTimeInput">Simulated current time</label>
+            <input id="testTimeInput" type="datetime-local" style="width:100%;box-sizing:border-box;">
+            <div id="testTimeStatus" class="status-message">Using real device time.</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+                <button type="button" onclick="applyTestTime()">Apply Test Time</button>
+                <button type="button" onclick="resetTestTime()">Use Real Time</button>
+            </div>
+        </section>
+
+        <section id="testRecentSightingPanel" class="hidden">
+            <div class="subtool-back-row"><button type="button" onclick="returnToToolsMenu()" aria-label="Back to Test Tools">← Test Tools</button></div>
+            <h2>Test Recent Sighting Alert</h2>
+            <div class="account-small-note" style="margin-bottom:12px;">Create a controlled test sighting so you can test the 15-minute recent-sighting alert without waiting for another user to log a real sighting.</div>
+            <label for="testRecentSystem">System</label>
+            <select id="testRecentSystem" onchange="updateTestRecentSightingPanel()" style="width:100%;box-sizing:border-box;">
+                <option value="subway">Subway</option>
+                <option value="bus">Bus</option>
+                <option value="lirr">LIRR</option>
+                <option value="metro-north">Metro-North</option>
+            </select>
+            <label for="testRecentFleet" style="display:block;margin-top:12px;">Fleet</label>
+            <input id="testRecentFleet" type="text" placeholder="Example: R160" style="width:100%;box-sizing:border-box;">
+            <label for="testRecentVehicle" style="display:block;margin-top:12px;">Logged vehicle number</label>
+            <input id="testRecentVehicle" type="text" inputmode="numeric" placeholder="Example: 8313" style="width:100%;box-sizing:border-box;">
+            <label for="testRecentAge" style="display:block;margin-top:12px;">Logged how long ago?</label>
+            <select id="testRecentAge" style="width:100%;box-sizing:border-box;">
+                <option value="0">Less than a minute ago</option>
+                <option value="5">5 minutes ago</option>
+                <option value="8">8 minutes ago</option>
+                <option value="12">12 minutes ago</option>
+                <option value="15">15 minutes ago</option>
+                <option value="16">16 minutes ago (should not alert)</option>
+            </select>
+            <div id="testRecentConsistWrap" style="margin-top:12px;">
+                <label for="testRecentConsist">Other cars in that logged consist (optional)</label>
+                <input id="testRecentConsist" type="text" placeholder="Example: 8314, 8713" style="width:100%;box-sizing:border-box;">
+                <div class="account-small-note" style="margin-top:6px;">For Subway, include the other cars needed to simulate a same-set or verified connecting-set sighting.</div>
+            </div>
+            <div id="testRecentStatus" class="status-message" style="margin-top:12px;"></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+                <button type="button" onclick="createTestRecentSighting()">Create Test Sighting</button>
+                <button type="button" onclick="clearTestRecentSightingForm()">Clear</button>
+            </div>
+        </section>
 
         <section id="sessionDiagnostics" class="session-diagnostics hidden">
             <h2>Session Diagnostics</h2>
@@ -1962,6 +2149,14 @@
             </div>
         </div>
     </section>
+
+        <section class="latest-update-card" aria-labelledby="latestUpdateTitle">
+            <h3 class="latest-update-heading" id="latestUpdateTitle">
+                <span>Late-Night Awareness</span>
+                <span class="latest-update-beta">BETA</span>
+            </h3>
+            <p>Late-Night Awareness is currently in the BETA phase, so you may encounter bugs or unexpected behavior. Please report any bugs you find using the in-app Report feature.</p>
+        </section>
 
     <div id="databaseFreshnessCard" class="database-freshness-card" aria-label="Fleet database freshness">
         <div class="database-freshness-title">Database freshness</div>
@@ -2237,7 +2432,7 @@
     <section id="myReportsPanel" class="account-panel hidden">
         <h2>My Reports</h2>
         <div class="account-small-note">
-            Missing-car and incorrect-information reports submitted while signed in appear here. Status changes made by an administrator will show automatically the next time this list is opened or refreshed.
+            Missing-car, incorrect-information, and alert-decision reports submitted while signed in appear here. You can edit or delete your alert-report notes; administrator status updates appear when you refresh.
         </div>
         <div style="margin-top:14px;">
             <button type="button" onclick="loadMyReports()">Refresh</button>
@@ -2509,11 +2704,26 @@ function alignSystemSwitcherToTools() {
     menu.style.left = `${left}px`;
 }
 
+function syncSystemSwitcherActiveState(system = activeFleetSystem) {
+    // Always derive the highlight from the active system ID, not the previous
+    // button state. This is especially important for the hyphenated metro-north ID.
+    document.querySelectorAll("#systemSwitcherMenu [data-system-option]").forEach(button => {
+        const optionSystem = String(button.dataset.systemOption || "").trim().toLowerCase();
+        const activeSystem = String(system || "").trim().toLowerCase();
+        const active = optionSystem === activeSystem;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-current", active ? "page" : "false");
+        button.style.setProperty("background", active ? "var(--fi-hover)" : "transparent", "important");
+        button.style.setProperty("outline", active ? "1px solid var(--fi-border)" : "none", "important");
+    });
+}
+
 function toggleSystemSwitcher(event) {
     event?.stopPropagation();
     const menu = document.getElementById("systemSwitcherMenu");
     if (!menu) return;
     const opening = menu.classList.contains("hidden");
+    if (opening) syncSystemSwitcherActiveState(activeFleetSystem);
     menu.classList.toggle("hidden", !opening);
     if (opening) alignSystemSwitcherToTools();
     document.getElementById("topAccountAvatarButton")?.setAttribute("aria-expanded", opening ? "true" : "false");
@@ -2530,6 +2740,7 @@ function renderFleetSystem() {
     const titleRow = document.getElementById("appTitleRow");
     const isSubway = config.id === "subway";
     const isBus = config.id === "bus";
+    const isRailroad = config.id === "lirr" || config.id === "metro-north";
 
     if (logo) {
         logo.src = config.logo;
@@ -2562,16 +2773,30 @@ function renderFleetSystem() {
     }
 
     renderSystemViewState();
+    updateFleetTestModeUI();
 
-    // The account/profile/appearance layer is shared by every system. The
-    // Subway tool grid is system-specific and must not render outside Subway.
-    document.getElementById("subwaySettingsTools")?.classList.toggle("hidden", !isSubway);
-    document.getElementById("busSettingsTools")?.classList.toggle("hidden", !isBus);
-    const isRailroad = config.id === "lirr" || config.id === "metro-north";
-    document.getElementById("railroadSettingsTools")?.classList.toggle("hidden", !isRailroad);
-    // Keep shared Account available everywhere, but on Subway place Account back
-    // inside the original 10-button grid so the desktop layout stays 3-3-3-1.
-    document.getElementById("sharedSettingsTools")?.classList.remove("hidden");
+    // Normal-mode tools are strictly system-scoped. Keep only Search History
+    // shared; never expose another system's tools after switching systems.
+    const systemToolPanels = {
+        subway: "subwaySettingsTools",
+        bus: "busSettingsTools",
+        lirr: "lirrSettingsTools",
+        "metro-north": "metroNorthSettingsTools"
+    };
+    const activeToolPanelId = systemToolPanels[config.id];
+    ["subwaySettingsTools", "busSettingsTools", "lirrSettingsTools", "metroNorthSettingsTools"].forEach(id => {
+        const panel = document.getElementById(id);
+        if (!panel) return;
+        const visible = !fleetIdentifierTestMode && id === activeToolPanelId;
+        panel.classList.toggle("hidden", !visible);
+        panel.style.display = visible ? "contents" : "none";
+    });
+    const sharedTools = document.getElementById("sharedSettingsTools");
+    if (sharedTools) {
+        const visible = !fleetIdentifierTestMode;
+        sharedTools.classList.toggle("hidden", !visible);
+        sharedTools.style.display = visible ? "contents" : "none";
+    }
 
     if (!isSubway && !isBus && !isRailroad) {
         [
@@ -2586,11 +2811,8 @@ function renderFleetSystem() {
         if (text) text.textContent = `${config.name} is now part of the Fleet Identifier multi-system foundation. Its identifier, sightings, collection, and system-specific tools will be built in a later phase.`;
     }
 
-    document.querySelectorAll("[data-system-option]").forEach(button => {
-        const active = button.dataset.systemOption === activeFleetSystem;
-        button.classList.toggle("active", active);
-        button.setAttribute("aria-current", active ? "page" : "false");
-    });
+    // Keep the menu synchronized with the system actually selected.
+    syncSystemSwitcherActiveState(activeFleetSystem);
 }
 
 function resetSystemSpecificUIForSwitch() {
@@ -2620,12 +2842,19 @@ function selectFleetSystem(system) {
     if (system !== activeFleetSystem) resetSystemSpecificUIForSwitch();
     activeFleetSystem = system;
     localStorage.setItem("fleetIdentifierActiveSystem", system);
+    syncSystemSwitcherActiveState(system);
     closeSystemSwitcher();
     renderFleetSystem();
+    updateFleetTestModeUI();
     if (preserveTools && settingsPanel) {
-        settingsPanel.classList.remove("hidden", "account-settings-mode");
+        settingsPanel.classList.remove("hidden", "account-settings-mode", "subtool-active");
         settingsPanel.classList.add("tools-mode");
+        // A system switch while Tools is open should land on the new system's
+        // Tools grid, not leave a previous system's subtool open.
         closeSettingsContentPanels();
+        document.getElementById("toolsPanelTitle")?.classList.toggle("test-tools-title", fleetIdentifierTestMode);
+        const toolsTitle = document.getElementById("toolsPanelTitle");
+        if (toolsTitle) toolsTitle.textContent = fleetIdentifierTestMode ? "Test Tools" : "Tools";
     }
     updateFocusMode();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2708,6 +2937,7 @@ function toggleSettings() {
         settingsPanel.classList.add("tools-mode");
         settingsPanel.classList.remove("subtool-active");
         settingsPanel.classList.remove("hidden");
+        updateFleetTestModeUI();
 
         // Tools are system-specific; account management and diagnostics stay in Account & Settings.
         document.getElementById("accountPanel")?.classList.add("hidden");
@@ -2854,6 +3084,593 @@ function stationRoutesHTML(routes, station = null) {
     const values = stationRouteValues(routes, station);
     if (!values.length) return "";
     return `<span class="route-bullet-list">${values.map(line => routeBulletClass(line) ? lineDisplayHTML(line) : `<span>${escapeHTML(line)}</span>`).join("")}</span>`;
+}
+
+// Schedule-aware Subway station/line validation.
+// Uses targeted MTA schedule queries for only the selected station/complex and
+// the sighting date window. This avoids downloading the full schedule dataset.
+const SUBWAY_SCHEDULE_API_URL = "https://data.ny.gov/resource/g8es-h7gb.json";
+let subwayScheduleCache = new Map();
+
+function subwayScheduleDateKey(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+}
+
+function subwayScheduleStationIds(station) {
+    const ids = new Set();
+    if (station?.id) ids.add(String(station.id).trim());
+    const complex = station?.complexId ? standardizedComplexes.get(String(station.complexId).trim()) : null;
+    String(complex?.gtfsStopIds || "")
+        .split(/[;, ]+/)
+        .map(v => v.trim())
+        .filter(Boolean)
+        .forEach(id => ids.add(id));
+    return [...ids];
+}
+
+// Official MTA supplemented static GTFS feed. The NY Open Data 2026
+// schedule table currently stops at July 11 despite being marked updated in
+// October, so schedule decisions use the active GTFS calendar and stop_times.
+const MTA_SUBWAY_GTFS_URL = "https://jkgjektucefrtxkcngcw.supabase.co/functions/v1/mta-gtfs-proxy";
+let mtaGtfsPromise = null;
+const mtaGtfsScheduleCache = new Map();
+
+function parseGtfsCsvLine(text) {
+    const row = [];
+    let field = "", quoted = false;
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (quoted) {
+            if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+            else if (ch === '"') quoted = false;
+            else field += ch;
+        } else if (ch === '"' && field === "") quoted = true;
+        else if (ch === ",") { row.push(field); field = ""; }
+        else field += ch;
+    }
+    row.push(field.replace(/\r$/, ""));
+    return row;
+}
+
+function parseGtfsCsv(text) {
+    const rows = [];
+    let row = [], field = "", quoted = false;
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (quoted) {
+            if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+            else if (ch === '"') quoted = false;
+            else field += ch;
+        } else if (ch === '"' && field === "") quoted = true;
+        else if (ch === ",") { row.push(field); field = ""; }
+        else if (ch === "\n") {
+            row.push(field.replace(/\r$/, ""));
+            rows.push(row);
+            row = []; field = "";
+        } else field += ch;
+    }
+    if (field.length || row.length) { row.push(field.replace(/\r$/, "")); rows.push(row); }
+    if (!rows.length) return [];
+    const headers = rows.shift().map(v => v.trim());
+    return rows.filter(r => r.some(v => v !== "")).map(values => {
+        const obj = {};
+        headers.forEach((header, i) => obj[header] = values[i] ?? "");
+        return obj;
+    });
+}
+
+async function loadMtaSubwayGtfs() {
+    if (mtaGtfsPromise) return mtaGtfsPromise;
+    mtaGtfsPromise = (async () => {
+        if (typeof JSZip === "undefined") throw new Error("GTFS ZIP parser (JSZip) is unavailable.");
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000);
+        try {
+            const response = await fetch(MTA_SUBWAY_GTFS_URL, {
+                cache: "no-cache", signal: controller.signal,
+                headers: { apikey: SUPABASE_PUBLISHABLE_KEY }
+            });
+            if (!response.ok) throw new Error(`MTA GTFS download failed (${response.status}).`);
+            const zip = await JSZip.loadAsync(await response.arrayBuffer());
+            async function readCsv(name, required = true) {
+                const file = zip.file(name);
+                if (!file) {
+                    if (required) throw new Error(`MTA GTFS feed is missing ${name}.`);
+                    return [];
+                }
+                return parseGtfsCsv(await file.async("string"));
+            }
+            const [routes, trips, calendar, calendarDates, stopTimesText] = await Promise.all([
+                readCsv("routes.txt"), readCsv("trips.txt"), readCsv("calendar.txt", false),
+                readCsv("calendar_dates.txt", false),
+                (async () => {
+                    const file = zip.file("stop_times.txt");
+                    if (!file) throw new Error("MTA GTFS feed is missing stop_times.txt.");
+                    return file.async("string");
+                })()
+            ]);
+            return { routes, trips, calendar, calendarDates, stopTimesText };
+        } finally {
+            clearTimeout(timeout);
+        }
+    })().catch(error => {
+        mtaGtfsPromise = null;
+        throw error;
+    });
+    return mtaGtfsPromise;
+}
+
+function gtfsDateKey(date) {
+    return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function gtfsActiveServices(feed, date) {
+    const key = gtfsDateKey(date);
+    const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const active = new Set();
+    for (const row of feed.calendar) {
+        if (key >= row.start_date && key <= row.end_date && row[dayNames[date.getDay()]] === "1") {
+            active.add(row.service_id);
+        }
+    }
+    for (const row of feed.calendarDates) {
+        if (row.date !== key) continue;
+        if (row.exception_type === "1") active.add(row.service_id);
+        else if (row.exception_type === "2") active.delete(row.service_id);
+    }
+    return active;
+}
+
+async function fetchGtfsRowsForSelection(station, line, date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+    const parts = subwayServiceLineParts(line || "");
+    const selectedLines = [...new Set([parts.baseLine, parts.viaLine].filter(Boolean))];
+    const stopIds = station ? subwayScheduleStationIds(station) : [];
+    if (!selectedLines.length && !stopIds.length) return null;
+    const dateOffsets = [-1, 0, 1].map(offset => {
+        const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        d.setDate(d.getDate() + offset);
+        return d;
+    });
+    const cacheKey = `${gtfsDateKey(date)}::${selectedLines.slice().sort().join("|")}::${stopIds.slice().sort().join("|")}`;
+    if (mtaGtfsScheduleCache.has(cacheKey)) return mtaGtfsScheduleCache.get(cacheKey);
+
+    const request = (async () => {
+        const feed = await loadMtaSubwayGtfs();
+        const routesById = new Map(feed.routes.map(r => {
+            const routeId = String(r.route_id || "");
+            const shortName = String(r.route_short_name || routeId);
+            const displayName = routeId === "FS" ? "Franklin S"
+                : routeId === "H" ? "Rockaway S"
+                : routeId === "GS" ? "42 St S"
+                : shortName;
+            return [routeId, { shortName, displayName }];
+        }));
+        const tripsById = new Map();
+        const activeServicesByDate = dateOffsets.map(d => gtfsActiveServices(feed, d));
+        const activeTripDateKeys = new Map();
+
+        for (const trip of feed.trips) {
+            const routeInfo = routesById.get(trip.route_id) || { shortName: trip.route_id || "", displayName: trip.route_id || "" };
+            const routeName = routeInfo.displayName;
+            const isSelectedLine = selectedLines.includes(routeName) || selectedLines.includes(routeInfo.shortName) || selectedLines.includes(trip.route_id);
+            // Keep all trips for station matching, plus all trips for the selected
+            // route so the time check can distinguish service from no service.
+            if (!isSelectedLine && !stopIds.length) continue;
+            const activeDates = [];
+            activeServicesByDate.forEach((services, i) => {
+                if (services.has(trip.service_id)) activeDates.push(dateOffsets[i]);
+            });
+            if (!activeDates.length) continue;
+            tripsById.set(trip.trip_id, { routeName, activeDates, isSelectedLine });
+            activeTripDateKeys.set(trip.trip_id, activeDates);
+        }
+
+        const stopSet = new Set(stopIds);
+        const rows = [];
+        const stopText = feed.stopTimesText;
+        const firstNewline = stopText.indexOf("\n");
+        const headers = parseGtfsCsvLine(stopText.slice(0, firstNewline)).map(v => v.trim());
+        const col = Object.fromEntries(headers.map((h, i) => [h, i]));
+        let cursor = firstNewline + 1;
+        while (cursor < stopText.length) {
+            let newline = stopText.indexOf("\n", cursor);
+            if (newline < 0) newline = stopText.length;
+            const rawLine = stopText.slice(cursor, newline).replace(/\r$/, "");
+            cursor = newline + 1;
+            if (!rawLine) continue;
+            const values = parseGtfsCsvLine(rawLine);
+            const trip = tripsById.get(values[col.trip_id]);
+            if (!trip) continue;
+            const stopId = values[col.stop_id] || "";
+            const stationMatch = stopSet.has(stopId);
+            if (!trip.isSelectedLine && !stationMatch) continue;
+            for (const serviceDate of trip.activeDates) {
+                rows.push({
+                    service_date: `${subwayScheduleDateKey(serviceDate)}T00:00:00.000`,
+                    service_code: "",
+                    trip_line: trip.routeName,
+                    line: trip.routeName,
+                    gtfs_stop_id: stopId,
+                    arrival_time: values[col.arrival_time] || "",
+                    departure_time: values[col.departure_time] || "",
+                    date_difference: "0",
+                    revenue_service: "1"
+                });
+            }
+        }
+        return rows;
+    })().catch(error => {
+        mtaGtfsScheduleCache.delete(cacheKey);
+        throw error;
+    });
+    mtaGtfsScheduleCache.set(cacheKey, request);
+    try {
+        const rows = await request;
+        mtaGtfsScheduleCache.set(cacheKey, rows);
+        return rows;
+    } catch (error) {
+        mtaGtfsScheduleCache.delete(cacheKey);
+        throw error;
+    }
+}
+
+async function fetchSubwayScheduleRows(station, date, line = "") {
+    const rows = await fetchGtfsRowsForSelection(station, line, date);
+    if (!Array.isArray(rows)) return rows;
+    const stopIds = new Set(subwayScheduleStationIds(station));
+    return rows.filter(row => stopIds.has(String(row.gtfs_stop_id || "")));
+}
+
+async function diagnoseSubwayScheduleFilters(line, lines, serviceDateStart, serviceDateEnd) {
+    // Diagnostic-only probes: isolate which server-side filter causes an empty
+    // schedule result. These probes do not affect the actual warning decision.
+    const lineValues = [...new Set(lines)].filter(Boolean);
+    const quotedLines = lineValues.map(value => `'${String(value).replace(/'/g, "''")}'`);
+    const lineConditions = quotedLines.flatMap(value => [`trip_line = ${value}`, `line = ${value}`]).join(" OR ");
+    const dateCondition = `service_date >= '${serviceDateStart}' AND service_date < '${serviceDateEnd}'`;
+    const cases = [
+        ["line-only", `(${lineConditions})`],
+        ["date-only", dateCondition],
+        ["line+date", `(${lineConditions}) AND ${dateCondition}`],
+        ["line+date+revenue", `(${lineConditions}) AND ${dateCondition} AND revenue_service = '1'`]
+    ];
+    const results = {};
+    for (const [label, where] of cases) {
+        try {
+            const params = new URLSearchParams({ "$select": "count(*) as row_count", "$where": where });
+            const response = await fetch(`${SUBWAY_SCHEDULE_API_URL}?${params.toString()}`, { cache: "no-store" });
+            if (!response.ok) {
+                let details = "";
+                try { details = (await response.text()).slice(0, 500); } catch {}
+                results[label] = { httpStatus: response.status, error: details };
+                continue;
+            }
+            const data = await response.json();
+            results[label] = { count: Array.isArray(data) ? (data[0]?.row_count ?? null) : null };
+        } catch (error) {
+            results[label] = { error: String(error?.message || error) };
+        }
+    }
+
+    // v45 diagnostics: inspect actual service_date values and test date-literal
+    // formats without changing the schedule lookup or warning behavior.
+    try {
+        const params = new URLSearchParams({
+            "$select": "service_date,line,trip_line",
+            "$where": `(${lineConditions}) AND service_date IS NOT NULL`,
+            "$order": "service_date",
+            "$limit": "5"
+        });
+        const response = await fetch(`${SUBWAY_SCHEDULE_API_URL}?${params.toString()}`, { cache: "no-store" });
+        if (!response.ok) {
+            results["sample-service-dates"] = { httpStatus: response.status, error: (await response.text()).slice(0, 500) };
+        } else {
+            results["sample-service-dates"] = await response.json();
+        }
+    } catch (error) {
+        results["sample-service-dates"] = { error: String(error?.message || error) };
+    }
+    // v47 diagnostic: confirm the latest service_date values independently
+    // of the aggregate min/max query. This is diagnostic-only and does not
+    // affect schedule lookup or warning behavior.
+    try {
+        const params = new URLSearchParams({
+            "$select": "service_date,line,trip_line",
+            "$where": `(${lineConditions}) AND service_date IS NOT NULL`,
+            "$order": "service_date DESC",
+            "$limit": "5"
+        });
+        const response = await fetch(`${SUBWAY_SCHEDULE_API_URL}?${params.toString()}`, { cache: "no-store" });
+        if (!response.ok) {
+            results["latest-service-dates"] = { httpStatus: response.status, error: (await response.text()).slice(0, 500) };
+        } else {
+            results["latest-service-dates"] = await response.json();
+        }
+    } catch (error) {
+        results["latest-service-dates"] = { error: String(error?.message || error) };
+    }
+    try {
+        const params = new URLSearchParams({
+            "$select": "count(*) as row_count",
+            "$where": `(${lineConditions}) AND service_date >= '2026-10-09T00:00:00.000' AND service_date < '2026-10-12T00:00:00.000'`
+        });
+        const response = await fetch(`${SUBWAY_SCHEDULE_API_URL}?${params.toString()}`, { cache: "no-store" });
+        if (!response.ok) {
+            results["october-service-date-count"] = { httpStatus: response.status, error: (await response.text()).slice(0, 500) };
+        } else {
+            const data = await response.json();
+            results["october-service-date-count"] = { count: Array.isArray(data) ? (data[0]?.row_count ?? null) : null };
+        }
+    } catch (error) {
+        results["october-service-date-count"] = { error: String(error?.message || error) };
+    }
+    try {
+        const params = new URLSearchParams({
+            "$select": "min(service_date) as min_service_date,max(service_date) as max_service_date,count(*) as row_count",
+            "$where": `(${lineConditions}) AND service_date IS NOT NULL`
+        });
+        const response = await fetch(`${SUBWAY_SCHEDULE_API_URL}?${params.toString()}`, { cache: "no-store" });
+        if (!response.ok) {
+            results["service-date-range"] = { httpStatus: response.status, error: (await response.text()).slice(0, 500) };
+        } else {
+            results["service-date-range"] = await response.json();
+        }
+    } catch (error) {
+        results["service-date-range"] = { error: String(error?.message || error) };
+    }
+    try {
+        const startDate = serviceDateStart.slice(0, 10);
+        const endDate = serviceDateEnd.slice(0, 10);
+        // Keep this probe to ISO 8601 floating-timestamp literals. The
+        // MM/DD/YYYY variant was rejected by the API with HTTP 400 and only
+        // created a noisy console error; sample-service-dates and
+        // service-date-range below identify the actual stored date values.
+        const dateFormats = {
+            iso: `service_date >= '${startDate}T00:00:00.000' AND service_date < '${endDate}T00:00:00.000'`
+        };
+        for (const [label, where] of Object.entries(dateFormats)) {
+            const params = new URLSearchParams({ "$select": "count(*) as row_count", "$where": where });
+            const response = await fetch(`${SUBWAY_SCHEDULE_API_URL}?${params.toString()}`, { cache: "no-store" });
+            if (!response.ok) {
+                results[`date-format-${label}`] = { httpStatus: response.status, error: (await response.text()).slice(0, 500) };
+            } else {
+                const data = await response.json();
+                results[`date-format-${label}`] = { count: Array.isArray(data) ? (data[0]?.row_count ?? null) : null };
+            }
+        }
+    } catch (error) {
+        results["date-format-tests"] = { error: String(error?.message || error) };
+    }
+    console.debug("[Late-night alert diagnostic v47] Schedule filter probe", {
+        line,
+        serviceDateStart,
+        serviceDateEnd,
+        results
+    });
+}
+
+async function fetchSubwayLineScheduleRows(line, date) {
+    const rows = await fetchGtfsRowsForSelection(null, line, date);
+    if (!Array.isArray(rows)) return rows;
+    const parts = subwayServiceLineParts(line);
+    const selected = new Set([parts.baseLine, parts.viaLine].filter(Boolean));
+    return rows.filter(row => selected.has(String(row.line || "")));
+}
+
+function subwayScheduleDateTime(row) {
+    const rawTime = String(row?.departure_time || row?.arrival_time || "").trim();
+    if (!rawTime) return null;
+
+    // The current NY Open Data schedule feed exposes a real timestamp here.
+    const parsed = new Date(rawTime);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+
+    // Fallback for a bare GTFS clock value, including 24+ hour times.
+    const rawDate = String(row?.service_date || "").trim();
+    const dateMatch = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const timeMatch = rawTime.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if (!dateMatch || !timeMatch) return null;
+
+    const hours = Number(timeMatch[1]);
+    const minutes = Number(timeMatch[2]);
+    const seconds = Number(timeMatch[3] || 0);
+    if (minutes > 59 || seconds > 59) return null;
+
+    const result = new Date(
+        Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3]),
+        hours % 24, minutes, seconds, 0
+    );
+    result.setDate(result.getDate() + Math.floor(hours / 24));
+    return result;
+}
+
+function subwayScheduleExpectedLines(rows, date, toleranceMs = 30 * 60 * 1000) {
+    if (!Array.isArray(rows)) return null;
+
+    const target = date.getTime();
+    const expected = new Set();
+    const tolerance = toleranceMs;
+
+    rows.forEach(row => {
+        if (String(row.revenue_service ?? "1") === "0") return;
+        const scheduled = subwayScheduleDateTime(row);
+        if (!scheduled) return;
+        // Determine service at the selected time from departures at or after
+        // that time. A train that departed earlier must not make a line look
+        // scheduled now (for example, the C shortly after its last evening trip).
+        if (scheduled.getTime() < target || scheduled.getTime() > target + tolerance) return;
+
+        // Some schedule rows expose both a trip-level route and a line-level
+        // route, and they are not always identical. Record both values so a
+        // valid line match is not discarded just because trip_line is present.
+        [row.trip_line, row.line].forEach(value => {
+            const line = String(value || "").trim();
+            if (line) expected.add(line);
+        });
+    });
+
+    // An empty array is important: it means the schedule query succeeded and
+    // there is simply no scheduled service near the selected time.
+    return expected;
+}
+
+function subwayStationNormalLines(station) {
+    if (!station) return new Set();
+    return new Set(
+        stationRouteValues(station.routes, station)
+            .map(value => String(value || "").trim())
+            .filter(Boolean)
+    );
+}
+
+function subwayServiceLineParts(line) {
+    const normalized = String(line || "").trim();
+    const match = normalized.match(/^(.+?)\s+via\s+(.+)$/i);
+    return match
+        ? { displayLine: normalized, baseLine: match[1].trim(), viaLine: match[2].trim(), hasVia: true }
+        : { displayLine: normalized, baseLine: normalized, viaLine: "", hasVia: false };
+}
+
+function subwayStationRouteStatus(station, line) {
+    const normalizedLine = String(line || "").trim();
+    if (!normalizedLine || normalizedLine === "NIS" || normalizedLine === "TEST") {
+        return { known: true, normal: true, normalLines: [], hasVia: false, baseLine: normalizedLine, viaLine: "" };
+    }
+    const parts = subwayServiceLineParts(normalizedLine);
+    const normalLines = subwayStationNormalLines(station);
+    // A "via" service represents BOTH services for station-route purposes.
+    // For example, "A via F" is treated as an A train and an F train: if the
+    // station normally serves either A or F, it is not an off-route train.
+    // The same rule applies to every X via Y combination.
+    const serviceLines = parts.hasVia
+        ? [parts.baseLine, parts.viaLine].filter(Boolean)
+        : [parts.baseLine].filter(Boolean);
+    const normal = serviceLines.some(serviceLine => normalLines.has(serviceLine));
+    return {
+        known: normalLines.size > 0,
+        normal,
+        normalLines: [...normalLines],
+        serviceLines,
+        hasVia: parts.hasVia,
+        baseLine: parts.baseLine,
+        viaLine: parts.viaLine
+    };
+}
+
+async function subwayServiceStatusForStation(station, line, date = new Date()) {
+    const stationRoute = subwayStationRouteStatus(station, line);
+    const lineParts = subwayServiceLineParts(line);
+    const normalizedLine = lineParts.baseLine;
+    const serviceLines = stationRoute.serviceLines || [normalizedLine].filter(Boolean);
+
+    // The station query is used only to populate the station's expected-line
+    // list and related UI. It must never decide whether the selected line is
+    // operating at this time, because a line can operate elsewhere while not
+    // serving this particular platform.
+    let stationRows = null;
+    try {
+        stationRows = await fetchSubwayScheduleRows(station, date, line);
+        console.debug("[Late-night alert diagnostic v50] Station schedule lookup", {
+            station: station?.stopName || station?.complexName || station?.name || "(unknown station)",
+            stationId: station?.id || "",
+            line,
+            simulatedTime: date instanceof Date ? date.toString() : String(date),
+            rowsReturned: Array.isArray(stationRows) ? stationRows.length : null,
+            routeKnown: stationRoute.known,
+            routeNormallyServed: stationRoute.normal,
+            normalLines: stationRoute.normalLines,
+            serviceLines
+        });
+    } catch (error) {
+        console.warn("[Late-night alert diagnostic v50] Station schedule lookup failed", {
+            station: station?.stopName || station?.complexName || station?.name || "(unknown station)",
+            stationId: station?.id || "",
+            line,
+            simulatedTime: date instanceof Date ? date.toString() : String(date),
+            error: String(error?.message || error)
+        });
+    }
+
+    const stationExpected = subwayScheduleExpectedLines(stationRows, date);
+    const expectedLines = stationExpected || new Set();
+    const stationHasSelectedLine = Array.isArray(stationRows) && serviceLines.some(serviceLine => expectedLines.has(serviceLine));
+
+    // The static daytime route list is not sufficient for overnight service.
+    // If the station schedule directly shows the selected line at the selected
+    // time, that is authoritative evidence that the line normally serves here.
+    const stationRouteKnown = stationRoute.known || stationHasSelectedLine;
+    const stationRouteNormal = stationRoute.normal || stationHasSelectedLine;
+
+    // Time status is evaluated independently from station-route status. A
+    // station-level scheduled departure is also direct proof that the line is
+    // operating at this time, even if the broader line-wide query is incomplete.
+    let timeScheduleKnown = stationHasSelectedLine;
+    let scheduled = stationHasSelectedLine;
+    if (normalizedLine && !["NIS", "TEST"].includes(normalizedLine)) {
+        try {
+            const lineRows = await fetchSubwayLineScheduleRows(line, date);
+            const lineExpected = subwayScheduleExpectedLines(lineRows, date, 90 * 60 * 1000);
+            // An HTTP-successful empty array is not enough to conclude that a
+            // line has no service. Keep the time check inconclusive unless the
+            // response contains at least one row with a parseable schedule time.
+            const lineRowsUsable = Array.isArray(lineRows)
+                && lineRows.length > 0
+                && lineRows.some(row => subwayScheduleDateTime(row) instanceof Date);
+            if (lineExpected !== null && lineRowsUsable) {
+                timeScheduleKnown = true;
+                scheduled = stationHasSelectedLine || serviceLines.some(serviceLine => lineExpected.has(serviceLine));
+            }
+            console.debug("[Late-night alert diagnostic v50] Line-wide schedule decision", {
+                line,
+                simulatedTime: date instanceof Date ? date.toString() : String(date),
+                rowsReturned: Array.isArray(lineRows) ? lineRows.length : null,
+                lineRowsUsable,
+                scheduleKnown: timeScheduleKnown,
+                scheduled,
+                stationHasSelectedLine,
+                stationRouteKnown,
+                stationRouteNormal,
+                matchedLines: [...lineExpected || []],
+                sampleRows: Array.isArray(lineRows) ? lineRows.slice(0, 8).map(row => ({
+                    service_date: row.service_date,
+                    trip_line: row.trip_line,
+                    line: row.line,
+                    gtfs_stop_id: row.gtfs_stop_id,
+                    departure_time: row.departure_time,
+                    arrival_time: row.arrival_time,
+                    revenue_service: row.revenue_service,
+                    parsedDeparture: subwayScheduleDateTime(row)?.toString() || null
+                })) : null
+            });
+        } catch (error) {
+            console.warn("[Late-night alert diagnostic] Line-wide schedule lookup failed", {
+                line,
+                simulatedTime: date instanceof Date ? date.toString() : String(date),
+                error: String(error?.message || error)
+            });
+        }
+    }
+
+    const unusual = normalizedLine && !["NIS", "TEST"].includes(normalizedLine)
+        ? (timeScheduleKnown && !scheduled)
+        : false;
+
+    return {
+        // `known` now represents a successful line-wide time check, not the
+        // station-specific query. `expected` remains station-specific for the UI.
+        known: timeScheduleKnown,
+        expected: [...expectedLines],
+        unusual,
+        scheduled,
+        stationRouteKnown,
+        stationRouteNormal,
+        normalLines: stationRoute.normalLines,
+        serviceLines
+    };
 }
 
 async function loadStandardizedStations() {
@@ -3075,6 +3892,163 @@ function stationMetaHTML(station) {
     return escapeHTML(parts.join(" · "));
 }
 
+
+function getSubwaySightingDateTimeForSchedule() {
+    // Test Time is the simulated "now" for Test Mode, so it takes priority
+    // over the normal past-sighting picker while a simulated clock is active.
+    if (fleetIdentifierTestMode && fleetIdentifierTestTime instanceof Date && !Number.isNaN(fleetIdentifierTestTime.getTime())) {
+        return new Date(fleetIdentifierTestTime.getTime());
+    }
+    const toggle = document.getElementById("pastSightingToggle");
+    if (toggle?.checked) {
+        const raw = document.getElementById("pastSightingDateTime")?.value || "";
+        const date = raw ? new Date(raw) : null;
+        if (date && !Number.isNaN(date.getTime())) return date;
+    }
+    return getFleetIdentifierNow();
+}
+
+let latestAlertDecisionSnapshot = null;
+
+async function updateSubwayStationScheduleState(station) {
+    const input = document.getElementById("sightingStation");
+    if (!input) return;
+
+    const scheduleStatus = input.closest(".station-picker")?.querySelector(".station-schedule-status");
+    const lineButtons = [...document.querySelectorAll(".line-button[data-line]")];
+    const date = getSubwaySightingDateTimeForSchedule();
+    const currentLine = String(pendingSighting?.line || "");
+
+    if (!scheduleStatus) return;
+    scheduleStatus.textContent = "";
+    scheduleStatus.classList.remove("unusual");
+    latestAlertDecisionSnapshot = null;
+
+    try {
+        const status = await subwayServiceStatusForStation(station, currentLine, date);
+        const usableLine = currentLine && currentLine !== "NIS" && currentLine !== "TEST";
+        // Jay St-MetroTech's static station metadata lists the R, but the N
+        // normally uses the R-line local route overnight. The station-specific
+        // schedule lookup can return no rows for this platform even while the
+        // line-wide schedule confirms N service. Limit this exception to this
+        // station, the N, overnight hours, and a confirmed scheduled service.
+        const stationLabel = String(station?.stopName || station?.complexName || station?.name || "").trim().toLowerCase();
+        const selectedHour = date instanceof Date ? date.getHours() : -1;
+        const isNormalOvernightNAtJay = String(currentLine).trim().toUpperCase() === "N"
+            && stationLabel.includes("jay st")
+            && stationLabel.includes("metro")
+            && selectedHour >= 0 && selectedHour < 5
+            && status.known && status.scheduled;
+        // The 4 runs local between Sutter Av-Rutland Rd and New Lots Av
+        // overnight. Static station metadata may list only the 3 at these
+        // stops, so don't call the 4 off-route when its schedule confirms it.
+        const isNewLotsBranchStation = [
+            "sutter av-rutland rd", "sutter avenue-rutland road",
+            "saratoga av", "saratoga avenue",
+            "rockaway av", "rockaway avenue",
+            "junius st", "junius street",
+            "pennsylvania av", "pennsylvania avenue",
+            "van siclen av", "van siclen avenue",
+            "new lots av", "new lots avenue"
+        ].some(name => stationLabel.includes(name));
+        const isNormalOvernight4AtNewLotsBranch = String(currentLine).trim().toUpperCase() === "4"
+            && isNewLotsBranchStation
+            && selectedHour >= 0 && selectedHour < 5
+            && status.known && status.scheduled;
+        const offRoute = usableLine && status.stationRouteKnown && !status.stationRouteNormal
+            && !isNormalOvernightNAtJay
+            && !isNormalOvernight4AtNewLotsBranch;
+        // A trains run around the clock on their normal route, so an empty
+        // schedule window alone must not flag a normally served A-train stop.
+        // For other lines, a confirmed lack of scheduled service is a separate
+        // warning from being outside the line's normal station assignment.
+        const isRoundTheClockA = String(currentLine).trim().toUpperCase() === "A"
+            && status.stationRouteKnown && status.stationRouteNormal;
+        const timeUnusual = usableLine && status.known && !status.scheduled && !isRoundTheClockA;
+        console.debug("[Late-night alert diagnostic v50] Final warning decision", {
+            line: currentLine,
+            station: station?.stopName || station?.complexName || station?.name || "(unknown station)",
+            simulatedTime: date instanceof Date ? date.toString() : String(date),
+            scheduleKnown: status.known,
+            scheduled: status.scheduled,
+            offRoute,
+            timeUnusual,
+            noticesExpected: [offRoute ? "off normal route" : null, timeUnusual ? "unusual at this time" : null].filter(Boolean)
+        });
+
+        // These notices describe different conditions and can both apply:
+        // a line may never normally serve this station and also lack scheduled
+        // service at the selected time.
+        const notices = [];
+        const lineNoticeHTML = `<span class="notice-route-bullet">${lineDisplayHTML(currentLine, false) || escapeHTML(currentLine)}</span>`;
+        if (offRoute) notices.push(`${lineNoticeHTML} is off its normal route at this station`);
+        if (timeUnusual) notices.push(`${lineNoticeHTML} is unusual at this time`);
+        if (offRoute && status.scheduled) {
+            // Keep the useful warning about the station assignment, but do not
+            // add a second time warning when the schedule actually supports it.
+        }
+
+        latestAlertDecisionSnapshot = {
+            line: String(currentLine || ""),
+            station: String(station?.stopName || station?.complexName || station?.name || input.value || "Unknown station"),
+            simulated_at: date instanceof Date && !Number.isNaN(date.getTime()) ? date.toISOString() : null,
+            final_decision: notices.length ? notices.map(n => n.replace(/<[^>]*>/g, "")).join(" · ") : "No service warning",
+            warning_flags: { scheduleKnown: Boolean(status.known), scheduled: Boolean(status.scheduled), offRoute: Boolean(offRoute), timeUnusual: Boolean(timeUnusual), stationRouteKnown: Boolean(status.stationRouteKnown), stationRouteNormal: Boolean(status.stationRouteNormal) },
+            decision_type: notices.length ? "warning_shown" : "no_warning"
+        };
+        if (notices.length) {
+            scheduleStatus.innerHTML = notices.join(" · ") +
+                '<button type="button" class="alert-report-link" onclick="openAlertDecisionReportForm()">Think this notice is wrong?</button>' +
+                '<div id="alertDecisionReportFormHost"></div>';
+            scheduleStatus.classList.add("unusual");
+        } else {
+            scheduleStatus.textContent = "";
+        }
+
+        if (usableLine) {
+            if (offRoute && status.scheduled) {
+                pendingSighting.scheduleStatus = "scheduled_exception";
+            } else if (offRoute) {
+                pendingSighting.scheduleStatus = "off_route";
+            } else if (timeUnusual) {
+                pendingSighting.scheduleStatus = "unusual";
+            } else {
+                pendingSighting.scheduleStatus = "normal_route";
+            }
+        }
+
+        lineButtons.forEach(button => {
+            const line = button.dataset.line || "";
+            const isScheduled = status.known && status.expected.includes(line);
+            button.dataset.scheduleStatus = !status.known ? "unknown" : (isScheduled ? "scheduled" : "unusual");
+            button.title = !status.known
+                ? `${line} — schedule unavailable`
+                : (isScheduled ? `${line} — scheduled at this station/time` : `${line} — unusual at this station/time`);
+        });
+    } catch {
+        const route = subwayStationRouteStatus(station, currentLine);
+        const offRoute = currentLine && currentLine !== "NIS" && currentLine !== "TEST"
+            && route.known && !route.normal;
+
+        // If the schedule service is unavailable, do not invent a time warning.
+        // We can still reliably report a station-route mismatch.
+        if (offRoute) {
+            latestAlertDecisionSnapshot = {
+                line: String(currentLine || ""), station: String(station?.stopName || station?.complexName || station?.name || input.value || "Unknown station"),
+                simulated_at: date instanceof Date && !Number.isNaN(date.getTime()) ? date.toISOString() : null,
+                final_decision: `${currentLine} is off its normal route at this station`,
+                warning_flags: { scheduleKnown: false, scheduled: false, offRoute: true, timeUnusual: false, stationRouteKnown: Boolean(route.known), stationRouteNormal: Boolean(route.normal) },
+                decision_type: "warning_shown"
+            };
+            scheduleStatus.innerHTML = `<span class="notice-route-bullet">${lineDisplayHTML(currentLine, false) || escapeHTML(currentLine)}</span> is off its normal route at this station<button type="button" class="alert-report-link" onclick="openAlertDecisionReportForm()">Think this notice is wrong?</button><div id="alertDecisionReportFormHost"></div>`;
+            scheduleStatus.classList.add("unusual");
+            pendingSighting.scheduleStatus = "off_route";
+        } else if (currentLine && currentLine !== "NIS" && currentLine !== "TEST") {
+            pendingSighting.scheduleStatus = "normal_route";
+        }
+    }
+}
+
 function enhanceStationInput(input) {
     if (!input || input.dataset.stationPickerEnhanced === "1") return;
     input.dataset.stationPickerEnhanced = "1";
@@ -3098,6 +4072,11 @@ function enhanceStationInput(input) {
     note.className = "station-picker-loading";
     note.textContent = "Type a station name, complex name, or nickname.";
     wrap.appendChild(note);
+
+    const scheduleStatus = document.createElement("div");
+    scheduleStatus.className = "station-schedule-status";
+    scheduleStatus.setAttribute("aria-live", "polite");
+    wrap.appendChild(scheduleStatus);
 
     let selectedStation = null;
     let activeIndex = -1;
@@ -3129,8 +4108,12 @@ function enhanceStationInput(input) {
         const corridorText = selectedCorridors.length ? selectedCorridors.map(name => `via ${name}`).join(" · ") : "NYC Subway";
         const boroughText = stationBoroughName(station.borough);
         note.textContent = `${corridorText}${boroughText ? ` · ${boroughText}` : ""}${complexText}`;
+        scheduleStatus.textContent = "";
+        scheduleStatus.classList.remove("unusual");
         close();
         input.dispatchEvent(new Event("change", { bubbles: true }));
+        updateSubwayStationScheduleState(station);
+
     }
 
     function render(matches) {
@@ -3270,6 +4253,19 @@ async function loadYearInReview() {
     status.textContent = "Loading year in review...";
     grid.innerHTML = "";
     monthly.innerHTML = "";
+
+    if (fleetIdentifierTestMode) {
+        yearReviewSightings = getActiveTestSightings(activeFleetSystem);
+        yearReviewConsistBySighting = new Map();
+        yearReviewSightings.forEach(row => yearReviewConsistBySighting.set(String(row.id),(row.consist_cars||[]).map(String)));
+        const years=[...new Set(yearReviewSightings.map(r=>{const d=new Date(r.saved_at);return Number.isNaN(d.getTime())?null:d.getFullYear();}).filter(Boolean))].sort((a,b)=>b-a);
+        const previous=Number(select.value);
+        select.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join("");
+        if(years.length) select.value=years.includes(previous)?String(previous):String(years[0]);
+        status.textContent=years.length?`${yearReviewSightings.length} test sighting${yearReviewSightings.length===1?"":"s"}.`:"No test sightings yet.";
+        renderYearInReview();
+        return;
+    }
 
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
@@ -3415,6 +4411,18 @@ async function loadPersonalRecords() {
 
     status.textContent = "Loading personal records...";
     grid.innerHTML = "";
+
+    if (fleetIdentifierTestMode) {
+        const sightings=getActiveTestSightings(activeFleetSystem);
+        const cars=sightings.flatMap(r=>Array.isArray(r.consist_cars)&&r.consist_cars.length?r.consist_cars:[String(r.car_number)]);
+        const byCar=new Map(); sightings.forEach(r=>{const c=String(r.car_number);byCar.set(c,(byCar.get(c)||0)+1);});
+        const byFleet=new Map(); sightings.forEach(r=>{const f=String(r.fleet||"TEST");byFleet.set(f,(byFleet.get(f)||0)+1);});
+        const top=(m)=>[...m.entries()].sort((a,b)=>b[1]-a[1])[0];
+        const topCar=top(byCar),topFleet=top(byFleet);
+        grid.innerHTML=[personalRecordCard("Test sightings",String(sightings.length),"Stored locally in Test Mode"),personalRecordCard("Cars spotted",String(cars.length),`${new Set(cars).size} unique`),personalRecordCard("Most-seen car",topCar?String(topCar[0]):"—",topCar?`${topCar[1]} sighting${topCar[1]===1?"":"s"}`:""),personalRecordCard("Most-seen fleet",topFleet?String(topFleet[0]):"—",topFleet?String(topFleet[1]):"")].join("");
+        status.textContent=`${sightings.length} test sighting${sightings.length===1?"":"s"} analyzed.`;
+        return;
+    }
 
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
@@ -3584,6 +4592,12 @@ async function loadTrainsetHistory() {
     list.innerHTML = "";
     pairings.innerHTML = "";
 
+    if (fleetIdentifierTestMode) {
+        trainsetHistoryRows = getActiveTestSightings("subway").map(row => ({...row, consistCars:(row.consist_cars||[]).map((car,i)=>({car_number:String(car),fleet:"TEST",position:i+1}))})).filter(row => row.consistCars.length > 1);
+        renderTrainsetHistory();
+        return;
+    }
+
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
         status.textContent = "Log in to view your trainset history.";
@@ -3736,6 +4750,16 @@ async function loadLineStats() {
     status.textContent = activeFleetSystem === "bus" ? "Loading route stats..." : "Loading line stats...";
     grid.innerHTML = "";
 
+    if (fleetIdentifierTestMode) {
+        const rows=getActiveTestSightings(activeFleetSystem).filter(r=>String(r.line||"").trim());
+        if(!rows.length){status.textContent=activeFleetSystem==="bus"?"No test route sightings yet.":"No test line sightings yet.";return;}
+        const byLine=new Map(); rows.forEach(r=>{const l=String(r.line);if(!byLine.has(l))byLine.set(l,[]);byLine.get(l).push(r);});
+        const stats=[...byLine.entries()].map(([line,lineRows])=>({line,count:lineRows.length,uniqueCars:new Set(lineRows.map(r=>String(r.car_number))).size,fleets:new Set(lineRows.map(r=>String(r.fleet||"TEST"))).size,mostSeenFleet:"TEST",latest:lineRows[0]}));
+        status.textContent=`${rows.length} total test ${activeFleetSystem==="bus"?"bus sighting":"line sighting"}${rows.length===1?"":"s"} across ${stats.length} ${activeFleetSystem==="bus"?"route":"line"}${stats.length===1?"":"s"}.`;
+        grid.innerHTML=stats.map(item=>`<div class="line-stat-card"><div class="line-stat-card-head"><div class="line-stat-card-title"><span>${escapeHTML(item.line)}</span></div><div class="line-stat-count">${item.count} sighting${item.count===1?"":"s"}</div></div><div class="line-stat-details"><div><span class="line-stat-detail-label">${activeFleetSystem==="bus"?"Unique buses":"Unique cars"}</span><strong>${item.uniqueCars}</strong></div><div><span class="line-stat-detail-label">Fleets seen</span><strong>${item.fleets}</strong></div><div><span class="line-stat-detail-label">Most-seen fleet</span><strong>TEST</strong></div></div></div>`).join("");
+        return;
+    }
+
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
         status.textContent = activeFleetSystem === "bus" ? "Log in to view your route stats." : "Log in to view your line stats.";
@@ -3824,6 +4848,14 @@ async function loadDepotStats() {
     if (!status || !grid) return;
     status.textContent = "Loading depot stats...";
     grid.innerHTML = "";
+
+    if (fleetIdentifierTestMode) {
+        const rows=getActiveTestSightings("bus");
+        if(!rows.length){status.textContent="No test bus sightings yet.";return;}
+        grid.innerHTML=`<div class="line-stat-card"><div class="line-stat-card-head"><div class="line-stat-card-title"><span>TEST</span></div><div class="line-stat-count">${rows.length} sighting${rows.length===1?"":"s"}</div></div><div class="line-stat-details"><div><span class="line-stat-detail-label">Test depot</span><strong>TEST</strong></div><div><span class="line-stat-detail-label">Unique buses</span><strong>${new Set(rows.map(r=>String(r.car_number))).size}</strong></div></div></div>`;
+        status.textContent=`${rows.length} test bus sighting${rows.length===1?"":"s"}.`;
+        return;
+    }
 
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
@@ -3915,6 +4947,15 @@ async function loadFleetBreakdown() {
     status.textContent="Loading fleet breakdown...";
     chart.innerHTML="";
 
+    if (fleetIdentifierTestMode) {
+        const rows=getActiveTestSightings(activeFleetSystem);
+        if(!rows.length){status.textContent="No test sightings yet.";return;}
+        const count=rows.length;
+        chart.innerHTML=`<div class="fleet-breakdown-row"><div class="fleet-breakdown-heading"><strong>TEST</strong><span>${count} · 100.0%</span></div><div class="fleet-breakdown-bar"><div class="fleet-breakdown-fill" style="width:100%"></div></div></div>`;
+        status.textContent=`${count} total test sighting${count===1?"":"s"} across 1 fleet.`;
+        return;
+    }
+
     const {data:{user}}=await supabaseClient.auth.getUser();
     if(!user){status.textContent="Log in to view your fleet breakdown.";return;}
 
@@ -3977,6 +5018,12 @@ async function loadSightingCalendar() {
 
     status.textContent = "Loading calendar...";
     if (details) details.innerHTML = "";
+
+    if (fleetIdentifierTestMode) {
+        sightingCalendarRows = getActiveTestSightings(activeFleetSystem);
+        renderSightingCalendar();
+        return;
+    }
 
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
@@ -4166,6 +5213,14 @@ async function loadFleetCollection() {
 
     status.textContent = "Loading fleet collection...";
     list.innerHTML = "";
+
+    if (fleetIdentifierTestMode) {
+        const rows=getActiveTestSightings(activeFleetSystem);
+        const unique=[...new Set(rows.flatMap(r=>Array.isArray(r.consist_cars)&&r.consist_cars.length?r.consist_cars:[String(r.car_number)]))];
+        status.textContent=`${unique.length} unique test ${activeFleetSystem==="bus"?"bus":"car"}${unique.length===1?"":"s"}.`;
+        list.innerHTML=`<div class="report-item"><div class="report-item-heading"><div class="report-item-car">TEST</div><div>${unique.length} unique</div></div><div class="report-item-value">${escapeHTML(unique.join(", ") || "No test vehicles yet.")}</div></div>`;
+        return;
+    }
 
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
@@ -4527,6 +5582,17 @@ async function loadAchievements(){
     if(heading) heading.textContent=`${activeSystemToolLabel()} Milestones & Achievements`;
     status.textContent="Loading achievements...";
     list.innerHTML="";
+    if (fleetIdentifierTestMode) {
+        const system=activeFleetSystem;
+        const sightings=getActiveTestSightings(system);
+        const consistCars=sightings.flatMap(r=>Array.isArray(r.consist_cars)?r.consist_cars:[]);
+        const stats={total:sightings.length,unique:new Set([...sightings.map(r=>String(r.car_number||"")),...consistCars]).size,longestStreak:achievementLongestStreak(sightings)};
+        const defs=achievementDefinitionsForSystem(system);
+        const earned=defs.filter(def=>achievementValue(def,stats)>=def.target);
+        status.textContent=`${earned.length} ${activeSystemToolLabel()} test achievement${earned.length===1?"":"s"} earned.`;
+        list.innerHTML=earned.length?earned.map(def=>`<div class="report-item"><div class="report-item-heading"><div class="report-item-car">${escapeHTML(def.title)}</div></div><div class="report-item-value">${escapeHTML(def.description)}</div></div>`).join(""):`<div class="account-small-note">No test achievements earned yet.</div>`;
+        return;
+    }
     const {data:{user}}=await supabaseClient.auth.getUser();
     if(!user){status.textContent="Log in to view synced achievements.";return;}
 
@@ -4577,6 +5643,15 @@ async function toggleSearchHistoryPanel() {
 }
 
 async function recordIdentifierSearch({ system, searchValue, found, resultName = null, resultDetails = {} }) {
+    if (fleetIdentifierTestMode) {
+        try {
+            const key="fleetIdentifierTestSearchHistory:v1";
+            const rows=JSON.parse(localStorage.getItem(key)||"[]");
+            rows.unshift({id:`test-search-${Date.now()}`,system:String(system||activeFleetSystem),search_value:String(searchValue),found:Boolean(found),result_name:resultName||null,result_details:resultDetails||{},created_at:new Date().toISOString()});
+            localStorage.setItem(key,JSON.stringify(rows.slice(0,250)));
+        } catch {}
+        return;
+    }
     try {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return;
@@ -4596,6 +5671,15 @@ async function recordIdentifierSearch({ system, searchValue, found, resultName =
 }
 
 async function recordSearchHistory(carNumber, fleet) {
+    if (fleetIdentifierTestMode) {
+        try {
+            const key="fleetIdentifierTestSearchHistory:v1";
+            const rows=JSON.parse(localStorage.getItem(key)||"[]");
+            rows.unshift({id:`test-search-${Date.now()}`,system:activeFleetSystem,search_value:String(carNumber),found:true,result_name:fleet||null,result_details:{},created_at:new Date().toISOString()});
+            localStorage.setItem(key,JSON.stringify(rows.slice(0,250)));
+        } catch {}
+        return null;
+    }
     if (fiIsOfflineNow()) return null; // B2: skip cloud-only recordSearchHistory while offline
 
     try {
@@ -4615,6 +5699,13 @@ async function recordSearchHistory(carNumber, fleet) {
 let searchHistoryRows = [];
 
 async function loadSearchHistory() {
+    if (fleetIdentifierTestMode) {
+        const status=document.getElementById("searchHistoryStatus");
+        if(status) status.textContent="Test search history is stored locally in Test Mode.";
+        try { searchHistoryRows=JSON.parse(localStorage.getItem("fleetIdentifierTestSearchHistory:v1")||"[]"); } catch { searchHistoryRows=[]; }
+        renderSearchHistory();
+        return;
+    }
     if (fiIsOfflineNow()) return null; // B2: skip cloud-only loadSearchHistory while offline
 
     const status = document.getElementById("searchHistoryStatus");
@@ -5222,7 +6313,7 @@ function lineDisplayHTML(line, interactive = false) {
 
     const viaMatch = rawLine.match(/^(.+?)\s+via\s+(.+)$/i);
     if (viaMatch) {
-        return `${lineDisplayHTML(viaMatch[1].trim())} <span class="via-display-label">via</span> ${lineDisplayHTML(viaMatch[2].trim())}`;
+        return `${lineDisplayHTML(viaMatch[1].trim(), interactive)} <span class="via-display-label">via</span> ${lineDisplayHTML(viaMatch[2].trim(), interactive)}`;
     }
 
     const safeLine = escapeHTML(rawLine);
@@ -5237,7 +6328,8 @@ function lineDisplayHTML(line, interactive = false) {
 
     const bullet = `<span class="route-bullet ${bulletClass}" title="${escapeHTML(routeTitle(rawLine))}" aria-hidden="true">${label}</span>`;
     if (!interactive || rawLine === "SIR") return bullet;
-    return `<button type="button" class="route-bullet-button" data-line-fleets="${escapeHTML(rawLine)}" title="View fleets currently serving ${escapeHTML(routeTitle(rawLine))}" aria-label="View fleets currently serving ${escapeHTML(routeTitle(rawLine))}">${bullet}</button>`;
+    const clickArg = JSON.stringify(rawLine).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    return `<button type="button" class="route-bullet-button" title="View fleets currently serving ${escapeHTML(routeTitle(rawLine))}" aria-label="View fleets currently serving ${escapeHTML(routeTitle(rawLine))}" onclick="openSubwayLineFleets(${clickArg})">${bullet}</button>`;
 }
 
 function fleetLinesDisplayHTML(linesText, interactive = false) {
@@ -5349,13 +6441,9 @@ function outsideAssignmentHTML(system,row){
 let subwayLineFleetsReturnHTML = "";
 
 function bindInteractiveSubwayBullets(root = document) {
-    if (!root?.addEventListener || root.dataset?.lineFleetsDelegated === '1') return;
-    if (root.dataset) root.dataset.lineFleetsDelegated = '1';
-    root.addEventListener('click', event => {
-        const button = event.target.closest?.('.route-bullet-button[data-line-fleets]');
-        if (!button || !root.contains(button)) return;
-        openSubwayLineFleets(button.dataset.lineFleets || '');
-    });
+    // Result bullets use their own direct onclick handler. This function is
+    // retained only for compatibility with older result restoration paths.
+    return root;
 }
 
 function openSubwayLineFleets(line) {
@@ -5377,9 +6465,8 @@ function openSubwayLineFleets(line) {
                 </button>`;
             }).join('')}</div>` : `<div class="account-small-note">No current passenger fleet assignment is stored for this line yet.</div>`}
             <div class="line-fleets-note">Current/normal passenger-service assignments. Temporary reroutes, loans, testing, and special moves are not included.</div>
-            <button type="button" id="lineFleetsBack" style="margin-top:14px;">Back to result</button>
+            <button type="button" id="lineFleetsBack" style="margin-top:14px;" onclick="restoreSubwayResultFromLineFleets()">Back to result</button>
         </div>`;
-    resultBox.querySelector('#lineFleetsBack')?.addEventListener('click', restoreSubwayResultFromLineFleets);
     resultBox.querySelectorAll('[data-line-fleet-name]').forEach(btn => btn.addEventListener('click', () => {
         const fleet=btn.dataset.lineFleetName;
         if (!fleetData[fleet]) return;
@@ -5400,6 +6487,7 @@ function restoreSubwayResultFromLineFleets() {
 
 
 let pendingSighting = null;
+var identifierSearchRequestId = 0;
 let pendingBusSighting = null;
 
 function getSavedSightings() {
@@ -5456,6 +6544,12 @@ function chooseLine(line) {
     pendingSighting.baseLine = line;
     pendingSighting.viaMode = false;
     updateLineChoiceUI();
+
+    const stationInput = document.getElementById("sightingStation");
+    if (stationInput?.dataset.stationId) {
+        const station = standardizedStations.find(s => String(s.id) === String(stationInput.dataset.stationId));
+        if (station) updateSubwayStationScheduleState(station);
+    }
 }
 
 function chooseNIS() {
@@ -6104,28 +7198,28 @@ function consistBuilderHTML() {
     `;
 }
 
-function pastSightingFieldsHTML(vehicleLabel = "train") {
+function pastSightingFieldsHTML(vehicleLabel = "train", idPrefix = "pastSighting") {
     return `
         <div class="past-sighting-box" style="margin-top:12px;padding:12px;border:1px solid currentColor;border-radius:10px;">
             <label style="display:flex;align-items:center;justify-content:flex-start;gap:10px;margin:0;cursor:pointer;width:max-content;max-width:100%;">
-                <input id="pastSightingToggle" type="checkbox" onchange="togglePastSightingFields()" style="flex:0 0 auto;width:18px;height:18px;margin:0;padding:0;">
+                <input id="${idPrefix}Toggle" type="checkbox" onchange="togglePastSightingFields('${idPrefix}')" style="flex:0 0 auto;width:18px;height:18px;margin:0;padding:0;">
                 <strong>Log a past sighting</strong>
             </label>
             <div class="account-small-note" style="margin-top:7px;line-height:1.4;">
                 Use the date and time you actually saw the ${vehicleLabel}, such as the timestamp from an older photo.
             </div>
-            <div id="pastSightingFields" class="hidden" style="margin-top:10px;">
-                <label for="pastSightingDateTime">Date &amp; time spotted</label>
-                <input id="pastSightingDateTime" type="datetime-local" style="width:100%;padding:12px;font-size:16px;border-radius:9px;">
+            <div id="${idPrefix}Fields" class="hidden" style="margin-top:10px;">
+                <label for="${idPrefix}DateTime">Date &amp; time spotted</label>
+                <input id="${idPrefix}DateTime" type="datetime-local" style="width:100%;padding:12px;font-size:16px;border-radius:9px;">
             </div>
         </div>`;
 }
 
-function togglePastSightingFields() {
-    const checked = !!document.getElementById("pastSightingToggle")?.checked;
-    document.getElementById("pastSightingFields")?.classList.toggle("hidden", !checked);
+function togglePastSightingFields(idPrefix = "pastSighting") {
+    const checked = !!document.getElementById(`${idPrefix}Toggle`)?.checked;
+    document.getElementById(`${idPrefix}Fields`)?.classList.toggle("hidden", !checked);
     if (checked) {
-        const input = document.getElementById("pastSightingDateTime");
+        const input = document.getElementById(`${idPrefix}DateTime`);
         if (input && !input.value) {
             const now = new Date();
             const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
@@ -6133,13 +7227,19 @@ function togglePastSightingFields() {
             input.max = local;
         }
     }
+
+    const stationInput = document.getElementById("sightingStation");
+    if (stationInput?.dataset.stationId) {
+        const station = standardizedStations.find(s => String(s.id) === String(stationInput.dataset.stationId));
+        if (station) updateSubwayStationScheduleState(station);
+    }
 }
 
-function getRequestedSightingTimestamp() {
-    const toggle = document.getElementById("pastSightingToggle");
+function getRequestedSightingTimestamp(idPrefix = "pastSighting") {
+    const toggle = document.getElementById(`${idPrefix}Toggle`);
     if (!toggle?.checked) return { ok: true, value: null };
 
-    const raw = document.getElementById("pastSightingDateTime")?.value || "";
+    const raw = document.getElementById(`${idPrefix}DateTime`)?.value || "";
     if (!raw) return { ok: false, message: "Choose the date and time for this past sighting." };
 
     const date = new Date(raw);
@@ -6265,6 +7365,18 @@ function resetIdentifierAfterSave(system) {
     }, SIGHTING_SUCCESS_DELAY_MS);
 }
 
+function sightingSaveSuccessHTML(system, count, line, location) {
+    const numericCount = Math.max(1, Number(count) || 1);
+    const unitLabel = system === "bus" ? (numericCount === 1 ? "bus" : "buses") : (numericCount === 1 ? "car" : "cars");
+    const systemLabel = system === "lirr" ? "LIRR" : system === "metro-north" ? "Metro-North" : "";
+    const lineHTML = system === "subway"
+        ? (lineDisplayHTML(line, false) || escapeHTML(line || "TEST"))
+        : escapeHTML(line || "TEST");
+    const systemPrefix = systemLabel ? `${systemLabel} ` : "";
+    const locationText = location ? ` at ${escapeHTML(location)}` : "";
+    return `${numericCount} ${unitLabel} saved on ${systemPrefix}${lineHTML}${locationText}.`;
+}
+
 async function saveSighting() {
     if (!pendingSighting) return;
 
@@ -6275,14 +7387,7 @@ async function saveSighting() {
         return;
     }
 
-    const { data: { session } } = await supabaseClient.auth.getSession();
-
-    if (!session?.user) {
-        if (status) status.textContent = "You need to be signed in to save sightings to the cloud.";
-        return;
-    }
-
-    const requestedTimestamp = getRequestedSightingTimestamp();
+    const requestedTimestamp = getRequestedSightingTimestamp("subwayPastSighting");
     if (!requestedTimestamp.ok) {
         if (status) status.textContent = requestedTimestamp.message;
         return;
@@ -6296,6 +7401,26 @@ async function saveSighting() {
     const consistCars = Array.isArray(pendingSighting.consistCars) && pendingSighting.consistCars.length
         ? [...new Set(pendingSighting.consistCars.map(String))]
         : [String(pendingSighting.carNumber)];
+
+    if (fleetIdentifierTestMode) {
+        const requestedTimestamp = getRequestedSightingTimestamp("subwayPastSighting");
+        if (!requestedTimestamp.ok) { if (status) status.textContent = requestedTimestamp.message; return; }
+        const notes = document.getElementById("sightingNotes")?.value.trim() || "";
+        const station = document.getElementById("sightingStation")?.value.trim() || "";
+        saveTestSighting({
+            car_number: pendingSighting.carNumber, fleet: "TEST", line: pendingSighting.line || "TEST",
+            station: station || "TEST Station", notes: notes || null, saved_at: offlineFieldTimestamp(requestedTimestamp.value)
+        }, consistCars);
+        if (status) status.innerHTML = sightingSaveSuccessHTML("subway", consistCars.length, pendingSighting.line || "TEST", station || "TEST Station");
+        resetIdentifierAfterSave("subway");
+        return;
+    }
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session?.user) {
+        if (status) status.textContent = "You need to be signed in to save sightings to the cloud.";
+        return;
+    }
 
     const sightingPayload = {
         user_id: session.user.id,
@@ -6355,10 +7480,7 @@ async function saveSighting() {
     }
 
     if (status) {
-        const locationText = station ? ` at ${station}` : "";
-        status.textContent = consistCars.length === 1
-            ? `Saved: car ${pendingSighting.carNumber} on the ${pendingSighting.line} line${locationText}.`
-            : `Saved: 1 sighting · ${consistCars.length} cars spotted on the ${pendingSighting.line} line${locationText}.`;
+        status.innerHTML = sightingSaveSuccessHTML("subway", consistCars.length, pendingSighting.line, station);
     }
 
     refreshAchievementEligibility(session.user);
@@ -6506,6 +7628,73 @@ function getIncorrectReportCurrentValue(field) {
     if (field === "fleet") return pendingSighting.fleet;
     if (field === "other") return "";
     return data[field] ?? "";
+}
+
+function openAlertDecisionReportForm() {
+    const host = document.getElementById("alertDecisionReportFormHost");
+    if (!host || !latestAlertDecisionSnapshot) return;
+    if (host.querySelector("form")) { host.querySelector("form").classList.toggle("hidden"); return; }
+    host.innerHTML = `<form class="alert-report-form" onsubmit="submitAlertDecisionReport(event)">
+      <div><strong>Report this alert decision</strong></div>
+      <p class="alert-report-small">This decision will be sent to our team to investigate the cause of the alert and determine whether it was correct. Submitting a report does not automatically mean the alert was incorrect.</p>
+      <label for="alertDecisionNotes">Optional notes</label><textarea id="alertDecisionNotes" maxlength="2000" placeholder="What seems incorrect about this warning?"></textarea>
+      <div class="alert-report-actions"><button type="submit">Submit report</button><button type="button" onclick="document.getElementById('alertDecisionReportFormHost').innerHTML=''">Cancel</button></div>
+      <div id="alertDecisionSubmitStatus" class="status-message" aria-live="polite"></div></form>`;
+}
+
+async function submitAlertDecisionReport(event) {
+    event?.preventDefault();
+    const status = document.getElementById("alertDecisionSubmitStatus");
+    if (!latestAlertDecisionSnapshot) { if(status) status.textContent = "Alert details are no longer available. Recheck the station and try again."; return; }
+    const snapshot = JSON.parse(JSON.stringify(latestAlertDecisionSnapshot));
+    const notes = document.getElementById("alertDecisionNotes")?.value.trim() || null;
+    if (fleetIdentifierTestMode) {
+        const rows = readTestAlertReports();
+        rows.push({
+            id: `test-alert-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+            line: snapshot.line, station: snapshot.station, simulated_at: snapshot.simulated_at,
+            final_decision: snapshot.final_decision, warning_flags: snapshot.warning_flags,
+            decision_type: snapshot.decision_type, notes, platform: getFleetIdentifierPlatform(),
+            created_at: getFleetIdentifierNow().toISOString(), status: "test_only"
+        });
+        if (!writeTestAlertReports(rows)) {
+            if (status) status.textContent = "Could not save this test report in this browser. Check available local storage and try again.";
+            return;
+        }
+        if (status) status.textContent = "Test report saved locally only. It was not sent to Supabase.";
+        const form = hostAlertForm(); if(form) form.querySelectorAll("button").forEach(b=>b.disabled=true);
+        return;
+    }
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError || !session?.user) { if(status) status.textContent = "Sign in to submit an alert decision report."; return; }
+    if (status) status.textContent = "Submitting report...";
+    const { error } = await supabaseClient.from("alert_decision_reports").insert({
+      user_id: session.user.id, line: snapshot.line, station: snapshot.station, simulated_at: snapshot.simulated_at,
+      final_decision: snapshot.final_decision, warning_flags: snapshot.warning_flags, decision_type: snapshot.decision_type,
+      notes, platform: getFleetIdentifierPlatform()
+    });
+    if (error) { console.error("Alert decision report submission failed:", error); if(status) status.textContent = "Could not submit report. Make sure the alert_decision_reports table and policies are set up, then try again."; return; }
+    if (status) status.textContent = "Report submitted. You can track it in My Reports.";
+    const form = hostAlertForm(); if(form) form.querySelectorAll("button").forEach(b=>b.disabled=true);
+}
+function hostAlertForm(){ return document.getElementById("alertDecisionReportFormHost"); }
+
+async function editAlertDecisionReportNotes(id, oldNotes) {
+    const notes = prompt("Edit your notes for this alert decision report:", oldNotes || "");
+    if (notes === null) return;
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError || !session?.user) { alert("Sign in to edit your report."); return; }
+    const { error } = await supabaseClient.from("alert_decision_reports").update({ notes: notes.trim() || null }).eq("id", id).eq("user_id", session.user.id);
+    if (error) { console.error("Alert report note update failed:", error); alert("Could not update your notes."); return; }
+    await loadMyReports();
+}
+async function deleteAlertDecisionReport(id) {
+    if (!confirm("Delete this alert decision report? This cannot be undone.")) return;
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError || !session?.user) { alert("Sign in to delete your report."); return; }
+    const { error } = await supabaseClient.from("alert_decision_reports").delete().eq("id", id).eq("user_id", session.user.id);
+    if (error) { console.error("Alert report deletion failed:", error); alert("Could not delete this report."); return; }
+    await loadMyReports();
 }
 
 function updateIncorrectCurrentValue() {
@@ -6837,7 +8026,206 @@ async function getRepeatSightingNotice(carNumber) {
 }
 
 
+function recentSightingSystemFromFleet(fleet) {
+    const value = String(fleet || "").trim();
+    if (!value) return "";
+    if (fleetData && fleetData[value]) return "subway";
+    if ((busFleetData || []).some(row => String(row.model || "").trim() === value)) return "bus";
+    if ((RAILROAD_FLEETS?.lirr || []).some(row => String(row.name || "").trim() === value)) return "lirr";
+    if ((RAILROAD_FLEETS?.["metro-north"] || []).some(row => String(row.name || "").trim() === value)) return "metro-north";
+    return "";
+}
+
+function getRailroadVerifiedSetNumbers(system, fleet, vehicleNumber) {
+    const number = Number(vehicleNumber);
+    if (!Number.isInteger(number)) return [];
+    const fleetDataRow = (RAILROAD_FLEETS?.[system] || []).find(row => String(row.name || "") === String(fleet || ""));
+    if (!fleetDataRow || !String(fleetDataRow.formation || "").toLowerCase().includes("married pair")) return [];
+    if (fleetDataRow.singles?.some(([a,b,step]) => number >= a && number <= b && (number-a)%step===0)) return [];
+    if (!railroadNumberInFleet(number, fleetDataRow)) return [];
+    const mate = number % 2 === 0 ? number - 1 : number + 1;
+    return railroadNumberInFleet(mate, fleetDataRow) ? [String(number), String(mate)] : [String(number)];
+}
+
+function getRecentVehicleMatchNumbers(system, vehicleNumber, fleet) {
+    const value = String(vehicleNumber);
+    const numbers = new Set([value]);
+    if (system === "subway") {
+        const linked = getVerifiedLinkedUnit(fleet, value);
+        if (linked?.verified) linked.cars.forEach(car => numbers.add(String(car)));
+    } else if (system === "lirr" || system === "metro-north") {
+        getRailroadVerifiedSetNumbers(system, fleet, value).forEach(car => numbers.add(String(car)));
+    }
+    return numbers;
+}
+
+/*
+ * Verified connecting-set relationships.
+ *
+ * A connecting relationship is NOT inferred merely because two vehicles are
+ * in the same fleet or because they could theoretically be coupled. It must
+ * be established by verified consist data. Subway sightings already provide
+ * that evidence through sighting_cars: when a recent sighting contains cars
+ * from two different verified linked units of the same fleet, those two units
+ * are treated as a verified connecting pair for the purpose of the 15-minute
+ * alert. Other systems can be added here when their verified formation data
+ * is available.
+ */
+const VERIFIED_CONNECTING_SET_RELATIONSHIPS = {
+    subway: [],
+    bus: [],
+    lirr: [],
+    "metro-north": []
+};
+
+function recentSightingHasVerifiedConnectingSet(system, fleet, vehicleNumber, loggedCars) {
+    const value = String(vehicleNumber || "");
+    const cars = new Set((loggedCars || []).map(car => String(car)));
+    if (!value || !fleet || !cars.size) return false;
+
+    if (system === "subway") {
+        const currentUnit = getVerifiedLinkedUnit(fleet, value);
+        if (!currentUnit?.verified) return false;
+
+        // A car from the searched unit is already handled as an exact/same-set
+        // match. A different verified linked unit in the same recorded consist
+        // is the connecting set.
+        for (const loggedCar of cars) {
+            if (currentUnit.cars.includes(loggedCar)) continue;
+            const otherUnit = getVerifiedLinkedUnit(fleet, loggedCar);
+            if (!otherUnit?.verified) continue;
+            const overlapsCurrent = otherUnit.cars.some(car => currentUnit.cars.includes(car));
+            if (!overlapsCurrent) return true;
+        }
+        return false;
+    }
+
+    // Reserved for explicit verified relationships for Bus, LIRR and
+    // Metro-North once their formation/connection data is defined.
+    const relationships = VERIFIED_CONNECTING_SET_RELATIONSHIPS[system] || [];
+    return relationships.some(pair => {
+        if (String(pair.fleet || "") !== String(fleet)) return false;
+        const sets = Array.isArray(pair.sets) ? pair.sets : [];
+        return sets.some(set => Array.isArray(set) && set.map(String).includes(value) &&
+            set.some(car => cars.has(String(car))));
+    });
+}
+
+function formatRecentSightingAge(savedAt, now = getFleetIdentifierNow()) {
+    const then = new Date(savedAt || 0);
+    const ageMs = now.getTime() - then.getTime();
+    if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > 15 * 60 * 1000) return "";
+    const minutes = Math.floor(ageMs / 60000);
+    if (minutes <= 0) return "less than a minute ago";
+    return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+}
+
+function recentSightingAlertHTML(matchType, ageText) {
+    if (!ageText) return "";
+    const message = matchType === "exact"
+        ? `The same car number was logged by someone else ${ageText}.`
+        : matchType === "set"
+            ? `A car number in the same set was logged by someone else ${ageText}.`
+            : `A car number in the verified connecting set was logged by someone else ${ageText}.`;
+    return `<div class="recent-sighting-alert" role="status"><strong>Recent sighting</strong>${escapeHTML(message)}</div>`;
+}
+
+async function getRecentSightingAlert(vehicleNumber, fleet, system) {
+    const value = String(vehicleNumber || "").trim();
+    if (!value || !fleet || !system) return "";
+
+    // Test Mode is isolated. Test Time affects only local test sightings.
+    if (fleetIdentifierTestMode) {
+        const now = getFleetIdentifierNow();
+        const candidateNumbers = getRecentVehicleMatchNumbers(system, value, fleet);
+        const rows = getActiveTestSightings(system).filter(row => {
+            const age = now.getTime() - new Date(row.saved_at || 0).getTime();
+            return age >= 0 && age <= 15 * 60 * 1000;
+        });
+        let best = null;
+        for (const row of rows) {
+            const loggedCars = new Set([String(row.car_number || "")]);
+            if (Array.isArray(row.consist_cars)) row.consist_cars.forEach(car => loggedCars.add(String(car)));
+            const exact = loggedCars.has(value);
+            const sameSet = !exact && [...candidateNumbers].some(car => loggedCars.has(car));
+            const connecting = !exact && !sameSet && recentSightingHasVerifiedConnectingSet(system, fleet, value, loggedCars);
+            if (!exact && !sameSet && !connecting) continue;
+            const age = now.getTime() - new Date(row.saved_at || 0).getTime();
+            const type = exact ? "exact" : sameSet ? "set" : "connecting";
+            if (!best || age < best.age) best = { age, type };
+        }
+        return best ? recentSightingAlertHTML(best.type, formatRecentSightingAge(new Date(now.getTime() - best.age), now)) : "";
+    }
+
+    if (fiIsOfflineNow()) return "";
+    try {
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError || !session?.user) return "";
+
+        const now = new Date();
+        const cutoff = new Date(now.getTime() - 15 * 60 * 1000).toISOString();
+        const { data: rows, error } = await supabaseClient
+            .from("sightings")
+            .select("id,user_id,car_number,fleet,saved_at")
+            .gte("saved_at", cutoff)
+            .lte("saved_at", now.toISOString())
+            .order("saved_at", { ascending: false })
+            .limit(200);
+        if (error) {
+            console.error("Could not check recent sightings:", error);
+            return "";
+        }
+
+        const candidates = getRecentVehicleMatchNumbers(system, value, fleet);
+        const filtered = (rows || []).filter(row => recentSightingSystemFromFleet(row.fleet) === system);
+        let consistBySighting = new Map();
+
+        if (system === "subway" && filtered.length) {
+            const ids = filtered.map(row => row.id).filter(id => id != null);
+            const { data: consistRows, error: consistError } = await supabaseClient
+                .from("sighting_cars")
+                .select("sighting_id,car_number")
+                .in("sighting_id", ids);
+            if (!consistError) {
+                (consistRows || []).forEach(row => {
+                    const key = String(row.sighting_id);
+                    if (!consistBySighting.has(key)) consistBySighting.set(key, new Set());
+                    consistBySighting.get(key).add(String(row.car_number));
+                });
+            }
+        }
+
+        let best = null;
+        for (const row of filtered) {
+            const loggedCars = new Set([String(row.car_number || "")]);
+            const consist = consistBySighting.get(String(row.id));
+            if (consist) consist.forEach(car => loggedCars.add(String(car)));
+            const exact = loggedCars.has(value);
+            const sameSet = !exact && [...candidates].some(car => loggedCars.has(car));
+            const connecting = !exact && !sameSet && recentSightingHasVerifiedConnectingSet(system, fleet, value, loggedCars);
+            if (!exact && !sameSet && !connecting) continue;
+            const age = now.getTime() - new Date(row.saved_at || 0).getTime();
+            if (age < 0 || age > 15 * 60 * 1000) continue;
+            const type = exact ? "exact" : sameSet ? "set" : "connecting";
+            if (!best || age < best.age) best = { age, type };
+        }
+
+        return best ? recentSightingAlertHTML(best.type, formatRecentSightingAge(new Date(now.getTime() - best.age), now)) : "";
+    } catch (error) {
+        console.error("Could not build recent sighting alert:", error);
+        return "";
+    }
+}
+
 async function getVehicleSightingSummary(vehicleNumber, system) {
+    if (fleetIdentifierTestMode) {
+        const rows=getActiveTestSightings(system).filter(r=>String(r.car_number)===String(vehicleNumber));
+        if(!rows.length) return "";
+        const sorted=[...rows].sort((a,b)=>new Date(a.saved_at||0)-new Date(b.saved_at||0));
+        const first=sorted[0]?.saved_at?new Date(sorted[0].saved_at).toLocaleString():"—";
+        const last=sorted.at(-1)?.saved_at?new Date(sorted.at(-1).saved_at).toLocaleString():"—";
+        return `<div class="vehicle-sighting-summary" aria-label="Test sighting history for this vehicle"><div><div class="summary-label">First seen</div><div class="summary-value">${escapeHTML(first)}</div></div><div><div class="summary-label">Last seen</div><div class="summary-value">${escapeHTML(last)}</div></div><button type="button" class="vehicle-total-sightings-button" onclick="openVehicleTimeline('${escapeHTML(String(vehicleNumber))}','${escapeHTML(system)}')"><div class="summary-label">Test sightings</div><div class="summary-value">${rows.length}</div></button></div>`;
+    }
     try {
         const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
         if (sessionError || !session?.user) return "";
@@ -6912,6 +8300,12 @@ async function openVehicleTimeline(vehicleNumber, system) {
     overlay.addEventListener("click",e=>{if(e.target===overlay) close();});
     const body=overlay.querySelector("#vehicleTimelineBody");
     try {
+        if (fleetIdentifierTestMode) {
+            const rows=getActiveTestSightings(system).filter(r=>String(r.car_number)===String(vehicleNumber)).sort((a,b)=>new Date(b.saved_at||0)-new Date(a.saved_at||0));
+            if(!rows.length){body.innerHTML='<div class="muted">No test sightings for this vehicle yet.</div>';return;}
+            body.innerHTML=rows.map(row=>{const when=row.saved_at?new Date(row.saved_at).toLocaleString():"Date unavailable";const service=row.line?escapeHTML(String(row.line)):"No service recorded";const rawLocation=row.station?String(row.station):"";const location=rawLocation?escapeHTML(rawLocation):"No location recorded";const notes=row.notes?`<div class="vehicle-timeline-notes">${escapeHTML(String(row.notes))}</div>`:"";return `<article class="vehicle-timeline-entry"><strong>${escapeHTML(when)}</strong><div class="vehicle-timeline-meta">${service} · ${location}</div>${notes}</article>`;}).join("");
+            return;
+        }
         const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
         if(sessionError||!session?.user){body.innerHTML='<div class="muted">Sign in to view your vehicle timeline.</div>';return;}
         const userId=session.user.id,value=String(vehicleNumber),byId=new Map();
@@ -6965,6 +8359,12 @@ async function openLocationHistory(locationName, system = activeFleetSystem || "
     overlay.addEventListener("click",e=>{if(e.target===overlay) close();});
     const body=overlay.querySelector("#locationHistoryBody");
     try {
+        if (fleetIdentifierTestMode) {
+            const rows=getActiveTestSightings(system).filter(r=>String(r.station||"").trim()===location).sort((a,b)=>new Date(b.saved_at||0)-new Date(a.saved_at||0));
+            if(!rows.length){body.innerHTML='<div class="muted">No test sightings at this location yet.</div>';return;}
+            body.innerHTML=`<div class="location-history-count">${rows.length} test sighting${rows.length===1?"":"s"} at this location</div>`+rows.map(row=>`<article class="vehicle-timeline-entry"><strong>${escapeHTML(row.saved_at?new Date(row.saved_at).toLocaleString():"Date unavailable")}</strong><div class="vehicle-timeline-meta">${escapeHTML(row.fleet||"TEST")} · ${escapeHTML(row.car_number||"—")}<br>${escapeHTML(row.line||"TEST")}</div>${row.notes?`<div class="vehicle-timeline-notes">${escapeHTML(String(row.notes))}</div>`:""}</article>`).join("");
+            return;
+        }
         const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
         if(sessionError||!session?.user){body.innerHTML='<div class="muted">Sign in to view your location history.</div>';return;}
         const result=await supabaseClient.from("sightings")
@@ -7002,6 +8402,12 @@ document.addEventListener("click",event=>{
 });
 
 async function getPrimaryRepeatSightingNotice(vehicleNumber, vehicleLabel = "vehicle") {
+    if (fleetIdentifierTestMode) {
+        const rows=getActiveTestSightings(activeFleetSystem).filter(r=>String(r.car_number)===String(vehicleNumber));
+        if(!rows.length) return "";
+        const last=rows[0]?.saved_at?new Date(rows[0].saved_at).toLocaleString():"an earlier date";
+        return `<div class="repeat-sighting-notice"><strong>You’ve seen ${escapeHTML(vehicleLabel)} ${escapeHTML(String(vehicleNumber))} before in Test Mode.</strong>${rows.length} previous test sighting${rows.length===1?"":"s"} · Last seen ${escapeHTML(last)}</div>`;
+    }
     if (fiIsOfflineNow()) return ""; // B2.1: optional display content is blank offline
 
     try {
@@ -7016,6 +8422,368 @@ async function getPrimaryRepeatSightingNotice(vehicleNumber, vehicleLabel = "veh
 }
 
 let searchMode = "car";
+let fleetIdentifierTestMode = false;
+let fleetIdentifierTestTime = null;
+
+function isFleetIdentifierTestMode() { return fleetIdentifierTestMode; }
+function getFleetIdentifierNow() {
+    return fleetIdentifierTestMode && fleetIdentifierTestTime instanceof Date && !Number.isNaN(fleetIdentifierTestTime.getTime())
+        ? new Date(fleetIdentifierTestTime.getTime())
+        : new Date();
+}
+function testTimeInputValue(date) {
+    const d = date instanceof Date && !Number.isNaN(date.getTime()) ? date : getFleetIdentifierNow();
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0,16);
+}
+function updateTestTimePanel() {
+    const input = document.getElementById("testTimeInput");
+    const status = document.getElementById("testTimeStatus");
+    if (input) input.value = testTimeInputValue(fleetIdentifierTestTime || new Date());
+    if (status) {
+        status.textContent = fleetIdentifierTestTime
+            ? `Simulated time: ${fleetIdentifierTestTime.toLocaleString()}`
+            : "Using real device time.";
+    }
+}
+function applyTestTime() {
+    if (!fleetIdentifierTestMode) return;
+    const raw = document.getElementById("testTimeInput")?.value || "";
+    const date = raw ? new Date(raw) : null;
+    if (!date || Number.isNaN(date.getTime())) {
+        const status = document.getElementById("testTimeStatus");
+        if (status) status.textContent = "Enter a valid date and time.";
+        return;
+    }
+    fleetIdentifierTestTime = date;
+    updateTestTimePanel();
+    refreshCurrentSubwayScheduleForTestTime();
+}
+function resetTestTime() {
+    if (!fleetIdentifierTestMode) return;
+    fleetIdentifierTestTime = null;
+    updateTestTimePanel();
+    refreshCurrentSubwayScheduleForTestTime();
+}
+function refreshCurrentSubwayScheduleForTestTime() {
+    if (!fleetIdentifierTestMode || activeFleetSystem !== "subway") return;
+    const stationInput = document.getElementById("sightingStation");
+    if (!stationInput?.dataset.stationId) return;
+    const station = standardizedStations.find(s => String(s.id) === String(stationInput.dataset.stationId));
+    if (station) updateSubwayStationScheduleState(station);
+}
+const TEST_ALERT_REPORTS_STORAGE_KEY = "fleetIdentifierTestAlertDecisionReports:v1";
+function readTestAlertReports() {
+    try {
+        const rows = JSON.parse(localStorage.getItem(TEST_ALERT_REPORTS_STORAGE_KEY) || "[]");
+        return Array.isArray(rows) ? rows : [];
+    } catch (error) {
+        console.warn("Could not read test alert reports:", error);
+        return [];
+    }
+}
+function writeTestAlertReports(rows) {
+    try {
+        localStorage.setItem(TEST_ALERT_REPORTS_STORAGE_KEY, JSON.stringify(rows));
+        return true;
+    } catch (error) {
+        console.error("Could not save test alert reports:", error);
+        return false;
+    }
+}
+function toggleTestMyReportsPanel() {
+    if (!fleetIdentifierTestMode) return;
+    const panel = document.getElementById("testMyReportsPanel");
+    if (!panel) return;
+    const opening = panel.classList.contains("hidden");
+    closeSettingsContentPanels(opening ? "testMyReportsPanel" : "");
+    panel.classList.toggle("hidden", !opening);
+    if (opening) loadTestMyReports();
+    if (opening) {
+        const settingsPanel = document.getElementById("settingsPanel");
+        settingsPanel?.classList.add("tools-mode", "subtool-active");
+        settingsPanel?.classList.remove("hidden", "account-settings-mode");
+        updateFocusMode();
+        syncToolsWorkspaceNavigation();
+    }
+}
+function loadTestMyReports() {
+    const status = document.getElementById("testMyReportsStatus");
+    const list = document.getElementById("testMyReportsList");
+    if (!status || !list) return;
+    if (!fleetIdentifierTestMode) {
+        status.textContent = "Enable Test Mode to view test reports.";
+        list.innerHTML = "";
+        return;
+    }
+    const rows = readTestAlertReports().sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    list.innerHTML = "";
+    if (!rows.length) {
+        status.textContent = "No test reports yet. Submit an alert report while Test Mode is enabled.";
+        return;
+    }
+    status.textContent = `${rows.length} test alert report${rows.length === 1 ? "" : "s"} stored locally on this device.`;
+    rows.forEach(report => {
+        const item = document.createElement("div");
+        item.className = "report-item";
+        const heading = document.createElement("div");
+        heading.className = "report-item-heading";
+        const title = document.createElement("div");
+        title.className = "report-item-car";
+        title.textContent = `${report.line || "—"} · ${report.station || "Unknown station"} · Test Alert Decision`;
+        const badge = document.createElement("span");
+        badge.className = "report-status-badge";
+        badge.textContent = "TEST ONLY";
+        heading.append(title, badge);
+        const details = document.createElement("div");
+        details.className = "report-item-details";
+        const flags = report.warning_flags && typeof report.warning_flags === "object" ? report.warning_flags : {};
+        const fields = [
+            ["Station", report.station || "—"],
+            ["Line", report.line || "—"],
+            ["Simulated time", report.simulated_at ? new Date(report.simulated_at).toLocaleString() : "—"],
+            ["Decision", report.final_decision || "—"],
+            ["Diagnostic flags", Object.entries(flags).map(([k,v]) => `${k}: ${v}`).join(" · ") || "—"],
+            ["Submitted", report.created_at ? new Date(report.created_at).toLocaleString() : "—"],
+            ["Your notes", report.notes || "—"]
+        ];
+        fields.forEach(([labelText, valueText]) => {
+            const label = document.createElement("div"); label.className = "report-item-label"; label.textContent = labelText;
+            const value = document.createElement("div"); value.className = "report-item-value"; value.textContent = valueText;
+            details.append(label, value);
+        });
+        const actions = document.createElement("div"); actions.className = "alert-report-actions";
+        const edit = document.createElement("button"); edit.type = "button"; edit.textContent = "Edit notes"; edit.onclick = () => editTestAlertReportNotes(report.id);
+        const del = document.createElement("button"); del.type = "button"; del.textContent = "Delete test report"; del.onclick = () => deleteTestAlertReport(report.id);
+        actions.append(edit, del);
+        item.append(heading, details, actions);
+        list.appendChild(item);
+    });
+}
+function editTestAlertReportNotes(id) {
+    const rows = readTestAlertReports();
+    const report = rows.find(row => String(row.id) === String(id));
+    if (!report) return;
+    const notes = prompt("Edit your test report notes:", report.notes || "");
+    if (notes === null) return;
+    report.notes = notes.trim() || null;
+    if (!writeTestAlertReports(rows)) { alert("Could not save test report notes in this browser."); return; }
+    loadTestMyReports();
+}
+function deleteTestAlertReport(id) {
+    if (!confirm("Delete this local test report? This cannot be undone.")) return;
+    const rows = readTestAlertReports().filter(row => String(row.id) !== String(id));
+    if (!writeTestAlertReports(rows)) { alert("Could not delete the test report from this browser."); return; }
+    loadTestMyReports();
+}
+function clearTestMyReports() {
+    if (!fleetIdentifierTestMode) return;
+    if (!confirm("Clear all local Test Mode alert reports from this browser? Real reports will not be affected.")) return;
+    if (!writeTestAlertReports([])) { alert("Could not clear test reports."); return; }
+    loadTestMyReports();
+}
+
+function toggleTestTimePanel() {
+    const panel = document.getElementById("testTimePanel");
+    if (!panel) return;
+    closeSettingsContentPanels("testTimePanel");
+    panel.classList.remove("hidden");
+    updateTestTimePanel();
+    const settingsPanel = document.getElementById("settingsPanel");
+    settingsPanel?.classList.add("tools-mode", "subtool-active");
+    settingsPanel?.classList.remove("hidden", "account-settings-mode");
+    updateFocusMode();
+    syncToolsWorkspaceNavigation();
+}
+
+function updateTestRecentSightingPanel() {
+    const system = document.getElementById("testRecentSystem")?.value || "subway";
+    const wrap = document.getElementById("testRecentConsistWrap");
+    if (wrap) wrap.classList.toggle("hidden", system !== "subway");
+    const fleet = document.getElementById("testRecentFleet");
+    if (fleet && !fleet.value) {
+        const defaults = {subway:"R160", bus:"", lirr:"", "metro-north":""};
+        fleet.placeholder = defaults[system] || "Enter the verified fleet name";
+    }
+}
+
+function toggleTestRecentSightingPanel() {
+    if (!fleetIdentifierTestMode) return;
+    const panel = document.getElementById("testRecentSightingPanel");
+    if (!panel) return;
+    closeSettingsContentPanels("testRecentSightingPanel");
+    panel.classList.remove("hidden");
+    updateTestRecentSightingPanel();
+    const settingsPanel = document.getElementById("settingsPanel");
+    settingsPanel?.classList.add("tools-mode", "subtool-active");
+    settingsPanel?.classList.remove("hidden", "account-settings-mode");
+    updateFocusMode();
+    syncToolsWorkspaceNavigation();
+}
+
+function clearTestRecentSightingForm() {
+    ["testRecentFleet", "testRecentVehicle", "testRecentConsist"].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = "";
+    });
+    const status = document.getElementById("testRecentStatus");
+    if (status) status.textContent = "";
+    updateTestRecentSightingPanel();
+}
+
+function findTestRecentFleet(system, value) {
+    const name = String(value || "").trim();
+    if (!name) return null;
+    if (system === "subway") return fleetData?.[name] ? name : null;
+    if (system === "bus") return (busFleetData || []).some(row => String(row.model || "").trim() === name) ? name : null;
+    return (RAILROAD_FLEETS?.[system] || []).some(row => String(row.name || "").trim() === name) ? name : null;
+}
+
+function createTestRecentSighting() {
+    if (!fleetIdentifierTestMode) return;
+    const system = document.getElementById("testRecentSystem")?.value || "subway";
+    const fleet = document.getElementById("testRecentFleet")?.value.trim() || "";
+    const vehicle = document.getElementById("testRecentVehicle")?.value.trim() || "";
+    const ageMinutes = Number(document.getElementById("testRecentAge")?.value || 0);
+    const consistRaw = document.getElementById("testRecentConsist")?.value || "";
+    const status = document.getElementById("testRecentStatus");
+    const validFleet = findTestRecentFleet(system, fleet);
+    if (!validFleet) { if (status) status.textContent = "Enter a fleet name that exists in the verified dataset."; return; }
+    if (!/^\d+$/.test(vehicle)) { if (status) status.textContent = "Enter a valid vehicle number."; return; }
+    if (!Number.isFinite(ageMinutes) || ageMinutes < 0 || ageMinutes > 60 * 60) { if (status) status.textContent = "Choose a valid age."; return; }
+    const consistCars = system === "subway"
+        ? [...new Set([vehicle, ...consistRaw.split(",").map(v => v.trim()).filter(Boolean)])]
+        : [vehicle];
+    const now = getFleetIdentifierNow();
+    const savedAt = new Date(now.getTime() - ageMinutes * 60 * 1000).toISOString();
+    saveTestSighting({
+        user_id: "test-user",
+        car_number: vehicle,
+        fleet: fleet,
+        line: system === "subway" ? "TEST" : "TEST",
+        station: "TEST Station",
+        notes: "Created by Test Recent Sighting Alert",
+        saved_at: savedAt
+    }, consistCars);
+    if (status) {
+        status.textContent = ageMinutes > 15
+            ? "Test sighting created outside the alert window."
+            : `Test sighting created ${ageMinutes === 0 ? "less than a minute ago" : ageMinutes + " minute" + (ageMinutes === 1 ? "" : "s") + " ago"}. Identify a qualifying vehicle to test the alert.`;
+    }
+}
+
+function getTestSightingsStorageKey() {
+    return "fleetIdentifierTestSightings:v1";
+}
+function getTestSightings() {
+    try {
+        const rows = JSON.parse(localStorage.getItem(getTestSightingsStorageKey()) || "[]");
+        return Array.isArray(rows) ? rows : [];
+    } catch { return []; }
+}
+function writeTestSightings(rows) {
+    try { localStorage.setItem(getTestSightingsStorageKey(), JSON.stringify(rows)); }
+    catch (error) { console.warn("Could not write test sightings:", error); }
+}
+function getActiveTestSightings(system = activeFleetSystem) {
+    return getTestSightings()
+        .filter(row => String(row.system || "") === String(system || ""))
+        .sort((a,b) => new Date(b.saved_at || 0) - new Date(a.saved_at || 0));
+}
+function saveTestSighting(payload, consistCars = []) {
+    const rows = getTestSightings();
+    const now = getFleetIdentifierNow().toISOString();
+    const row = {
+        id: `test-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+        ...payload,
+        system: activeFleetSystem,
+        saved_at: payload.saved_at || now,
+        consist_cars: [...new Set((consistCars || []).map(String).filter(Boolean))]
+    };
+    rows.push(row);
+    writeTestSightings(rows);
+    return row;
+}
+
+function updateFleetTestModeUI() {
+    const indicator = document.getElementById("subwayTestModeIndicator");
+    if (indicator) {
+        indicator.innerHTML = fleetIdentifierTestMode ? "TEST MODE<br>SIMULATED DATA" : "";
+        indicator.classList.toggle("hidden", !fleetIdentifierTestMode);
+    }
+
+    const title = document.getElementById("toolsPanelTitle");
+    if (title) {
+        title.textContent = fleetIdentifierTestMode ? "Test Tools" : "Tools";
+        title.classList.toggle("test-tools-title", fleetIdentifierTestMode);
+    }
+
+    ["sharedSettingsTools", "subwaySettingsTools", "busSettingsTools", "lirrSettingsTools", "metroNorthSettingsTools"].forEach(id => {
+        document.getElementById(id)?.classList.toggle("hidden", fleetIdentifierTestMode);
+    });
+
+    document.getElementById("testSettingsTools")?.classList.toggle("hidden", !fleetIdentifierTestMode);
+    // Re-apply normal-mode system scoping when Test Mode is toggled.
+    const normalToolPanels = {
+        subway: "subwaySettingsTools", bus: "busSettingsTools",
+        lirr: "lirrSettingsTools", "metro-north": "metroNorthSettingsTools"
+    };
+    const activeNormalToolPanel = normalToolPanels[activeFleetSystem];
+    ["subwaySettingsTools", "busSettingsTools", "lirrSettingsTools", "metroNorthSettingsTools"].forEach(id => {
+        const panel = document.getElementById(id);
+        if (!panel) return;
+        const visible = !fleetIdentifierTestMode && id === activeNormalToolPanel;
+        panel.classList.toggle("hidden", !visible);
+        panel.style.display = visible ? "contents" : "none";
+    });
+    const sharedNormalTools = document.getElementById("sharedSettingsTools");
+    if (sharedNormalTools) {
+        sharedNormalTools.classList.toggle("hidden", fleetIdentifierTestMode);
+        sharedNormalTools.style.display = fleetIdentifierTestMode ? "none" : "contents";
+    }
+    document.getElementById("testSharedSettingsTools")?.classList.remove("hidden");
+    document.getElementById("testSubwaySettingsTools")?.classList.toggle("hidden", !fleetIdentifierTestMode || activeFleetSystem !== "subway");
+    document.getElementById("testBusSettingsTools")?.classList.toggle("hidden", !fleetIdentifierTestMode || activeFleetSystem !== "bus");
+    document.getElementById("testRailroadSettingsTools")?.classList.toggle("hidden", !fleetIdentifierTestMode || !["lirr", "metro-north"].includes(activeFleetSystem));
+    document.getElementById("testRecentSightingPanel")?.classList.toggle("hidden", true);
+
+    const headerTools = document.getElementById("headerToolsButton");
+    if (headerTools) headerTools.textContent = fleetIdentifierTestMode ? "Test Tools" : "Tools";
+}
+
+function clearIdentifierInputsAndResults() {
+    [
+        ["carNumber", "result"],
+        ["busNumber", "busResult"],
+        ["lirrNumber", "lirrResult"],
+        ["metroNorthNumber", "metroNorthResult"]
+    ].forEach(([inputId, resultId]) => {
+        const input = document.getElementById(inputId);
+        const result = document.getElementById(resultId);
+        if (input) input.value = "";
+        if (result) { result.className = "result hidden"; result.innerHTML = ""; }
+    });
+    const focusId = activeFleetSystem === "bus" ? "busNumber" : activeFleetSystem === "lirr" ? "lirrNumber" : activeFleetSystem === "metro-north" ? "metroNorthNumber" : "carNumber";
+    document.getElementById(focusId)?.focus();
+}
+
+function toggleFleetIdentifierTestMode() {
+    fleetIdentifierTestMode = !fleetIdentifierTestMode;
+    pendingSighting = null;
+    pendingBusSighting = null;
+    selectedBusStop = null;
+    fleetIdentifierTestTime = null;
+
+    // Never leave real-user sighting data visible when entering Test Mode,
+    // and never leave test-only data visible after exiting it.
+    mySightingsData = [];
+    closeSettingsContentPanels();
+
+    updateFleetTestModeUI();
+    updateTestTimePanel();
+    clearIdentifierInputsAndResults();
+    updateFocusMode();
+    syncToolsWorkspaceNavigation();
+}
 
 function setSearchMode(mode) {
     if (!["car", "fleet"].includes(mode)) return;
@@ -7068,6 +8836,9 @@ function enforceMainSearchModeInput() {
     if (!input) return;
 
     input.addEventListener("input", () => {
+        // Do not change identifierSearchRequestId here. Search requests are
+        // versioned when Search/Enter is invoked; changing the version on every
+        // keystroke could invalidate a request after its own input has settled.
         if (searchMode === "car") {
             const digitsOnly = input.value.replace(/\D+/g, "");
             if (input.value !== digitsOnly) input.value = digitsOnly;
@@ -7076,6 +8847,14 @@ function enforceMainSearchModeInput() {
             // because fleet normalization already handles spaces, hyphens, etc.
             const fleetCharsOnly = input.value.replace(/[^a-zA-Z0-9 _-]+/g, "");
             if (input.value !== fleetCharsOnly) input.value = fleetCharsOnly;
+        }
+        // Once the user starts a new query, discard the old result and any
+        // pending sighting so the old test-set result cannot trap the workflow.
+        pendingSighting = null;
+        const resultBox = document.getElementById("result");
+        if (resultBox) {
+            resultBox.className = "result hidden";
+            resultBox.innerHTML = "";
         }
     });
 }
@@ -7365,12 +9144,19 @@ async function identifyBus() {
         return;
     }
 
+    if (input === "42031555") {
+        toggleFleetIdentifierTestMode();
+        return;
+    }
+
+    const busDataForAlert = findBusFleet(Number(input));
     const busRepeatNotice = input === "0000" ? "" : await getPrimaryRepeatSightingNotice(input, "bus");
+    const recentBusSightingAlert = input === "0000" || !busDataForAlert ? "" : await getRecentSightingAlert(input, busDataForAlert.model, "bus");
     const busSightingSummary = input === "0000" ? "" : await getVehicleSightingSummary(input, "bus");
 
     // Bus test vehicle — mirrors the Subway 0000 developer/test rules.
     // This is intentionally isolated from the real fleet, route, and GTFS databases.
-    if (input === "0000") {
+    if (fleetIdentifierTestMode && input === "0000") {
         pendingBusSighting = { busNumber: "0000", fleet: "TEST", testMode: true };
         busLocationMode = "stop";
         selectedBusStop = null;
@@ -7407,7 +9193,7 @@ async function identifyBus() {
                     <div id="busStopSearchNote" class="account-small-note" style="margin-top:6px;">Test mode has one dropdown stop: Stop Av / Stop St.</div>
                     <div id="busStopResults" class="bus-stop-results hidden" role="listbox" aria-label="Matching test bus stops"></div>
                 </div>
-                ${pastSightingFieldsHTML("bus")}
+                ${pastSightingFieldsHTML("bus", "busPastSighting")}
                 <label for="busSightingNotes" style="margin-top:12px;">Notes (optional)</label>
                 <textarea id="busSightingNotes" class="sighting-notes" maxlength="1000" placeholder="Add notes about this test bus sighting."></textarea>
                 <button type="button" onclick="saveBusSighting()" style="margin-top:10px;">Save Sighting</button>
@@ -7436,6 +9222,7 @@ async function identifyBus() {
         <div class="fleet-title">${escapeHTML(data.model)}</div>
         <div class="car-number">Bus number: <strong>${escapeHTML(input)}</strong></div>
         ${busRepeatNotice}
+        ${recentBusSightingAlert}
         ${busSightingSummary}
         ${statusException ? `<div class="status-message" style="margin-top:10px;"><strong>${escapeHTML(statusException.status)}</strong> — ${escapeHTML(statusException.note)}</div>` : ""}
         <div class="info">
@@ -7486,7 +9273,7 @@ async function identifyBus() {
                 <div id="busStopSearchNote" class="account-small-note" style="margin-top:6px;">Search official MTA bus stops for the selected route, or switch to Custom location for a spot between stops.</div>
                 <div id="busStopResults" class="bus-stop-results hidden" role="listbox" aria-label="Matching bus stops"></div>
             </div>
-            ${pastSightingFieldsHTML("bus")}
+            ${pastSightingFieldsHTML("bus", "busPastSighting")}
             <label for="busSightingNotes" style="margin-top:12px;">Notes (optional)</label>
             <textarea id="busSightingNotes" class="sighting-notes" maxlength="1000" placeholder="Add notes about this bus sighting."></textarea>
             <button type="button" onclick="saveBusSighting()" style="margin-top:10px;">Save Sighting</button>
@@ -7916,15 +9703,22 @@ async function saveBusSighting() {
         ? { ok:true, base:"TEST", service:"TEST", route:"TEST" }
         : buildBusRouteSelection();
     if (!selected.ok) { if(status) status.textContent=selected.message; return; }
-    const { data:{ session } } = await supabaseClient.auth.getSession();
-    if (!session?.user) { if(status) status.textContent="You need to be signed in to save sightings to the cloud."; return; }
-    const requestedTimestamp = getRequestedSightingTimestamp();
+    const requestedTimestamp = getRequestedSightingTimestamp("busPastSighting");
     if (!requestedTimestamp.ok) { if(status) status.textContent=requestedTimestamp.message; return; }
     if(status) status.textContent=requestedTimestamp.value ? "Saving past bus sighting..." : "Saving bus sighting...";
     const notes=document.getElementById("busSightingNotes")?.value.trim() || "";
     const location=document.getElementById("busSightingLocation")?.value.trim() || "";
-    const payload={ user_id:session.user.id, car_number:pendingBusSighting.busNumber, fleet:pendingBusSighting.fleet, line:selected.route, station:location||null, notes:notes||null };
+    const payload={ user_id:null, car_number:pendingBusSighting.busNumber, fleet:pendingBusSighting.fleet, line:selected.route, station:location||null, notes:notes||null };
     payload.saved_at=offlineFieldTimestamp(requestedTimestamp.value);
+    if (fleetIdentifierTestMode) {
+        saveTestSighting(payload, [String(pendingBusSighting.busNumber)]);
+        if(status) status.innerHTML=sightingSaveSuccessHTML("bus", 1, selected.route, location || "TEST Stop Av / Stop St");
+        resetIdentifierAfterSave("bus");
+        return;
+    }
+    const { data:{ session } } = await supabaseClient.auth.getSession();
+    if (!session?.user) { if(status) status.textContent="You need to be signed in to save sightings to the cloud."; return; }
+    payload.user_id=session.user.id;
     const { error }=await supabaseClient.from("sightings").insert(payload);
     if(error){
         console.error("Could not save bus sighting:",error);
@@ -7938,7 +9732,7 @@ async function saveBusSighting() {
     }
     if(status) {
         const outside=sightingAssignmentStatus("bus",payload).outside;
-        status.textContent=`Saved: bus ${pendingBusSighting.busNumber} on ${selected.route}${location ? ` at ${location}` : ""}.${outside ? " Outside listed assignment." : ""}`;
+        status.innerHTML=sightingSaveSuccessHTML("bus", 1, selected.route, location) + (outside ? " Outside listed assignment." : "");
     }
     resetIdentifierAfterSave("bus");
 }
@@ -8011,7 +9805,11 @@ function sightingBelongsToActiveSystem(row) {
     if(fleet === "TEST" && station === "Stop Av / Stop St") return false;
     return true;
 }
-function scopeSightingsRows(rows) { return (rows||[]).filter(sightingBelongsToActiveSystem); }
+function scopeSightingsRows(rows) {
+    if (fleetIdentifierTestMode) return (rows||[]).filter(row => String(row?.system || activeFleetSystem) === String(activeFleetSystem));
+    return (rows||[]).filter(sightingBelongsToActiveSystem);
+}
+function activeToolSightingsRows() { return fleetIdentifierTestMode ? getActiveTestSightings(activeFleetSystem) : null; }
 function activeSystemToolLabel() { return activeFleetSystem==="bus"?"Bus":activeFleetSystem==="lirr"?"LIRR":activeFleetSystem==="metro-north"?"Metro-North":"Subway"; }
 
 // Phase 5.3G-B — known railroad number exceptions and history/status cards.
@@ -8077,7 +9875,12 @@ async function identifyRailroad(system) {
     if ((railroadSearchModes[system] || "car") === "fleet") { showRailroadFleetSearchResult(system, findRailroadFleetByName(system,input), input); return; }
     if (!/^\d+$/.test(input)) { box.className="result"; box.innerHTML='<div class="fleet-title unknown-value">Invalid number</div>'; return; }
 
-    if (input === "0000") {
+    if (input === "42031555") {
+        toggleFleetIdentifierTestMode();
+        return;
+    }
+
+    if (fleetIdentifierTestMode && input === "0000") {
         box.className="result";
         box.innerHTML=`<div class="fleet-title unknown-value">TEST</div><div class="car-number">${system === "lirr" ? "LIRR" : "Metro-North"} number: <strong>0000</strong></div><div class="info"><div class="label">Builder</div><div class="unknown-value">N/A</div><div class="label">Years built</div><div class="unknown-value">N/A</div><div class="label">Formation</div><div class="unknown-value">N/A</div><div class="label">Power</div><div class="unknown-value">N/A</div><div class="label">Service</div><div class="unknown-value">N/A</div></div>${railroadSightingFormHTML(system, input, "TEST", true)}`;
         recordIdentifierSearch?.(system, input, true, "TEST", {testMode:true});
@@ -8101,9 +9904,10 @@ async function identifyRailroad(system) {
         return;
     }
     const railroadRepeatNotice=await getPrimaryRepeatSightingNotice(input,system==="lirr"?"LIRR vehicle":"Metro-North vehicle");
+    const recentRailroadSightingAlert=await getRecentSightingAlert(input,fleet.name,system);
     const railroadSightingSummary=await getVehicleSightingSummary(input,system);
     box.className="result";
-    box.innerHTML=`<div class="fleet-title">${escapeHTML(fleet.name)}</div><div class="car-number">Vehicle number: <strong>${escapeHTML(input)}</strong></div>${railroadRepeatNotice}${railroadSightingSummary}<div class="info"><div class="label">Builder</div><div>${escapeHTML(fleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(fleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(fleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(fleet.power)}</div><div class="label">Typical system service</div><div>${escapeHTML(fleet.service)}</div><div class="label">Notes</div><div>${escapeHTML(fleet.notes)}</div></div>${shareIdentifierActionsHTML(system, input, fleet.name)}${railroadSightingFormHTML(system, input, fleet.name, false)}`;
+    box.innerHTML=`<div class="fleet-title">${escapeHTML(fleet.name)}</div><div class="car-number">Vehicle number: <strong>${escapeHTML(input)}</strong></div>${railroadRepeatNotice}${recentRailroadSightingAlert}${railroadSightingSummary}<div class="info"><div class="label">Builder</div><div>${escapeHTML(fleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(fleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(fleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(fleet.power)}</div><div class="label">Typical system service</div><div>${escapeHTML(fleet.service)}</div><div class="label">Notes</div><div>${escapeHTML(fleet.notes)}</div></div>${shareIdentifierActionsHTML(system, input, fleet.name)}${railroadSightingFormHTML(system, input, fleet.name, false)}`;
     renderRailroadPicker(system);
     recordIdentifierSearch?.(system, input, true, fleet.name, {builder:fleet.builder,years:fleet.years});
 }
@@ -8174,13 +9978,20 @@ async function saveRailroadSighting(system, vehicleNumber, fleetName, testMode=f
         }
         }
     }
-    const {data:{session}}=await supabaseClient.auth.getSession();
-    if(!session?.user){ if(status) status.textContent="You need to be signed in to save sightings to the cloud."; return; }
     const requested=getRailroadPastTimestamp(system);
     if(!requested.ok){ if(status) status.textContent=requested.message; return; }
     const notes=document.getElementById(`${system}-rail-notes`)?.value.trim() || "";
-    const payload={user_id:session.user.id,car_number:String(vehicleNumber),fleet:fleetName,line,station:location||null,notes:notes||null};
+    const payload={user_id:null,car_number:String(vehicleNumber),fleet:fleetName,line,station:location||null,notes:notes||null};
     payload.saved_at=offlineFieldTimestamp(requested.value);
+    if (fleetIdentifierTestMode) {
+        saveTestSighting(payload, [String(vehicleNumber)]);
+        if(status) status.innerHTML=sightingSaveSuccessHTML(system, 1, line, location || "TEST Station");
+        resetIdentifierAfterSave(system);
+        return;
+    }
+    const {data:{session}}=await supabaseClient.auth.getSession();
+    if(!session?.user){ if(status) status.textContent="You need to be signed in to save sightings to the cloud."; return; }
+    payload.user_id=session.user.id;
     if(status) status.textContent=requested.value?"Saving past railroad sighting...":"Saving railroad sighting...";
     const {error}=await supabaseClient.from("sightings").insert(payload);
     if(error){
@@ -8193,7 +10004,7 @@ async function saveRailroadSighting(system, vehicleNumber, fleetName, testMode=f
         }
         if(status) status.textContent="Could not save railroad sighting. Please try again."; return;
     }
-    if(status) status.textContent=`Saved: ${system==="lirr"?"LIRR":"Metro-North"} ${vehicleNumber} on ${line}${location?` at ${location}`:""}.`;
+    if(status) status.innerHTML=sightingSaveSuccessHTML(system, 1, line, location);
     resetIdentifierAfterSave(system);
 }
 
@@ -8205,6 +10016,7 @@ document.getElementById("busNumber")?.addEventListener("keydown", event => {
 });
 
 async function identify() {
+    const requestId = ++identifierSearchRequestId;
 
     const input =
         document.getElementById("carNumber").value.trim();
@@ -8223,21 +10035,28 @@ async function identify() {
     }
 
 
-    // Test car — available only in Car Number mode.
-    if (searchMode === "car" && input === "0000") {
+    // Test Mode access code. Entering the code toggles Test Mode and clears
+    // the input so the next value can be a test car number.
+    if (searchMode === "car" && input === "42031555") {
+        toggleFleetIdentifierTestMode();
+        return;
+    }
+
+    // The 0000 test trainset exists only inside Subway Test Mode.
+    if (fleetIdentifierTestMode && searchMode === "car" && /^000[0-9]$/.test(input)) {
         pendingSighting = {
-            carNumber: "0000",
+            carNumber: input,
             fleet: "TEST",
             line: null,
-            consistCars: ["0000"],
-            linkedUnit: getVerifiedLinkedUnit("TEST", "0000"),
+            consistCars: [input],
+            linkedUnit: getVerifiedLinkedUnit("TEST", input),
             coupledUnit: null
         };
 
         resultBox.className = "result";
         resultBox.innerHTML = `
             <div class="fleet-title unknown-value">TEST</div>
-            <div class="car-number">Car number: <strong>0000</strong></div>
+            <div class="car-number">Car number: <strong>${input}</strong></div>
             <div class="info">
                 <div class="label">Builder</div><div class="unknown-value">N/A</div>
                 <div class="label">Years built</div><div class="unknown-value">N/A</div>
@@ -8254,7 +10073,7 @@ async function identify() {
 
             <div class="sighting-panel">
                 <h3>Log this sighting</h3>
-                <div>Which line did you see car <strong>0000</strong> on?</div>
+                <div>Which line did you see car <strong>${input}</strong> on?</div>
                 <div class="line-grid">
                     <button type="button" class="line-button" data-line="TEST" onclick="chooseLine('TEST')">TEST</button>
                 </div>
@@ -8274,7 +10093,6 @@ async function identify() {
         renderPendingConsist();
         return;
     }
-
 
     // Secret access code
     if (
@@ -8409,7 +10227,13 @@ async function identify() {
     };
 
     if (pendingSighting.linkedUnit?.verified) {
-        pendingSighting.linkedUnitHistory = await getLinkedUnitHistory(pendingSighting.linkedUnit);
+        try {
+            pendingSighting.linkedUnitHistory = await getLinkedUnitHistory(pendingSighting.linkedUnit);
+        } catch (error) {
+            console.warn("Optional linked-unit history lookup failed:", error);
+            pendingSighting.linkedUnitHistory = null;
+        }
+        if (requestId !== identifierSearchRequestId) return;
     }
 
     // R211S cars 100-174 can only be sighted in SIR passenger service,
@@ -8421,8 +10245,20 @@ async function identify() {
 
     recordSearchHistory(input, fleet);
 
-    const repeatSightingNotice = await getRepeatSightingNotice(input);
-    const vehicleSightingSummary = await getVehicleSightingSummary(input, "subway");
+    let repeatSightingNotice = "";
+    try { repeatSightingNotice = await getRepeatSightingNotice(input); }
+    catch (error) { console.warn("Optional repeat-sighting lookup failed:", error); }
+    if (requestId !== identifierSearchRequestId) return;
+
+    let recentSightingAlert = "";
+    try { recentSightingAlert = await getRecentSightingAlert(input, fleet, "subway"); }
+    catch (error) { console.warn("Optional recent-sighting alert lookup failed:", error); }
+    if (requestId !== identifierSearchRequestId) return;
+
+    let vehicleSightingSummary = null;
+    try { vehicleSightingSummary = await getVehicleSightingSummary(input, "subway"); }
+    catch (error) { console.warn("Optional vehicle-sighting summary lookup failed:", error); }
+    if (requestId !== identifierSearchRequestId) return;
     const unitHistoryNotice = linkedUnitHistoryNotice(
         pendingSighting.linkedUnit,
         pendingSighting.linkedUnitHistory
@@ -8440,6 +10276,7 @@ async function identify() {
         </div>
 
         ${repeatSightingNotice}
+        ${recentSightingAlert}
         ${vehicleSightingSummary}
         ${unitHistoryNotice}
 
@@ -8561,7 +10398,7 @@ async function identify() {
             <label for="sightingStation" style="margin-top:12px;">Station (optional)</label>
             <input id="sightingStation" class="sighting-station" type="text" maxlength="100" autocomplete="off" placeholder="Example: Broadway Junction">
 
-            ${pastSightingFieldsHTML()}
+            ${pastSightingFieldsHTML("train", "subwayPastSighting")}
 
             <label for="sightingNotes" style="margin-top:12px;">Notes (optional)</label>
             <textarea id="sightingNotes" class="sighting-notes" maxlength="1000" placeholder="Add notes about this sighting."></textarea>
@@ -8746,7 +10583,7 @@ function updateFocusMode() {
 }
 
 function closeSettingsContentPanels(exceptId = "") {
-    ["accountPanel", "sightingsHubPanel", "myReportsPanel", "searchHistoryPanel", "sessionDiagnostics", "achievementsPanel", "fleetCollectionPanel", "fleetBreakdownPanel", "lineStatsPanel", "depotStatsPanel", "fleetComparisonPanel", "trainsetHistoryPanel"].forEach(id => {
+    ["accountPanel", "sightingsHubPanel", "myReportsPanel", "searchHistoryPanel", "sessionDiagnostics", "achievementsPanel", "fleetCollectionPanel", "fleetBreakdownPanel", "lineStatsPanel", "depotStatsPanel", "fleetComparisonPanel", "trainsetHistoryPanel", "testTimePanel", "testRecentSightingPanel", "testMyReportsPanel"].forEach(id => {
         if (id !== exceptId) {
             document.getElementById(id)?.classList.add("hidden");
         }
@@ -8756,7 +10593,7 @@ function closeSettingsContentPanels(exceptId = "") {
 const toolsSubtoolPanelIds = [
     "sightingsHubPanel", "myReportsPanel", "searchHistoryPanel", "achievementsPanel",
     "fleetCollectionPanel", "fleetBreakdownPanel", "lineStatsPanel", "depotStatsPanel",
-    "fleetComparisonPanel", "trainsetHistoryPanel"
+    "fleetComparisonPanel", "trainsetHistoryPanel", "testTimePanel", "testRecentSightingPanel", "testMyReportsPanel"
 ];
 
 let fiBackNavigationApplying = false;
@@ -8957,7 +10794,8 @@ function toggleAccountPanel() {
 
 async function toggleSightingsHub() {
     const panel = document.getElementById("sightingsHubPanel");
-    const heading=panel?.querySelector(":scope > h2"); if(heading) heading.textContent=activeFleetSystem!=="subway"?`${activeSystemToolLabel()} Sightings Hub`:"Sightings Hub";
+    const heading=panel?.querySelector(":scope > h2"); if(heading) heading.textContent=fleetIdentifierTestMode?`Test ${activeSystemToolLabel()} Sightings Hub`:(activeFleetSystem!=="subway"?`${activeSystemToolLabel()} Sightings Hub`:"Sightings Hub");
+    const testTab=document.getElementById("sightingsHubTabSightings"); if(testTab) testTab.textContent=fleetIdentifierTestMode ? "Test Sightings" : "My Sightings";
     if (!panel) return;
     const opening = panel.classList.contains("hidden");
     closeSettingsContentPanels(opening ? "sightingsHubPanel" : "");
@@ -8966,6 +10804,20 @@ async function toggleSightingsHub() {
 }
 
 async function showSightingsHubView(view) {
+    const testMode = fleetIdentifierTestMode;
+    const tabLabels = {
+        sightings: testMode ? "Test Sightings" : "My Sightings",
+        calendar: testMode ? "Test Calendar" : "Calendar",
+        records: testMode ? "Test Records" : "Records",
+        year: testMode ? "Test Year in Review" : "Year in Review"
+    };
+    Object.entries({
+        sightings:"sightingsHubTabSightings",
+        calendar:"sightingsHubTabCalendar",
+        records:"sightingsHubTabRecords",
+        year:"sightingsHubTabYear"
+    }).forEach(([key,id]) => { const el=document.getElementById(id); if(el) el.textContent=tabLabels[key]; });
+    const hubHeading=document.querySelector("#sightingsHubPanel > h2"); if(hubHeading) hubHeading.textContent=testMode?`Test ${activeSystemToolLabel()} Sightings Hub`:(activeFleetSystem!=="subway"?`${activeSystemToolLabel()} Sightings Hub`:"Sightings Hub");
     const views = {
         sightings: "mySightingsPanel",
         calendar: "sightingCalendarPanel",
@@ -9018,25 +10870,14 @@ async function loadMyReports() {
         return;
     }
 
-    const [missingResult, incorrectResult] = await Promise.all([
-        supabaseClient
-            .from("missing_car_reports")
-            .select("id, car_number, fleet_guess, line, notes, status, created_at")
-            .eq("user_id", session.user.id)
-            .order("created_at", { ascending: false }),
-
-        supabaseClient
-            .from("incorrect_information_reports")
-            .select("id, car_number, fleet, field_reported, current_value, suggested_value, notes, status, created_at")
-            .eq("user_id", session.user.id)
-            .order("created_at", { ascending: false })
+    const [missingResult, incorrectResult, alertResult] = await Promise.all([
+        supabaseClient.from("missing_car_reports").select("id, car_number, fleet_guess, line, notes, status, created_at").eq("user_id", session.user.id).order("created_at", { ascending: false }),
+        supabaseClient.from("incorrect_information_reports").select("id, car_number, fleet, field_reported, current_value, suggested_value, notes, status, created_at").eq("user_id", session.user.id).order("created_at", { ascending: false }),
+        supabaseClient.from("alert_decision_reports").select("id, line, station, simulated_at, final_decision, warning_flags, decision_type, notes, admin_notes, status, created_at").eq("user_id", session.user.id).order("created_at", { ascending: false })
     ]);
 
     if (missingResult.error || incorrectResult.error) {
-        console.error("Could not load reports:", {
-            missingCarReports: missingResult.error,
-            incorrectInformationReports: incorrectResult.error
-        });
+        console.error("Could not load reports:", { missingCarReports: missingResult.error, incorrectInformationReports: incorrectResult.error, alertDecisionReports: alertResult.error });
         status.textContent = "Could not load your reports. Please try again.";
         return;
     }
@@ -9051,7 +10892,9 @@ async function loadMyReports() {
         reportType: "Incorrect Information"
     }));
 
-    const reports = [...missingReports, ...incorrectReports]
+    if (alertResult.error) console.warn("Alert decision reports are unavailable until the Supabase migration is applied:", alertResult.error);
+    const alertReports = (alertResult.error ? [] : (alertResult.data || [])).map(report => ({ ...report, reportType: "Alert Decision" }));
+    const reports = [...missingReports, ...incorrectReports, ...alertReports]
         .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
     if (!reports.length) {
@@ -9086,7 +10929,7 @@ async function loadMyReports() {
 
         const car = document.createElement("div");
         car.className = "report-item-car";
-        car.textContent = `Car ${report.car_number || "—"} · ${report.reportType}`;
+        car.textContent = report.reportType === "Alert Decision" ? `${report.line || "—"} · ${report.station || "Unknown station"} · Alert Decision` : `Car ${report.car_number || "—"} · ${report.reportType}`;
 
         const badge = document.createElement("span");
         badge.className = "report-status-badge";
@@ -9099,7 +10942,17 @@ async function loadMyReports() {
 
         let fields;
 
-        if (report.reportType === "Incorrect Information") {
+        if (report.reportType === "Alert Decision") {
+            const flags = report.warning_flags && typeof report.warning_flags === "object" ? report.warning_flags : {};
+            fields = [
+                ["Station", report.station || "—"], ["Line", report.line || "—"],
+                ["Simulated time", report.simulated_at ? new Date(report.simulated_at).toLocaleString() : "—"],
+                ["Decision", report.final_decision || "—"],
+                ["Diagnostic flags", Object.entries(flags).map(([k,v]) => `${k}: ${v}`).join(" · ") || "—"],
+                ["Submitted", report.created_at ? new Date(report.created_at).toLocaleString() : "—"],
+                ["Your notes", report.notes || "—"], ["Admin findings", report.admin_notes || "—"]
+            ];
+        } else if (report.reportType === "Incorrect Information") {
             fields = [
                 ["Fleet", report.fleet || "—"],
                 ["Field", incorrectFieldLabels[report.field_reported] || report.field_reported || "—"],
@@ -9135,6 +10988,12 @@ async function loadMyReports() {
         });
 
         item.append(heading, details);
+        if (report.reportType === "Alert Decision") {
+            const actions = document.createElement("div"); actions.className = "alert-report-actions";
+            const edit = document.createElement("button"); edit.type = "button"; edit.textContent = "Edit notes"; edit.onclick = () => editAlertDecisionReportNotes(report.id, report.notes || "");
+            const del = document.createElement("button"); del.type = "button"; del.textContent = "Delete report"; del.onclick = () => deleteAlertDecisionReport(report.id);
+            actions.append(edit, del); item.appendChild(actions);
+        }
         list.appendChild(item);
     });
 }
@@ -9155,6 +11014,14 @@ async function loadMySightings() {
     const list = document.getElementById("mySightingsList");
     status.textContent = "Loading sightings...";
     list.innerHTML = "";
+
+    if (fleetIdentifierTestMode) {
+        mySightingsData = getActiveTestSightings(activeFleetSystem);
+        mySightingsData = mySightingsData.map(row => ({...row, consist_cars:Array.isArray(row.consist_cars)&&row.consist_cars.length?row.consist_cars:[String(row.car_number)]}));
+        status.textContent = mySightingsData.length ? `${mySightingsData.length} test sighting${mySightingsData.length===1?"":"s"}.` : "No test sightings yet.";
+        updateSightingsStats(); populateSightingsLineFilter(); populateSightingsFleetFilter(); applySightingsFilters();
+        return;
+    }
 
     const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
     if (sessionError || !session?.user) {
@@ -10928,8 +12795,9 @@ function closeDatabaseChangelog() {
 
 // Keep dynamically-rendered Subway result bullets interactive across result restoration/re-renders.
 // One delegated listener stays attached to #result, so Back to result does not create dead bullets.
-const subwayResultObserverTarget = document.getElementById("result");
-if (subwayResultObserverTarget) bindInteractiveSubwayBullets(subwayResultObserverTarget);
+updateFleetTestModeUI();
+
+
 </script>
 
 </body>
