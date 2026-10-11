@@ -685,6 +685,22 @@
     </div>
 
 
+    <!-- Alert Decision Reports: intentionally separate from fleet-data reports -->
+    <div class="section subway-admin-only">
+      <div class="activity-heading"><h2>Alert Decision Reports</h2><button id="refreshAlertDecisionReportsButton" class="filter-button" type="button" onclick="loadAlertDecisionReports(true)">Refresh</button></div>
+      <p class="system-only-note">Review snapshots of service-warning decisions reported by users. The stored diagnostic flags and simulated timestamp reflect the decision at submission time.</p>
+      <div class="filters">
+        <input id="alertDecisionReportSearch" type="search" placeholder="Search line, station, decision, notes">
+        <select id="alertDecisionReportStatusFilter">
+          <option value="">All statuses</option><option value="pending">Pending review</option><option value="under_review">Under review</option><option value="confirmed_correct">Confirmed correct</option><option value="confirmed_incorrect">Confirmed incorrect</option><option value="unable_to_determine">Unable to determine</option>
+        </select>
+        <button id="clearAlertDecisionReportFilters" class="filter-button" type="button">Clear Filters</button>
+      </div>
+      <div id="alertDecisionReportResultCount" class="result-count"></div>
+      <div class="table-wrap"><table><thead><tr><th>Line</th><th>Station</th><th>Simulated time</th><th>Decision</th><th>Diagnostic flags</th><th>User notes</th><th>Submitted</th><th>Status</th><th>Admin findings</th></tr></thead>
+      <tbody id="alertDecisionReportsTable"><tr><td colspan="9" class="empty">Loading reports...</td></tr></tbody></table></div>
+    </div>
+
     <!-- Incorrect Information Reports -->
     <div class="section subway-admin-only">
       <div class="activity-heading">
@@ -964,6 +980,7 @@
     let showAllAdminActivity = false;
     let missingCarReports = [];
     let incorrectInformationReports = [];
+    let alertDecisionReports = [];
     let currentAdminProfile = null;
     let currentAdminSystem = "subway";
 
@@ -1134,6 +1151,7 @@
       await loadAdminActivity();
       await loadMissingCarReports();
       await loadIncorrectInformationReports();
+      await loadAlertDecisionReports();
       refreshNotificationButton();
     }
 
@@ -1987,6 +2005,43 @@
     }
 
 
+    const ALERT_DECISION_STATUSES = ["pending", "under_review", "confirmed_correct", "confirmed_incorrect", "unable_to_determine"];
+    const ALERT_DECISION_STATUS_LABELS = { pending:"Pending review", under_review:"Under review", confirmed_correct:"Confirmed correct", confirmed_incorrect:"Confirmed incorrect", unable_to_determine:"Unable to determine" };
+    function renderAlertDecisionReports() {
+      const table=document.getElementById("alertDecisionReportsTable"), count=document.getElementById("alertDecisionReportResultCount"); if(!table)return;
+      const q=(document.getElementById("alertDecisionReportSearch")?.value||"").trim().toLowerCase();
+      const statusFilter=document.getElementById("alertDecisionReportStatusFilter")?.value||"";
+      const filtered=alertDecisionReports.filter(r=>[r.line,r.station,r.final_decision,r.notes,r.admin_notes,JSON.stringify(r.warning_flags||{})].join(" ").toLowerCase().includes(q)&&(!statusFilter||r.status===statusFilter));
+      if(count)count.textContent=`Showing ${filtered.length} of ${alertDecisionReports.length} report${alertDecisionReports.length===1?"":"s"}`;
+      table.innerHTML="";
+      if(!filtered.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=9;td.className="empty";td.textContent=alertDecisionReports.length?"No alert decision reports match your filters.":"No alert decision reports have been submitted yet.";tr.appendChild(td);table.appendChild(tr);return;}
+      filtered.forEach(report=>{
+        const tr=document.createElement("tr");
+        const values=[report.line||"—",report.station||"—",report.simulated_at?new Date(report.simulated_at).toLocaleString():"—",report.final_decision||"—",JSON.stringify(report.warning_flags||{}),report.notes||"—",report.created_at?new Date(report.created_at).toLocaleString():"—"];
+        values.forEach(value=>{const td=document.createElement("td");td.textContent=String(value);tr.appendChild(td);});
+        const statusTd=document.createElement("td"),select=document.createElement("select");select.className="report-status-select";
+        ALERT_DECISION_STATUSES.forEach(v=>{const opt=new Option(ALERT_DECISION_STATUS_LABELS[v],v);select.add(opt);});select.value=ALERT_DECISION_STATUSES.includes(report.status)?report.status:"pending";
+        select.addEventListener("change",()=>updateAlertDecisionReport(report,{status:select.value},select));statusTd.appendChild(select);tr.appendChild(statusTd);
+        const adminTd=document.createElement("td"),area=document.createElement("textarea");area.rows=3;area.style.minWidth="220px";area.placeholder="Record investigation findings…";area.value=report.admin_notes||"";
+        const save=document.createElement("button");save.type="button";save.className="filter-button";save.textContent="Save findings";save.addEventListener("click",()=>updateAlertDecisionReport(report,{admin_notes:area.value.trim()||null},save));adminTd.append(area,save);tr.appendChild(adminTd);table.appendChild(tr);
+      });
+    }
+    async function loadAlertDecisionReports(showStatus=false){
+      const table=document.getElementById("alertDecisionReportsTable"),button=document.getElementById("refreshAlertDecisionReportsButton");if(!currentAdminProfile?.id)return;
+      if(button){button.disabled=true;button.textContent="Refreshing…";}
+      try{const {data,error}=await supabaseClient.from("alert_decision_reports").select("id, user_id, line, station, simulated_at, final_decision, warning_flags, decision_type, notes, admin_notes, status, created_at").order("created_at",{ascending:false});if(error)throw error;alertDecisionReports=data||[];renderAlertDecisionReports();if(showStatus)setStatus("Alert decision reports refreshed.","success",2500);}
+      catch(error){console.error("Alert decision reports error:",error);if(table)table.innerHTML='<tr><td colspan="9" class="empty">Could not load alert decision reports. Confirm the Supabase migration has been applied.</td></tr>';if(showStatus)setStatus("Could not load alert decision reports.","error",4000);}
+      finally{if(button){button.disabled=false;button.textContent="Refresh";}}
+    }
+    async function updateAlertDecisionReport(report,patch,control){
+      if(!currentAdminProfile?.id||!report?.id)return;if(control)control.disabled=true;
+      try{const {error}=await supabaseClient.from("alert_decision_reports").update(patch).eq("id",report.id);if(error)throw error;Object.assign(report,patch);setStatus("Alert decision report updated.","success",2500);renderAlertDecisionReports();}
+      catch(error){console.error("Alert decision report update failed:",error);setStatus("Could not update alert decision report.","error",4000);if(control)control.disabled=false;}
+    }
+    document.getElementById("alertDecisionReportSearch")?.addEventListener("input",renderAlertDecisionReports);
+    document.getElementById("alertDecisionReportStatusFilter")?.addEventListener("change",renderAlertDecisionReports);
+    document.getElementById("clearAlertDecisionReportFilters")?.addEventListener("click",()=>{document.getElementById("alertDecisionReportSearch").value="";document.getElementById("alertDecisionReportStatusFilter").value="";renderAlertDecisionReports();});
+
     function normalizeSystemValue(value) {
       const raw = String(value ?? "").trim().toLowerCase();
       if (!raw) return "subway"; // legacy sightings predate multi-system support
@@ -1998,7 +2053,28 @@
     }
 
     function sightingSystem(sighting) {
-      return normalizeSystemValue(sighting?.system ?? sighting?.transit_system ?? sighting?.mode);
+      const explicit = normalizeSystemValue(sighting?.system);
+      if (explicit && explicit !== "subway") return explicit;
+
+      // Bus sightings use route/location-oriented fields. Some existing Bus rows
+      // were saved before the system column was consistently populated, so do
+      // not let a blank system value make Admin treat them as Subway.
+      const route = String(sighting?.route ?? "").trim();
+      const busLocation = String(
+        sighting?.location ??
+        sighting?.stop_name ??
+        sighting?.bus_stop ??
+        ""
+      ).trim();
+      const busService = String(
+        sighting?.service_type ??
+        sighting?.service ??
+        ""
+      ).trim();
+
+      if (route || busLocation || busService) return "bus";
+
+      return explicit || "subway";
     }
 
     function systemLabel(value) {
