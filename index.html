@@ -1542,7 +1542,8 @@
 
     #settingsPanel.tools-mode #sharedAccountSettings,
     #settingsPanel.tools-mode #accountPanel,
-    #settingsPanel.tools-mode #databaseFreshnessCard { display: none !important; }
+    #settingsPanel.tools-mode #databaseFreshnessCard,
+    #settingsPanel.tools-mode .latest-update-card { display: none !important; }
 
 
 
@@ -3937,8 +3938,7 @@ async function updateSubwayStationScheduleState(station) {
         const isNormalOvernightNAtJay = String(currentLine).trim().toUpperCase() === "N"
             && stationLabel.includes("jay st")
             && stationLabel.includes("metro")
-            && selectedHour >= 0 && selectedHour < 5
-            && status.known && status.scheduled;
+            && selectedHour >= 0 && selectedHour < 5;
         // The 4 runs local between Sutter Av-Rutland Rd and New Lots Av
         // overnight. Static station metadata may list only the 3 at these
         // stops, so don't call the 4 off-route when its schedule confirms it.
@@ -3953,8 +3953,7 @@ async function updateSubwayStationScheduleState(station) {
         ].some(name => stationLabel.includes(name));
         const isNormalOvernight4AtNewLotsBranch = String(currentLine).trim().toUpperCase() === "4"
             && isNewLotsBranchStation
-            && selectedHour >= 0 && selectedHour < 5
-            && status.known && status.scheduled;
+            && selectedHour >= 0 && selectedHour < 5;
         const offRoute = usableLine && status.stationRouteKnown && !status.stationRouteNormal
             && !isNormalOvernightNAtJay
             && !isNormalOvernight4AtNewLotsBranch;
@@ -3964,7 +3963,10 @@ async function updateSubwayStationScheduleState(station) {
         // warning from being outside the line's normal station assignment.
         const isRoundTheClockA = String(currentLine).trim().toUpperCase() === "A"
             && status.stationRouteKnown && status.stationRouteNormal;
-        const timeUnusual = usableLine && status.known && !status.scheduled && !isRoundTheClockA;
+        const timeUnusual = usableLine && status.known && !status.scheduled
+            && !isRoundTheClockA
+            && !isNormalOvernightNAtJay
+            && !isNormalOvernight4AtNewLotsBranch;
         console.debug("[Late-night alert diagnostic v50] Final warning decision", {
             line: currentLine,
             station: station?.stopName || station?.complexName || station?.name || "(unknown station)",
