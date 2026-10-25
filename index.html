@@ -4051,6 +4051,102 @@ async function updateSubwayStationScheduleState(station) {
     }
 }
 
+function facilityAssignmentsHTML(system, rawNames, kind) {
+    const names = String(rawNames || "").split(/[;|]/).map(x => x.trim()).filter(Boolean);
+    if (!names.length) return '<span class="unknown-value">Facility assignment not yet verified</span>';
+    return names.map(name => `<span class="facility-link" role="button" tabindex="0" onclick="openFacilityDetail(decodeURIComponent('${encodeURIComponent(system)}'),decodeURIComponent('${encodeURIComponent(name)}'),decodeURIComponent('${encodeURIComponent(kind || "facility")}'))" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFacilityDetail(decodeURIComponent('${encodeURIComponent(system)}'),decodeURIComponent('${encodeURIComponent(name)}'),decodeURIComponent('${encodeURIComponent(kind || "facility")}'))}">${escapeHTML(name)}</span>`).join('<span class="facility-separator"> · </span>');
+}
+
+// Yard-specific subway car allocations compiled from the current public yard roster.
+// Ranges are the assigned car numbers, not the whole fleet's number range.
+const SUBWAY_YARD_ASSIGNMENTS = {
+    "240th Street Yard": [{fleet:"R62A",ranges:"1841–1900, 2156–2175, 2181–2220, 2226–2345, 2351–2455, 2466–2475; plus mixed set 1934+2177–2180",lines:"1"}],
+    "239th Street Yard": [{fleet:"R142",ranges:"6301–6345, 6351–6715",lines:"2, 5"}],
+    "East 180th Street Yard": [{fleet:"R142",ranges:"6716–7100, 7106–7125",lines:"2, 5"}],
+    "Livonia Yard": [{fleet:"R62",ranges:"1301–1355, 1361–1365, 1371–1434, 1438, 1441–1615, 1621–1625",lines:"3"},{fleet:"R62A",ranges:"Documented mixed consists",lines:"3"}],
+    "Jerome Yard": [{fleet:"R142",ranges:"1101–1200, 1210–1250, 7126–7180",lines:"4, 5"},{fleet:"R142A",ranges:"7591–7715, 7721–7790, 7796–7805",lines:"4"}],
+    "Westchester Yard": [{fleet:"R62",ranges:"1356–1360, 1616–1620",lines:"6"},{fleet:"R62A",ranges:"1651–1840, 1911–1920, 1961–2090, 2096–2155, 2221–2225, 2346–2350, 2456–2465; additional mixed/single-car consists",lines:"6, 42nd Street Shuttle"}],
+    "Corona Yard": [{fleet:"R188",ranges:"7211–7590, 7811–7936",lines:"7"}],
+    "Pitkin Yard": [{fleet:"R179",ranges:"3010–3049, 3238–3327",lines:"A, C"},{fleet:"R211A",ranges:"3400–3429, 3500–3519, 3610–3624, 3650–3654, 3830–3839, 4060–4499",lines:"A, C"}],
+    "207th Street Yard": [{fleet:"R179",ranges:"3138–3237",lines:"A, C"}],
+    "Concourse Yard": [{fleet:"R68",ranges:"2500–2607, 2612–2739",lines:"B, D"},{fleet:"R211A",ranges:"3750–3759, 3770–3779, 3870–3889, 3910–3929",lines:"D"}],
+    "Coney Island Yard": [{fleet:"R46",ranges:"5482–5485, 5490–5493, 5498–5505, 5514–5517, 5522–5525, 5530–5533, 5538–5541, 5546–5549, 5554–5561, 5582–5585, 5598–5601, 5614–5617, 5622–5649, 5694–5709, 5726–5729, 5738–5741, 5750–5753, 5762–5765, 5782–5785, 5794–5797, 5814–5817, 5822–5829, 5834–5837, 5846–5849, 5870–5873, 5922–5925, 5934–5937, 5978–5981, 5994–5997, 6194–6197",lines:"N, Q, W"},{fleet:"R68",ranges:"2740–2847, 2852–2924",lines:"B, D, G"},{fleet:"R68A",ranges:"5001–5200",lines:"N, W"},{fleet:"R211A / R211T",ranges:"3430–3499, 3520–3609, 3625–3649, 3655–3749, 3760–3764, 3820–3829, 3840–3869, 3890–3909, 4040–4059",lines:"N, Q, W"}],
+    "Jamaica Yard": [{fleet:"R160A (5-car sets)",ranges:"8653–8712, 9233–9802",lines:"E, F, R"},{fleet:"R160B",ranges:"8713–9232, 9803–9942",lines:"E, F, R"},{fleet:"R211A (rotating loan units)",ranges:"Units rotated from the Pitkin Yard pool for CBTC testing",lines:"Testing/loan; not a permanent line allocation"}],
+    "East New York Yard": [{fleet:"R143",ranges:"8101–8312",lines:"L"},{fleet:"R160A (4-car sets)",ranges:"8313–8652, 9943–9974",lines:"J, M, Z; some compatible sets may run on L"},{fleet:"R179",ranges:"3050–3137",lines:"J, Z"}]
+};
+function ensureFacilityDetailStyles() {
+    if (document.getElementById("facilityDetailStyles")) return;
+    const style = document.createElement("style"); style.id = "facilityDetailStyles";
+    style.textContent = `.facility-link{display:inline;color:inherit;padding:0;text-align:left;text-decoration:none;cursor:pointer;font:inherit;background:transparent;border:0;border-radius:0}.facility-link:focus-visible{outline:2px solid var(--accent,#55aaff);outline-offset:3px;border-radius:2px}.facility-separator{color:var(--muted,#888)}.facility-modal-backdrop{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px}.facility-modal{width:min(640px,100%);max-height:min(82vh,760px);overflow:auto;background:var(--panel,#171717);color:var(--text,#fff);border:1px solid var(--border,#444);border-radius:16px;padding:18px;box-shadow:0 18px 70px rgba(0,0,0,.45)}.facility-modal-header{display:flex;align-items:flex-start;gap:12px;justify-content:space-between}.facility-modal-close{border:1px solid var(--border,#555);border-radius:9px;padding:7px 10px;background:transparent;color:inherit;cursor:pointer}.facility-modal-section{margin-top:14px;padding-top:12px;border-top:1px solid var(--border,#444)}.facility-fleet-row{padding:10px;border:1px solid var(--border,#444);border-radius:10px;margin-top:8px}.facility-muted{opacity:.75;font-size:.9em}.facility-range{margin-top:3px;line-height:1.45}`;
+    document.head.appendChild(style);
+}
+function openFacilityDetail(system, facilityName, kind="facility") {
+    ensureFacilityDetailStyles();
+    document.getElementById("facilityDetailBackdrop")?.remove();
+    const name = String(facilityName || "").trim();
+    let fleetRows = [];
+    let routeText = "";
+    let caveat = "Only assignments supported by the current facility data are listed.";
+    if (system === "subway") {
+        const yardKey = Object.keys(SUBWAY_YARD_ASSIGNMENTS).find(k => k.toLowerCase() === name.toLowerCase());
+        fleetRows = yardKey ? SUBWAY_YARD_ASSIGNMENTS[yardKey] : [];
+        if (fleetRows.length) caveat = "Assigned car-number blocks are based on a public yard roster updated during 2025–2026. Fleet route information is shown where the roster identifies it; temporary loans and daily swaps can occur.";
+        else caveat = "This facility is listed in fleet information, but a current, yard-specific car allocation was not available in the roster used for this update. No fleet assignment has been inferred from general fleet lines.";
+    } else if (system === "bus") {
+        const assignments = (busAssignmentOverrides || []).filter(item => String(item.depot || "").trim().toLowerCase() === name.toLowerCase());
+        routeText = [...new Set(assignments.map(item=>String(item.routes || "").trim()).filter(Boolean))].join("; ");
+        const models = new Map();
+        for (const assignment of assignments) for (const [a,b] of assignment.ranges || []) {
+            for (const fleet of busFleetData || []) if ((fleet.ranges || []).some(([fa,fb]) => Math.max(a,fa) <= Math.min(b,fb))) models.set(fleet.model, true);
+        }
+        fleetRows = [...models.keys()].sort().map(model => ({name:model, ranges:"Listed in depot assignment roster", lines:""}));
+        caveat = "Depot routes and bus-number assignments are drawn from the app's depot assignment roster.";
+    } else if (system === "lirr" || system === "metro-north") {
+        fleetRows = (RAILROAD_FLEETS?.[system] || []).filter(fleet => (fleet.facilities || []).some(f => String(f).toLowerCase() === name.toLowerCase())).map(fleet => ({name:fleet.name, ranges:fleet.facilityRole || "Facility use listed in fleet data", lines:fleet.service || ""}));
+        caveat = "These are maintenance or operating facilities as described in the railroad facility references; this does not imply a fixed overnight storage assignment unless explicitly stated.";
+    }
+    const systemName = system === "metro-north" ? "Metro-North" : system === "lirr" ? "LIRR" : system === "bus" ? "Bus" : "Subway";
+    const backdrop = document.createElement("div"); backdrop.id="facilityDetailBackdrop"; backdrop.className="facility-modal-backdrop"; backdrop.setAttribute("role","presentation");
+    backdrop.innerHTML = `<section class="facility-modal" role="dialog" aria-modal="true" aria-labelledby="facilityDetailTitle"><div class="facility-modal-header"><div><div class="facility-muted">${escapeHTML(systemName)} · ${escapeHTML(kind)}</div><h2 id="facilityDetailTitle" style="margin:4px 0 0">${escapeHTML(name)}</h2></div><button type="button" class="facility-modal-close" aria-label="Close facility details" onclick="document.getElementById('facilityDetailBackdrop')?.remove()">Close</button></div><div class="facility-modal-section"><h3 style="margin:0">Assigned fleets and equipment</h3>${fleetRows.length ? fleetRows.map(row=>`<div class="facility-fleet-row"><strong>${escapeHTML(row.name)}</strong>${row.ranges ? `<div class="facility-range"><strong>Assigned cars / equipment:</strong> ${escapeHTML(row.ranges)}</div>` : ""}${row.lines ? `<div class="facility-muted">${system === "subway" ? "Routes associated with this yard allocation" : system === "bus" ? "" : "Fleet service / role"}: ${escapeHTML(row.lines)}</div>` : ""}</div>`).join("") : '<p class="facility-muted">No facility-specific fleet allocation is currently recorded for this location.</p>'}</div>${routeText ? `<div class="facility-modal-section"><h3 style="margin:0">Routes served by this depot</h3><p>${escapeHTML(routeText)}</p></div>` : ""}<div class="facility-modal-section facility-muted">${escapeHTML(caveat)}</div></section>`;
+    backdrop.addEventListener("click", event => { if (event.target === backdrop) backdrop.remove(); });
+    document.addEventListener("keydown", function closeOnEscape(event) { if (event.key === "Escape") { backdrop.remove(); document.removeEventListener("keydown", closeOnEscape); } }, {once:true});
+    document.body.appendChild(backdrop);
+}
+
+const RECENT_STATION_PRIORITY_KEY = "fleetIdentifierRecentStationPriority";
+const RECENT_STATION_PRIORITY_MS = 2 * 60 * 1000;
+function getRecentStationPriority() {
+    try {
+        const item = JSON.parse(localStorage.getItem(RECENT_STATION_PRIORITY_KEY) || "null");
+        if (!item || !item.name || !Number.isFinite(Number(item.savedAt)) || Date.now() - Number(item.savedAt) > RECENT_STATION_PRIORITY_MS || Date.now() < Number(item.savedAt)) return null;
+        return item;
+    } catch { return null; }
+}
+function rememberRecentStation(input) {
+    if (!input || !input.value.trim()) return;
+    const savedAt = Date.now();
+    const item = {
+        name: input.value.trim(),
+        stationId: input.dataset.stationId || "",
+        masterId: input.dataset.stationMasterId || "",
+        complexId: input.dataset.stationComplexId || "",
+        savedAt
+    };
+    try { localStorage.setItem(RECENT_STATION_PRIORITY_KEY, JSON.stringify(item)); } catch {}
+}
+function prioritizeRecentStation(matches) {
+    const recent = getRecentStationPriority();
+    if (!recent || !Array.isArray(matches) || !matches.length) return matches;
+    const recentIndex = matches.findIndex(station =>
+        (recent.stationId && String(station.id) === String(recent.stationId)) ||
+        (recent.masterId && String(station.stationId) === String(recent.masterId)) ||
+        (recent.complexId && String(station.complexId) === String(recent.complexId)) ||
+        normalizeStationSearch(stationDisplayName(station)) === normalizeStationSearch(recent.name)
+    );
+    if (recentIndex <= 0) return matches;
+    return [matches[recentIndex], ...matches.slice(0, recentIndex), ...matches.slice(recentIndex + 1)];
+}
+
 function enhanceStationInput(input) {
     if (!input || input.dataset.stationPickerEnhanced === "1") return;
     input.dataset.stationPickerEnhanced = "1";
@@ -4154,7 +4250,7 @@ function enhanceStationInput(input) {
         note.textContent = "Searching stations...";
         try {
             await loadStandardizedStations();
-            const matches = stationMatches(raw);
+            const matches = prioritizeRecentStation(stationMatches(raw, standardizedStations.length)).slice(0, 24);
             note.textContent = matches.length ? `${matches.length} match${matches.length === 1 ? "" : "es"}` : "No matching stations.";
             render(matches);
         } catch {
@@ -4228,7 +4324,7 @@ function renderFleetComparison(){
     status.textContent=left.key===right.key?`Comparing ${left.name} with itself.`:`${left.name} vs. ${right.name}`;
     let rows;
     if(activeFleetSystem==="bus") rows=[["Bus numbers",fleetComparisonRangeText(left),fleetComparisonRangeText(right)],["Builder / manufacturer",left.builder,right.builder],["Years built / delivered",left.years,right.years],["Length / type",left.length,right.length],["Powertrain",left.powertrain,right.powertrain],["Fleet / order size",left.fleetSize,right.fleetSize],["Passenger charging",left.charging,right.charging],["Maximum speed",left.maxSpeed,right.maxSpeed],["Notes",left.notes,right.notes]];
-    else if(activeFleetSystem==="lirr"||activeFleetSystem==="metro-north") rows=[["Vehicle numbers",fleetComparisonRangeText(left),fleetComparisonRangeText(right)],["Builder",left.builder,right.builder],["Years built",left.years,right.years],["Formation",left.formation,right.formation],["Power",left.power,right.power],["Typical system service",left.service,right.service],["Notes",left.notes,right.notes]];
+    else if(activeFleetSystem==="lirr"||activeFleetSystem==="metro-north") rows=[["Vehicle numbers",fleetComparisonRangeText(left),fleetComparisonRangeText(right)],["Builder",left.builder,right.builder],["Years built",left.years,right.years],["Formation",left.formation,right.formation],["Power",left.power,right.power],["Typical system service",left.service,right.service],["Yards & facilities",(left.facilities?.join("; ")||"Facility assignment not yet verified"),(right.facilities?.join("; ")||"Facility assignment not yet verified")],["Notes",left.notes,right.notes]];
     else rows=[["Car numbers",fleetComparisonRangeText(left),fleetComparisonRangeText(right)],["Builder",left.builder,right.builder],["Years built",left.years,right.years],["Lines commonly used",left.lines,right.lines],["Division",left.division,right.division],["Factory version",left.factory,right.factory],["Passenger version",left.passenger,right.passenger],["Fleet size",left.built,right.built],["Maximum service speed",left.serviceSpeed,right.serviceSpeed],["Design speed",left.designSpeed,right.designSpeed],["Propulsion",left.propulsion,right.propulsion],["Notes",left.notes,right.notes]];
     table.innerHTML=`<div class="fleet-compare-row"><div class="fleet-compare-cell fleet-compare-label">Specification</div><div class="fleet-compare-cell fleet-compare-heading">${escapeHTML(left.name)}</div><div class="fleet-compare-cell fleet-compare-heading">${escapeHTML(right.name)}</div></div>${rows.map(([label,a,b])=>`<div class="fleet-compare-row"><div class="fleet-compare-cell fleet-compare-label">${escapeHTML(label)}</div><div class="fleet-compare-cell">${fleetComparisonValue(a)}</div><div class="fleet-compare-cell">${fleetComparisonValue(b)}</div></div>`).join("")}`;
 }
@@ -7327,6 +7423,25 @@ async function syncOfflineSightings() {
         writeOfflineSightingQueue([...remaining, ...notVisited.filter(x=>!handled.has(x.queue_id))]);
     } finally { offlineSyncRunning=false; }
 }
+function getAllBundledBusStops() {
+    const stopMaps = [BROOKLYN_BUS_STOP_INDEX, QUEENS_BUS_STOP_INDEX, MANHATTAN_BUS_STOP_INDEX, BRONX_BUS_STOP_INDEX, STATEN_ISLAND_BUS_STOP_INDEX, BUSCO_BUS_STOP_INDEX, X_BUS_STOP_INDEX];
+    const merged = new Map();
+    for (const map of stopMaps) {
+        for (const [stopId, entry] of Object.entries(map || {})) {
+            if (!Array.isArray(entry)) continue;
+            const [name, routes] = entry;
+            const key = String(stopId);
+            const existing = merged.get(key);
+            if (existing) {
+                for (const route of (routes || [])) existing.routes.add(route);
+            } else {
+                merged.set(key, { id:`nis:${key}`, stopId:key, name:String(name || ""), routes:new Set(routes || []) });
+            }
+        }
+    }
+    return [...merged.values()].map(stop => ({...stop, routes:[...stop.routes].sort(compareBusStopRoutes)})).sort((a,b) => a.name.localeCompare(b.name) || a.stopId.localeCompare(b.stopId));
+}
+
 window.addEventListener("online", ()=>setTimeout(syncOfflineSightings, 500));
 window.addEventListener("load", ()=>setTimeout(syncOfflineSightings, 1500));
 
@@ -7365,6 +7480,13 @@ function resetIdentifierAfterSave(system) {
             if (input) { input.value = ""; input.focus(); }
         }
     }, SIGHTING_SUCCESS_DELAY_MS);
+}
+
+function busSightingSaveSuccessHTML(busNumber, line, location) {
+    const busText = String(busNumber || "").trim();
+    const routeText = escapeHTML(line || "NIS");
+    const locationText = location ? escapeHTML(location) : "unknown location";
+    return `Bus ${escapeHTML(busText)} on ${routeText} logged at ${locationText}.`;
 }
 
 function sightingSaveSuccessHTML(system, count, line, location) {
@@ -7414,6 +7536,7 @@ async function saveSighting() {
             station: station || "TEST Station", notes: notes || null, saved_at: offlineFieldTimestamp(requestedTimestamp.value)
         }, consistCars);
         if (status) status.innerHTML = sightingSaveSuccessHTML("subway", consistCars.length, pendingSighting.line || "TEST", station || "TEST Station");
+        rememberRecentStation(document.getElementById("sightingStation"));
         resetIdentifierAfterSave("subway");
         return;
     }
@@ -7448,6 +7571,7 @@ async function saveSighting() {
         console.error("Could not save sighting:", error);
         if (isLikelyNetworkError(error)) {
             queueOfflineSighting({system:"subway",payload:sightingPayload,consistCars});
+            rememberRecentStation(document.getElementById("sightingStation"));
             if(status) status.textContent="Saved on this device — Pending sync.";
             resetIdentifierAfterSave("subway");
             return;
@@ -7486,6 +7610,7 @@ async function saveSighting() {
     }
 
     refreshAchievementEligibility(session.user);
+    rememberRecentStation(document.getElementById("sightingStation"));
 
     // Keep the success output visible long enough to read, then return to a clean Identifier.
     resetIdentifierAfterSave("subway");
@@ -8978,7 +9103,7 @@ function showFleetSearchResult(fleet) {
             <div>${escapeHTML(data.division || "Unknown")}</div>
 
             <div class="label">Yard assignment(s)</div>
-            <div class="${data.yards ? "" : "unknown-value"}">${escapeHTML(data.yards || "Not yet verified")}</div>
+            <div>${facilityAssignmentsHTML("subway", data.yards, "yard")}</div>
 
             <div class="label">Factory version</div>
             <div>${escapeHTML(data.factory || "Unknown")}</div>
@@ -9029,7 +9154,7 @@ const busFleetData = [
     { ranges:[[4810,4899]], model:"New Flyer XD40 Xcelsior", builder:"New Flyer", years:"2011–2012", length:"40 ft", powertrain:"Diesel", fleetSize:"90 buses (original numbered range)", charging:"Not yet verified for this order", maxSpeed:"Unknown", notes:"Early MTA Xcelsior order." },
     { ranges:[[7090,7483]], model:"New Flyer XD40 Xcelsior", builder:"New Flyer", years:"2014–2015", length:"40 ft", powertrain:"Diesel", fleetSize:"394 buses (original numbered range)", charging:"Not yet verified for this order", maxSpeed:"Unknown", notes:"Large 2014–2015 XD40 order." },
     { ranges:[[8090,8503]], model:"Nova Bus LFS", builder:"Nova Bus", years:"2015–2016", length:"40 ft", powertrain:"Diesel", fleetSize:"414 buses (original numbered range)", charging:"Not yet verified for this order", maxSpeed:"Unknown", notes:"Fourth-generation LFS order." },
-    { ranges:[[673,810]], model:"New Flyer XN40 Xcelsior", builder:"New Flyer", years:"2016–2017", length:"40 ft", powertrain:"CNG", fleetSize:"138 buses (original numbered range)", charging:"Not yet verified for this order", maxSpeed:"Unknown", notes:"CNG Xcelsior order." },
+    { ranges:[[673,810]], model:"New Flyer XN40 Xcelsior", builder:"New Flyer", years:"2016–2017", length:"40 ft", powertrain:"CNG", fleetSize:"138 buses (original numbered range)", charging:"No passenger charging", maxSpeed:"Unknown", notes:"CNG Xcelsior order." },
     { ranges:[[7484,7850]], model:"New Flyer XD40 Xcelsior", builder:"New Flyer", years:"2017–2019", length:"40 ft", powertrain:"Diesel", fleetSize:"367 buses (original numbered range)", charging:"Not yet verified for this order", maxSpeed:"Unknown", notes:"Depot and route assignments vary by bus." },
     { ranges:[[8504,8754]], model:"Nova Bus LFS", builder:"Nova Bus", years:"2019", length:"40 ft", powertrain:"Diesel", fleetSize:"251 buses (original numbered range)", charging:"Not yet verified for this order", maxSpeed:"Unknown", notes:"SmartBus-era LFS order." },
     { ranges:[[9500,9509]], model:"New Flyer XDE40 Xcelsior", builder:"New Flyer", years:"2018", length:"40 ft", powertrain:"Diesel-electric hybrid", fleetSize:"10 buses", charging:"Not yet verified for this order", maxSpeed:"Unknown", notes:"Pilot/small hybrid order." },
@@ -9234,7 +9359,7 @@ async function identifyBus() {
             <div class="label">Length / type</div><div>${escapeHTML(data.length)}</div>
             <div class="label">Powertrain</div><div>${escapeHTML(data.powertrain)}</div>
             <div class="label">Fleet / order size</div><div>${escapeHTML(data.fleetSize)}</div>
-            <div class="label">Current depot assignment</div><div class="${assignment ? "" : "unknown-value"}">${escapeHTML(assignment?.depot || "Depot assignment not yet verified")}</div>
+            <div class="label">Current depot assignment</div><div>${assignment?.depot ? facilityAssignmentsHTML("bus", assignment.depot, "depot") : '<span class="unknown-value">Depot assignment not yet verified</span>'}</div>
             <div class="label">Routes operated by this depot</div><div class="${assignment ? "" : "unknown-value"}">${escapeHTML(assignment?.routes || "Available after the depot assignment is verified")}</div>
             <div class="label">Passenger charging</div><div class="${String(specific.charging || data.charging).toLowerCase().includes("not yet") ? "unknown-value" : ""}">${escapeHTML(specific.charging || data.charging)}</div>
             <div class="label">Maximum speed</div><div class="unknown-value">${escapeHTML(data.maxSpeed)}</div>
@@ -9332,6 +9457,16 @@ function busRouteBadgeLabel(route) {
 
 function busRouteBadgeHTML(route) {
     return `<span class="bus-route-badge ${classifyBusRouteBadge(route)}">${escapeHTML(busRouteBadgeLabel(route))}</span>`;
+}
+
+// The badge keeps its existing visual style; only the bus-stop picker version is interactive.
+function busStopRouteBadgeHTML(route, stop) {
+    const r=String(route || "");
+    const stopId=String(stop?.stopId || "");
+    const stopName=String(stop?.name || "");
+    const simulated=!!stop?.testMode;
+    const call=`openBusRouteDestinations(decodeURIComponent('${encodeURIComponent(r)}'),decodeURIComponent('${encodeURIComponent(stopId)}'),decodeURIComponent('${encodeURIComponent(stopName)}'),${simulated ? "true" : "false"})`;
+    return `<span class="bus-route-badge ${classifyBusRouteBadge(r)}" role="button" tabindex="0" aria-label="Show ${escapeHTML(busRouteBadgeLabel(r))} destinations at ${escapeHTML(stopName)}" onclick="event.stopPropagation();${call}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();${call}}">${escapeHTML(busRouteBadgeLabel(r))}</span>`;
 }
 
 function parseBusRouteSortKey(route) {
@@ -9450,6 +9585,200 @@ function getBundledBusStopsForRoute(route) {
     return stops;
 }
 
+// Bus GTFS ZIPs are retrieved through the same CORS-enabled Supabase proxy
+// as the subway feed. The Edge Function accepts only these allowlisted feed keys.
+const BUS_DESTINATION_PROXY_URL = MTA_SUBWAY_GTFS_URL;
+const BUS_DESTINATION_FEED_URLS = {
+    brooklyn: `${BUS_DESTINATION_PROXY_URL}?feed=brooklyn`,
+    queens: `${BUS_DESTINATION_PROXY_URL}?feed=queens`,
+    manhattan: `${BUS_DESTINATION_PROXY_URL}?feed=manhattan`,
+    bronx: `${BUS_DESTINATION_PROXY_URL}?feed=bronx`,
+    "staten-island": `${BUS_DESTINATION_PROXY_URL}?feed=staten-island`,
+    busco: `${BUS_DESTINATION_PROXY_URL}?feed=busco`
+};
+const busDestinationFeedCache = new Map();
+const busDestinationResultCache = new Map();
+
+function normalizeBusDestinationRoute(value) {
+    return String(value || "").trim().toUpperCase().replace(/-(LTD|SBS|RUSH)$/i, "").replace(/\s+/g, "");
+}
+function busDestinationFeedSources(route) {
+    const wanted=String(route || "").trim().toUpperCase();
+    const candidates=[
+        [BUSCO_BUS_ROUTE_STOPS,"busco"],
+        [STATEN_ISLAND_BUS_ROUTE_STOPS,"staten-island"],
+        [BRONX_BUS_ROUTE_STOPS,"bronx"],
+        [MANHATTAN_BUS_ROUTE_STOPS,"manhattan"],
+        [QUEENS_BUS_ROUTE_STOPS,"queens"],
+        [BROOKLYN_BUS_ROUTE_STOPS,"brooklyn"]
+    ];
+    for (const [map,source] of candidates) {
+        if (Object.keys(map || {}).some(key=>key.toUpperCase()===wanted)) return [source];
+    }
+    // Express-route stop lists can combine routes from more than one borough feed.
+    if (Object.keys(X_BUS_ROUTE_STOPS || {}).some(key=>key.toUpperCase()===wanted)) return Object.keys(BUS_DESTINATION_FEED_URLS);
+    return [];
+}
+async function loadBusDestinationFeed(source) {
+    if (busDestinationFeedCache.has(source)) return busDestinationFeedCache.get(source);
+    const url=BUS_DESTINATION_FEED_URLS[source];
+    if (!url) throw new Error("No verified GTFS feed is configured for this route.");
+    const promise=(async()=>{
+        if (typeof JSZip === "undefined") throw new Error("GTFS ZIP parser is unavailable.");
+        const controller=new AbortController();
+        const timeout=setTimeout(()=>controller.abort(),30000);
+        let response;
+        try {
+            response=await fetch(url,{
+                cache:"no-cache", signal:controller.signal,
+                headers:{apikey:SUPABASE_PUBLISHABLE_KEY}
+            });
+        } catch(fetchError) {
+            if (fetchError?.name==="AbortError") throw new Error("Bus GTFS proxy timed out after 30 seconds.");
+            throw new Error(`Bus GTFS proxy request failed: ${String(fetchError?.message || fetchError)}`);
+        } finally { clearTimeout(timeout); }
+        if (!response.ok) throw new Error(`Bus GTFS proxy download failed (${response.status}).`);
+        const zip=await JSZip.loadAsync(await response.arrayBuffer());
+        const routesFile=zip.file("routes.txt"), tripsFile=zip.file("trips.txt"), stopTimesFile=zip.file("stop_times.txt"), stopsFile=zip.file("stops.txt");
+        if (!routesFile || !tripsFile || !stopTimesFile || !stopsFile) throw new Error("The bus GTFS feed is missing required destination data.");
+        const [routesText,tripsText,stopTimesText,stopsText]=await Promise.all([routesFile.async("string"),tripsFile.async("string"),stopTimesFile.async("string"),stopsFile.async("string")]);
+        const routes=parseGtfsCsv(routesText), trips=parseGtfsCsv(tripsText), stops=parseGtfsCsv(stopsText);
+        const routeNames=new Map(routes.map(r=>[String(r.route_id),String(r.route_short_name || r.route_id)]));
+        const stopCoords=new Map(stops.map(st=>[String(st.stop_id),{lat:Number(st.stop_lat),lon:Number(st.stop_lon)}]).filter(([,v])=>Number.isFinite(v.lat)&&Number.isFinite(v.lon)));
+        // Only retain trips belonging to a route that can be selected in the UI.
+        const tripById=new Map(trips.map(t=>[String(t.trip_id),{
+            route:routeNames.get(String(t.route_id)) || String(t.route_id),
+            direction:String(t.direction_id ?? ""),
+            headsign:String(t.trip_headsign || "")
+        }]));
+        return {tripById,stopTimesText,stopCoords};
+    })();
+    busDestinationFeedCache.set(source,promise);
+    try { return await promise; } catch(err) { busDestinationFeedCache.delete(source); throw err; }
+}
+function busBearingDegrees(a,b) {
+    const rad=Math.PI/180, lat1=a.lat*rad, lat2=b.lat*rad, dLon=(b.lon-a.lon)*rad;
+    const y=Math.sin(dLon)*Math.cos(lat2);
+    const x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLon);
+    return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+function busBearingLabel(degrees) {
+    const labels=["Northbound","Northeastbound","Eastbound","Southeastbound","Southbound","Southwestbound","Westbound","Northwestbound"];
+    return labels[Math.round(degrees/45)%8];
+}
+function normalizeBusHeadsign(value) {
+    return String(value || "").trim().replace(/\s*\(([^)]+)\)/g, ", $1").replace(/\s+/g," ").replace(/\s+,/g,",").trim();
+}
+async function getBusDestinationsAtStop(route, stopId) {
+    const cacheKey=`${String(route).toUpperCase()}::${String(stopId)}`;
+    if (busDestinationResultCache.has(cacheKey)) return busDestinationResultCache.get(cacheKey);
+    const sources=busDestinationFeedSources(route);
+    if (!sources.length) throw new Error("Destination data is not mapped for this route.");
+    const resultPromise=(async()=>{
+        const allGroups=new Map();
+        for (const source of sources) {
+            let feed;
+            try { feed=await loadBusDestinationFeed(source); }
+            catch (error) { if (sources.length===1) throw error; else continue; }
+            const tripById=feed.tripById;
+            const routeMatches=new Set();
+            const target=normalizeBusDestinationRoute(route);
+            for (const [tripId,trip] of tripById) {
+                if (normalizeBusDestinationRoute(trip.route)===target) routeMatches.add(tripId);
+            }
+            if (!routeMatches.size) { if (sources.length>1) busDestinationFeedCache.delete(source); continue; }
+            const lines=feed.stopTimesText.split(/\n/);
+            if (!lines.length) continue;
+            const header=lines[0].replace(/\r$/g,"").split(",");
+            const ix={trip:header.indexOf("trip_id"),stop:header.indexOf("stop_id"),sequence:header.indexOf("stop_sequence"),headsign:header.indexOf("stop_headsign")};
+            if (ix.trip<0 || ix.stop<0) { if (sources.length>1) busDestinationFeedCache.delete(source); continue; }
+            const atStop=[];
+            for (let i=1;i<lines.length;i++) {
+                const line=lines[i]; if(!line) continue;
+                // stop_times.txt fields used here are plain GTFS identifiers/numbers; no quoted commas are expected in these columns.
+                const cells=line.replace(/\r$/g,"").split(",");
+                if (cells[ix.stop]!==String(stopId) || !routeMatches.has(cells[ix.trip])) continue;
+                const trip=tripById.get(cells[ix.trip]); if(!trip) continue;
+                const stopHeadsign=ix.headsign>=0 ? cells[ix.headsign] : "";
+                atStop.push({tripId:cells[ix.trip],sequence:Number(cells[ix.sequence]),direction:trip.direction,headsign:normalizeBusHeadsign(stopHeadsign || trip.headsign)});
+            }
+            if (!atStop.length) { if (sources.length>1) busDestinationFeedCache.delete(source); continue; }
+            // Find each trip's next stop so compass labels are based on actual stop coordinates,
+            // rather than assuming GTFS direction_id 0/1 means north/south.
+            const neededTrips=new Set(atStop.map(x=>x.tripId));
+            const nextRows=new Map();
+            for (let i=1;i<lines.length;i++) {
+                const line=lines[i]; if(!line) continue;
+                const cells=line.replace(/\r$/g,"").split(",");
+                if (!neededTrips.has(cells[ix.trip])) continue;
+                const seq=Number(cells[ix.sequence]);
+                const key=cells[ix.trip];
+                const current=nextRows.get(key) || [];
+                current.push({stopId:cells[ix.stop],sequence:seq});
+                nextRows.set(key,current);
+            }
+            for (const entry of atStop) {
+                const rows=(nextRows.get(entry.tripId)||[]).sort((a,b)=>a.sequence-b.sequence);
+                const currentIndex=rows.findIndex(r=>r.stopId===String(stopId)&&r.sequence===entry.sequence);
+                const next=currentIndex>=0 ? rows[currentIndex+1] : null;
+                const previous=currentIndex>0 ? rows[currentIndex-1] : null;
+                let from=feed.stopCoords.get(String(stopId)), to=next ? feed.stopCoords.get(String(next.stopId)) : null;
+                if (!next && previous) { from=feed.stopCoords.get(String(previous.stopId)); to=feed.stopCoords.get(String(stopId)); }
+                const bearing=from&&to ? busBearingDegrees(from,to) : null;
+                const key=entry.direction || (Number.isFinite(bearing) ? busBearingLabel(bearing) : "unknown");
+                if(!allGroups.has(key)) allGroups.set(key,{direction:key,headsigs:new Map(),bearings:[]});
+                const group=allGroups.get(key);
+                const dest=entry.headsign;
+                if(dest) group.headsigs.set(dest,(group.headsigs.get(dest)||0)+1);
+                if(Number.isFinite(bearing)) group.bearings.push(bearing);
+            }
+            if (sources.length>1) busDestinationFeedCache.delete(source);
+        }
+        return [...allGroups.values()].map(group=>{
+            const ranked=[...group.headsigs.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+            const bearings=group.bearings;
+            let label="";
+            if(bearings.length){
+                const buckets=new Map();
+                for(const bearing of bearings){const name=busBearingLabel(bearing);buckets.set(name,(buckets.get(name)||0)+1);}
+                label=[...buckets.entries()].sort((a,b)=>b[1]-a[1])[0][0];
+            }
+            return {label,destinations:ranked.slice(0,3).map(([name,count])=>({name,count}))};
+        }).filter(group=>group.destinations.length).sort((a,b)=>(a.label||"zz").localeCompare(b.label||"zz"));
+    })();
+    busDestinationResultCache.set(cacheKey,resultPromise);
+    try{return await resultPromise;}catch(err){busDestinationResultCache.delete(cacheKey);throw err;}
+}
+function ensureBusDestinationModalStyles() {
+    if(document.getElementById("busDestinationModalStyles")) return;
+    const style=document.createElement("style"); style.id="busDestinationModalStyles";
+    style.textContent=`.bus-destination-backdrop{position:fixed;inset:0;z-index:11000;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px}.bus-destination-modal{width:min(520px,100%);max-height:min(82vh,720px);overflow:auto;background:var(--panel,#171717);color:var(--text,#fff);border:1px solid var(--border,#444);border-radius:16px;padding:18px;box-shadow:0 18px 70px rgba(0,0,0,.45)}.bus-destination-heading{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.bus-destination-close{border:1px solid var(--border,#555);border-radius:9px;padding:7px 10px;background:transparent;color:inherit;cursor:pointer}.bus-destination-direction{margin-top:12px;padding-top:12px;border-top:1px solid var(--border,#444)}.bus-destination-note{opacity:.75;font-size:.9em;line-height:1.4}`;
+    document.head.appendChild(style);
+}
+function renderBusDestinationModal(route, stopName, body, note="") {
+    ensureBusDestinationModalStyles();
+    document.getElementById("busDestinationBackdrop")?.remove();
+    const backdrop=document.createElement("div"); backdrop.id="busDestinationBackdrop"; backdrop.className="bus-destination-backdrop";
+    backdrop.innerHTML=`<div class="bus-destination-modal" role="dialog" aria-modal="true" aria-labelledby="busDestinationTitle"><div class="bus-destination-heading"><div><h2 id="busDestinationTitle" style="margin:0 0 6px;font-size:1.2rem">${escapeHTML(busRouteBadgeLabel(route))} destinations</h2><div class="bus-destination-note">${escapeHTML(stopName)}</div></div><button type="button" class="bus-destination-close" aria-label="Close">Close</button></div><div id="busDestinationContent">${body}</div>${note?`<p class="bus-destination-note">${escapeHTML(note)}</p>`:""}</div>`;
+    backdrop.addEventListener("click",e=>{if(e.target===backdrop)backdrop.remove();});
+    backdrop.querySelector(".bus-destination-close")?.addEventListener("click",()=>backdrop.remove());
+    document.addEventListener("keydown",function closeOnEscape(e){if(e.key==="Escape"&&document.getElementById("busDestinationBackdrop")){document.getElementById("busDestinationBackdrop")?.remove();document.removeEventListener("keydown",closeOnEscape);}});
+    document.body.appendChild(backdrop);
+}
+async function openBusRouteDestinations(route, stopId, stopName, simulated=false) {
+    if(simulated){renderBusDestinationModal(route,stopName,"<p>These route badges are simulated for Test Mode. Real destination data is intentionally not attached.</p>");return;}
+    renderBusDestinationModal(route,stopName,"<p>Loading verified destination data…</p>");
+    try {
+        const groups=await getBusDestinationsAtStop(route,stopId);
+        if(!groups.length){renderBusDestinationModal(route,stopName,"<p>No destination could be verified for this route at this stop in the available GTFS data.</p>");return;}
+        const body=groups.map(group=>`<section class="bus-destination-direction">${group.label?`<h3 style="margin:0 0 7px;font-size:1rem">${escapeHTML(group.label)}</h3>`:""}${group.destinations.map(d=>`<div style="padding:3px 0">${escapeHTML(d.name)}</div>`).join("")}</section>`).join("");
+        renderBusDestinationModal(route,stopName,body,"Destinations are derived from the current MTA static GTFS feed. Short-turn trips may have additional destinations; the most common listed destinations are shown.");
+    } catch(error) {
+        console.error("[Fleet Identifier] Bus destination GTFS lookup failed:", error);
+        renderBusDestinationModal(route,stopName,"<p>Destination data could not be loaded right now.</p>","The app could not retrieve verified GTFS data. Please try again when online.");
+    }
+}
+
 async function handleBusLocationInput() {
     if (busLocationMode!=="stop") return;
     selectedBusStop=null;
@@ -9471,7 +9800,8 @@ async function handleBusLocationInput() {
         const testStop={
             id:"test:stop-av-stop-st",
             name:"Stop Av / Stop St",
-            routes:["B6","B6-LTD","B46-SBS","Q10-RUSH","BM1"]
+            routes:["B6","B6-LTD","B46-SBS","Q10-RUSH","BM1"],
+            testMode:true
         };
         const normalized=normalizeBusStopSearch(testStop.name);
         const tokens=q.split(" ").filter(Boolean);
@@ -9486,7 +9816,7 @@ async function handleBusLocationInput() {
         b.type="button";
         b.className="bus-stop-result";
         b.setAttribute("role","option");
-        b.innerHTML=`<span><span class="bus-stop-name">${escapeHTML(testStop.name)}</span></span><span class="bus-stop-routes">${testStop.routes.map(busRouteBadgeHTML).join("")}</span>`;
+        b.innerHTML=`<span><span class="bus-stop-name">${escapeHTML(testStop.name)}</span></span><span class="bus-stop-routes">${testStop.routes.map(route=>busStopRouteBadgeHTML(route,testStop)).join("")}</span>`;
         b.onclick=()=>{
             selectedBusStop=testStop;
             input.value=testStop.name;
@@ -9501,7 +9831,8 @@ async function handleBusLocationInput() {
     }
 
     const route=currentBusRouteForStopSearch();
-    if (!route) {
+    const isNIS=(document.getElementById("busRoutePrefix")?.value || "") === "NIS";
+    if (!route && !isNIS) {
         results.classList.add("hidden");
         results.innerHTML="";
         if(note) note.textContent="Choose the bus route first, then search its official stops.";
@@ -9517,7 +9848,7 @@ async function handleBusLocationInput() {
         return;
     }
 
-    const stops=getBundledBusStopsForRoute(route);
+    const stops=isNIS ? getAllBundledBusStops() : getBundledBusStopsForRoute(route);
     if (!stops.length) {
         // Do not expose an empty technical dropdown over the rest of the form.
         results.classList.add("hidden");
@@ -9547,13 +9878,13 @@ async function handleBusLocationInput() {
         b.type="button";
         b.className="bus-stop-result";
         b.setAttribute("role","option");
-        b.innerHTML=`<span><span class="bus-stop-name">${escapeHTML(stop.name)}</span></span><span class="bus-stop-routes">${stop.routes.slice(0,5).map(busRouteBadgeHTML).join("")}</span>`;
+        b.innerHTML=`<span><span class="bus-stop-name">${escapeHTML(stop.name)}</span></span><span class="bus-stop-routes">${stop.routes.slice(0,5).map(route=>busStopRouteBadgeHTML(route,stop)).join("")}</span>`;
         b.onclick=()=>{
             selectedBusStop=stop;
             input.value=stop.name;
             results.classList.add("hidden");
             results.innerHTML="";
-            if(note) note.textContent=`Selected official stop: ${stop.name}`;
+            if(note) note.textContent=`Selected ${isNIS ? "official stop (NIS bus)" : "official stop"}: ${stop.name}`;
         };
         results.appendChild(b);
     }
@@ -9676,12 +10007,15 @@ function updateBusRoutePreview() {
     if(prefix === "NIS") {
         if(numberInput){numberInput.value="";numberInput.disabled=true;numberInput.placeholder="Not required for NIS";}
         if(serviceSelect){serviceSelect.innerHTML='<option value="NIS">Not In Service</option>';serviceSelect.disabled=true;}
-        busLocationMode="custom"; selectedBusStop=null;
-        document.getElementById("busStopModeButton")?.classList.remove("active"); document.getElementById("busCustomModeButton")?.classList.add("active");
-        if(locationInput){locationInput.disabled=false;locationInput.value="";locationInput.placeholder="Enter location (optional)";}
+        selectedBusStop=null;
+        const stopButton=document.getElementById("busStopModeButton"), customButton=document.getElementById("busCustomModeButton");
+        stopButton?.classList.toggle("active",busLocationMode==="stop"); customButton?.classList.toggle("active",busLocationMode==="custom");
+        if(locationInput){locationInput.disabled=false;locationInput.placeholder=busLocationMode==="stop"?"Search any bus stop (NIS)":"Enter location (optional)";}
         const preview=document.getElementById("busRoutePreview"); if(preview)preview.textContent="NIS — Not In Service";
-        const note=document.getElementById("busStopSearchNote"); if(note)note.textContent="NIS sightings do not require a passenger route. Enter a custom location if desired.";
-        document.getElementById("busStopResults")?.classList.add("hidden"); return;
+        const note=document.getElementById("busStopSearchNote"); if(note)note.textContent=busLocationMode==="stop"?"NIS buses can be logged at any stop in the bundled stop database.":"NIS sightings do not require a passenger route. Enter a custom location if desired.";
+        if(busLocationMode==="stop" && locationInput?.value.trim()) handleBusLocationInput();
+        else document.getElementById("busStopResults")?.classList.add("hidden");
+        return;
     }
     if(numberInput) numberInput.disabled=false;
     selectedBusStop=null;
@@ -9714,7 +10048,7 @@ async function saveBusSighting() {
     payload.saved_at=offlineFieldTimestamp(requestedTimestamp.value);
     if (fleetIdentifierTestMode) {
         saveTestSighting(payload, [String(pendingBusSighting.busNumber)]);
-        if(status) status.innerHTML=sightingSaveSuccessHTML("bus", 1, selected.route, location || "TEST Stop Av / Stop St");
+        if(status) status.innerHTML=busSightingSaveSuccessHTML(pendingBusSighting.busNumber, selected.route, location || "TEST Stop Av / Stop St");
         resetIdentifierAfterSave("bus");
         return;
     }
@@ -9734,7 +10068,7 @@ async function saveBusSighting() {
     }
     if(status) {
         const outside=sightingAssignmentStatus("bus",payload).outside;
-        status.innerHTML=sightingSaveSuccessHTML("bus", 1, selected.route, location) + (outside ? " Outside listed assignment." : "");
+        status.innerHTML=busSightingSaveSuccessHTML(pendingBusSighting.busNumber, selected.route, location) + (outside ? " Outside listed assignment." : "");
     }
     resetIdentifierAfterSave("bus");
 }
@@ -9744,19 +10078,19 @@ async function saveBusSighting() {
 // Passenger EMU ranges are kept explicit so gaps/renumberings are not silently accepted.
 const RAILROAD_FLEETS = Object.freeze({
     lirr: [
-        { name:"M7", ranges:[[7001,7836]], exclusions:[7019,7033,7034,7044,7054,7364,7425,7553], builder:"Bombardier Transportation", years:"2002–2006", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"LIRR electric territory", notes:"Passenger EMU. Cars 7019, 7033–7034, 7044, 7054, 7364, 7425, and 7553 are excluded from active identification because they were scrapped after accidents, derailments, or fire damage. Surviving mates were reassigned where applicable." },
-        { name:"M9", ranges:[[9001,9202]], exclusions:[9157,9158], builder:"Kawasaki Rail Car", years:"2017–2024", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"LIRR electric territory", notes:"Entered passenger service in 2019. Cars 9157–9158 are excluded from active identification because published fleet information lists the pair as taken out of service after an incident." },
+        { name:"M7", ranges:[[7001,7836]], exclusions:[7019,7033,7034,7044,7054,7364,7425,7553], builder:"Bombardier Transportation", years:"2002–2006", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"LIRR electric territory", facilities:["Hillside Maintenance Facility"], facilityRole:"Electric multiple-unit maintenance", notes:"Passenger EMU. Cars 7019, 7033–7034, 7044, 7054, 7364, 7425, and 7553 are excluded from active identification because they were scrapped after accidents, derailments, or fire damage. Surviving mates were reassigned where applicable." },
+        { name:"M9", ranges:[[9001,9202]], exclusions:[9157,9158], builder:"Kawasaki Rail Car", years:"2017–2024", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"LIRR electric territory", facilities:["Hillside Maintenance Facility"], facilityRole:"Electric multiple-unit maintenance", notes:"Entered passenger service in 2019. Cars 9157–9158 are excluded from active identification because published fleet information lists the pair as taken out of service after an incident." },
         { name:"M3", ranges:[[9771,9890],[9893,9946]], exclusions:[9771,9772,9775,9776,9869,9870,9901,9902,9932], builder:"Budd / TransitAmerica", years:"1984–1986", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"LIRR electric territory; not used to Grand Central Madison", notes:"9891–9892 are intentionally excluded because that pair was renumbered 9945–9946. Several other cars are excluded from active passenger identification for documented disposition changes: 9776 was wrecked and scrapped; 9775 became rail-adhesion car E775; 9870 was retired after the 2013 Brentwood collision/fire; 9869 later became E869; 9772 was subsequently scrapped; 9901–9902 became rail-adhesion cars; and 9932 became E932. Car 9771 is also excluded after its earlier electrical failure removed it from the active pair." },
-        { name:"DE30AC", ranges:[[400,423]], builder:"EMD", years:"1997–1999", formation:"Locomotive", power:"Diesel-electric locomotive", service:"LIRR diesel territory", notes:"Passenger locomotive fleet." },
-        { name:"DM30AC", ranges:[[500,502],[504,506],[508,510],[512,522]], builder:"EMD", years:"1997–1999", formation:"Locomotive", power:"Dual-mode diesel/third-rail locomotive", service:"LIRR diesel and Penn Station service", notes:"503 and 511 are excluded; 507 was converted and renumbered as DE30AC 423." },
-        { name:"C3", ranges:[[4001,4087],[4002,4134],[5001,5023]], builder:"Kawasaki", years:"1997–1999", formation:"Bi-level coach / cab car", power:"Unpowered passenger coach", service:"LIRR diesel territory", notes:"C3 fleet includes trailer and cab-car configurations." }
+        { name:"DE30AC", ranges:[[400,423]], builder:"EMD", years:"1997–1999", formation:"Locomotive", power:"Diesel-electric locomotive", service:"LIRR diesel territory", facilities:["Morris Park Locomotive Shop"], facilityRole:"Diesel locomotive maintenance", notes:"Passenger locomotive fleet." },
+        { name:"DM30AC", ranges:[[500,502],[504,506],[508,510],[512,522]], builder:"EMD", years:"1997–1999", formation:"Locomotive", power:"Dual-mode diesel/third-rail locomotive", service:"LIRR diesel and Penn Station service", facilities:["Morris Park Locomotive Shop"], facilityRole:"Diesel / dual-mode locomotive maintenance", notes:"503 and 511 are excluded; 507 was converted and renumbered as DE30AC 423." },
+        { name:"C3", ranges:[[4001,4087],[4002,4134],[5001,5023]], builder:"Kawasaki", years:"1997–1999", formation:"Bi-level coach / cab car", power:"Unpowered passenger coach", service:"LIRR diesel territory", facilities:["Morris Park Shops"], facilityRole:"Some coach maintenance performed here", notes:"C3 fleet includes trailer and cab-car configurations." }
     ],
     "metro-north": [
-        { name:"M7A", ranges:[[4000,4335]], exclusions:[4333], builder:"Bombardier Transportation", years:"2004–2006", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"Hudson and Harlem Lines", notes:"4333 is excluded from active identification after its destruction in the 2015 Valhalla collision." },
-        { name:"M3A", ranges:[[8000,8141]], builder:"Budd / TransitAmerica", years:"1983–1985", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"Hudson and Harlem Lines", notes:"Legacy Metro-North EMU fleet." },
-        { name:"M8", ranges:[[9100,9421],[9500,9519],[9600,9623],[9700,9738]], singles:[[9460,9476,2],[9560,9590,2]], builder:"Kawasaki Rail Car", years:"2009–2022", formation:"Married pairs plus unpowered single cars", power:"Electric multiple unit (third rail / AC catenary)", service:"New Haven Line and branches", notes:"Certain even-numbered cars in the 9460 and 9560 series are unpowered single cars." },
-        { name:"P32AC-DM", ranges:[[201,220],[222,224],[226,231],[250,250]], builder:"GE Transportation", years:"1995–2001", formation:"Locomotive", power:"Dual-mode diesel-electric / third-rail locomotive", service:"Metro-North Hudson, Harlem and connecting non-electrified services into Grand Central Terminal", notes:"Legacy Genesis dual-mode fleet now being replaced by SC42-DM Chargers. Locomotive 225 was renumbered 250 in 2026 for the America 250 commemorative scheme, so 225 is not treated as a separate active locomotive. Locomotive 221 is excluded from active Metro-North identification after leaving the fleet in September 2026 for preservation/excursion service. Units 228–231 are Connecticut DOT-owned." },
-        { name:"SC42-DM", ranges:[[301,333]], builder:"Siemens Mobility", years:"2024–present", formation:"Locomotive", power:"Dual-mode diesel-electric / third-rail locomotive", service:"Metro-North non-electrified territory and Grand Central Terminal service", notes:"Entered passenger service in September 2025 and is replacing the GE P32AC-DM fleet. The full 33-locomotive group is numbered 301–333; locomotives 328–333 are Connecticut DOT-owned units." }
+        { name:"M7A", ranges:[[4000,4335]], exclusions:[4333], builder:"Bombardier Transportation", years:"2004–2006", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"Hudson and Harlem Lines", facilities:["North White Plains Yard", "Harmon Shop"], facilityRole:"Electric fleet storage / maintenance", notes:"4333 is excluded from active identification after its destruction in the 2015 Valhalla collision." },
+        { name:"M3A", ranges:[[8000,8141]], builder:"Budd / TransitAmerica", years:"1983–1985", formation:"Married pairs", power:"Electric multiple unit (third rail)", service:"Hudson and Harlem Lines", facilities:["North White Plains Yard", "Harmon Shop"], facilityRole:"Electric fleet storage / maintenance", notes:"Legacy Metro-North EMU fleet." },
+        { name:"M8", ranges:[[9100,9421],[9500,9519],[9600,9623],[9700,9738]], singles:[[9460,9476,2],[9560,9590,2]], builder:"Kawasaki Rail Car", years:"2009–2022", formation:"Married pairs plus unpowered single cars", power:"Electric multiple unit (third rail / AC catenary)", service:"New Haven Line and branches", facilities:["Harmon Shop"], facilityRole:"Electric fleet maintenance", notes:"Certain even-numbered cars in the 9460 and 9560 series are unpowered single cars." },
+        { name:"P32AC-DM", ranges:[[201,220],[222,224],[226,231],[250,250]], builder:"GE Transportation", years:"1995–2001", formation:"Locomotive", power:"Dual-mode diesel-electric / third-rail locomotive", service:"Metro-North Hudson, Harlem and connecting non-electrified services into Grand Central Terminal", facilities:["Harmon Shop"], facilityRole:"Diesel / dual-mode locomotive maintenance", notes:"Legacy Genesis dual-mode fleet now being replaced by SC42-DM Chargers. Locomotive 225 was renumbered 250 in 2026 for the America 250 commemorative scheme, so 225 is not treated as a separate active locomotive. Locomotive 221 is excluded from active Metro-North identification after leaving the fleet in September 2026 for preservation/excursion service. Units 228–231 are Connecticut DOT-owned." },
+        { name:"SC42-DM", ranges:[[301,333]], builder:"Siemens Mobility", years:"2024–present", formation:"Locomotive", power:"Dual-mode diesel-electric / third-rail locomotive", service:"Metro-North non-electrified territory and Grand Central Terminal service", facilities:["Harmon Shop"], facilityRole:"Diesel / dual-mode locomotive maintenance", notes:"Entered passenger service in September 2025 and is replacing the GE P32AC-DM fleet. The full 33-locomotive group is numbered 301–333; locomotives 328–333 are Connecticut DOT-owned units." }
     ]
 });
 
@@ -9774,7 +10108,7 @@ function findRailroadFleetByName(system,value){ const q=String(value||"").toUppe
 function showRailroadFleetSearchResult(system,fleet,query){
     const ids=railroadSearchIds(system), box=document.getElementById(ids.result); if(!box)return;
     if(!fleet){box.className="result";box.innerHTML=`<div class="error"><strong>Fleet not found.</strong><br>Enter a valid ${system==="lirr"?"LIRR":"Metro-North"} fleet name.</div>`;recordIdentifierSearch({system,searchValue:query,found:false,resultDetails:{searchMode:"fleet"}});return;}
-    box.className="result"; box.innerHTML=`<div class="fleet-title">${escapeHTML(fleet.name)}</div><div class="info"><div class="label">Vehicle number range(s)</div><div>${escapeHTML(fleetComparisonRangeText(fleet))}</div><div class="label">Builder</div><div>${escapeHTML(fleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(fleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(fleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(fleet.power)}</div><div class="label">Typical system service</div><div>${escapeHTML(fleet.service)}</div><div class="label">Notes</div><div>${escapeHTML(fleet.notes)}</div></div>`;
+    box.className="result"; box.innerHTML=`<div class="fleet-title">${escapeHTML(fleet.name)}</div><div class="info"><div class="label">Vehicle number range(s)</div><div>${escapeHTML(fleetComparisonRangeText(fleet))}</div><div class="label">Builder</div><div>${escapeHTML(fleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(fleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(fleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(fleet.power)}</div><div class="label">Typical system service</div><div>${escapeHTML(fleet.service)}</div><div class="label">Yards &amp; facilities</div><div>${facilityAssignmentsHTML(system, (fleet.facilities || []).join("; "), "facility")}</div><div class="label">Notes</div><div>${escapeHTML(fleet.notes)}</div></div>`;
     recordIdentifierSearch({system,searchValue:query,found:true,resultName:fleet.name,resultDetails:{searchMode:"fleet",builder:fleet.builder,years:fleet.years}});
 }
 
@@ -9909,7 +10243,7 @@ async function identifyRailroad(system) {
     const recentRailroadSightingAlert=await getRecentSightingAlert(input,fleet.name,system);
     const railroadSightingSummary=await getVehicleSightingSummary(input,system);
     box.className="result";
-    box.innerHTML=`<div class="fleet-title">${escapeHTML(fleet.name)}</div><div class="car-number">Vehicle number: <strong>${escapeHTML(input)}</strong></div>${railroadRepeatNotice}${recentRailroadSightingAlert}${railroadSightingSummary}<div class="info"><div class="label">Builder</div><div>${escapeHTML(fleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(fleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(fleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(fleet.power)}</div><div class="label">Typical system service</div><div>${escapeHTML(fleet.service)}</div><div class="label">Notes</div><div>${escapeHTML(fleet.notes)}</div></div>${shareIdentifierActionsHTML(system, input, fleet.name)}${railroadSightingFormHTML(system, input, fleet.name, false)}`;
+    box.innerHTML=`<div class="fleet-title">${escapeHTML(fleet.name)}</div><div class="car-number">Vehicle number: <strong>${escapeHTML(input)}</strong></div>${railroadRepeatNotice}${recentRailroadSightingAlert}${railroadSightingSummary}<div class="info"><div class="label">Builder</div><div>${escapeHTML(fleet.builder)}</div><div class="label">Years built</div><div>${escapeHTML(fleet.years)}</div><div class="label">Formation</div><div>${escapeHTML(fleet.formation)}</div><div class="label">Power</div><div>${escapeHTML(fleet.power)}</div><div class="label">Typical system service</div><div>${escapeHTML(fleet.service)}</div><div class="label">Yards &amp; facilities</div><div>${facilityAssignmentsHTML(system, (fleet.facilities || []).join("; "), "facility")}</div><div class="label">Notes</div><div>${escapeHTML(fleet.notes)}</div></div>${shareIdentifierActionsHTML(system, input, fleet.name)}${railroadSightingFormHTML(system, input, fleet.name, false)}`;
     renderRailroadPicker(system);
     recordIdentifierSearch?.(system, input, true, fleet.name, {builder:fleet.builder,years:fleet.years});
 }
@@ -10316,7 +10650,7 @@ async function identify() {
             <div>${data.division}</div>
 
             <div class="label">Yard assignment(s)</div>
-            <div class="${data.yards ? "" : "unknown-value"}">${escapeHTML(data.yards || "Not yet verified")}</div>
+            <div>${facilityAssignmentsHTML("subway", data.yards, "yard")}</div>
 
             <div class="label">Factory version</div>
             <div>${data.factory}</div>
