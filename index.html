@@ -3911,6 +3911,14 @@ function getSubwaySightingDateTimeForSchedule() {
 
 let latestAlertDecisionSnapshot = null;
 
+// The overnight service window crosses midnight: 11 PM through 4:59 AM.
+// Treat 11:xx PM as late night too, rather than checking only hours 0–4.
+function isSubwayOvernightServiceTime(date) {
+    return date instanceof Date
+        && !Number.isNaN(date.getTime())
+        && (date.getHours() >= 23 || date.getHours() < 5);
+}
+
 async function updateSubwayStationScheduleState(station) {
     const input = document.getElementById("sightingStation");
     if (!input) return;
@@ -3934,11 +3942,11 @@ async function updateSubwayStationScheduleState(station) {
         // line-wide schedule confirms N service. Limit this exception to this
         // station, the N, overnight hours, and a confirmed scheduled service.
         const stationLabel = String(station?.stopName || station?.complexName || station?.name || "").trim().toLowerCase();
-        const selectedHour = date instanceof Date ? date.getHours() : -1;
+        const isOvernightServiceTime = isSubwayOvernightServiceTime(date);
         const isNormalOvernightNAtJay = String(currentLine).trim().toUpperCase() === "N"
             && stationLabel.includes("jay st")
             && stationLabel.includes("metro")
-            && selectedHour >= 0 && selectedHour < 5;
+            && isOvernightServiceTime;
         // The 4 runs local between Sutter Av-Rutland Rd and New Lots Av
         // overnight. Static station metadata may list only the 3 at these
         // stops, so don't call the 4 off-route when its schedule confirms it.
@@ -3953,7 +3961,7 @@ async function updateSubwayStationScheduleState(station) {
         ].some(name => stationLabel.includes(name));
         const isNormalOvernight4AtNewLotsBranch = String(currentLine).trim().toUpperCase() === "4"
             && isNewLotsBranchStation
-            && selectedHour >= 0 && selectedHour < 5;
+            && isOvernightServiceTime;
         const offRoute = usableLine && status.stationRouteKnown && !status.stationRouteNormal
             && !isNormalOvernightNAtJay
             && !isNormalOvernight4AtNewLotsBranch;
@@ -3967,7 +3975,7 @@ async function updateSubwayStationScheduleState(station) {
             && !isRoundTheClockA
             && !isNormalOvernightNAtJay
             && !isNormalOvernight4AtNewLotsBranch;
-        console.debug("[Late-night alert diagnostic v50] Final warning decision", {
+        console.debug("[Late-night alert diagnostic v51] Final warning decision", {
             line: currentLine,
             station: station?.stopName || station?.complexName || station?.name || "(unknown station)",
             simulatedTime: date instanceof Date ? date.toString() : String(date),
@@ -6461,7 +6469,7 @@ const subwayCurrentLineFleets = {
     "7":["R188"],
     "42 St S":["R62A"],
     "A":["R179","R211A"],
-    "B":["R68","R68A","R211A"],
+    "B":["R211A"],
     "C":["R179","R211A"],
     "D":["R68","R211A"],
     "E":["R160A","R160B"],
@@ -10351,6 +10359,87 @@ document.getElementById("busNumber")?.addEventListener("keydown", event => {
     if (event.key === "Enter") identifyBus();
 });
 
+// Subway map shortcuts: keep these separate from fleet identification and reporting.
+const SUBWAY_MAP_SHORTCUTS = {
+    "5256": {
+        title: "Standard Subway Map",
+        url: "https://www.mta.info/map/5256",
+        externalPdf: true
+    },
+    "5336": {
+        title: "Late-Night Subway Map",
+        url: "https://www.mta.info/map/5336",
+        externalPdf: true
+    },
+    "32096": {
+        title: "Weekend Subway Map",
+        url: "maps/weekend-subway-diagram.pdf",
+        archived: true,
+        dateLabel: "October 23–26, 2026"
+    }
+};
+
+function closeSubwayMapViewer() {
+    const overlay = document.getElementById("subwayMapViewerOverlay");
+    if (overlay) overlay.remove();
+    document.getElementById("carNumber")?.focus();
+}
+
+function openSubwayMapViewer(shortcut) {
+    const map = SUBWAY_MAP_SHORTCUTS[shortcut];
+    if (!map || activeFleetSystem !== "subway") return false;
+
+    pendingSighting = null;
+    const input = document.getElementById("carNumber");
+    if (input) input.value = "";
+    const resultBox = document.getElementById("result");
+    if (resultBox) {
+        resultBox.className = "result hidden";
+        resultBox.innerHTML = "";
+    }
+
+    document.getElementById("subwayMapViewerOverlay")?.remove();
+    const overlay = document.createElement("div");
+    overlay.id = "subwayMapViewerOverlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-labelledby", "subwayMapViewerTitle");
+    overlay.style.cssText = "position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:10px;";
+
+    const freshnessNotice = map.archived ? `
+        <div style="padding:10px 12px;background:#3b2b12;color:#ffe0a3;border-bottom:1px solid #795b27;font-size:13px;line-height:1.45;">
+            <strong>Archived diagram:</strong> this uploaded map is dated ${map.dateLabel} and may not reflect current weekend service. Check the <a href="https://www.mta.info/weekender" target="_blank" rel="noopener noreferrer" style="color:#fff1c7;text-decoration:underline;">MTA Weekender</a> for the current weekend map.
+        </div>` : "";
+
+    overlay.innerHTML = `
+        <section style="display:flex;flex-direction:column;width:min(1100px,100%);height:min(94dvh,100%);background:var(--fi-card,#111);color:var(--fi-text,#fff);border:1px solid var(--fi-border,#444);border-radius:12px;overflow:hidden;box-shadow:0 16px 60px rgba(0,0,0,.45);">
+            <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid var(--fi-border,#444);">
+                <h2 id="subwayMapViewerTitle" style="font-size:1rem;margin:0;">${map.title}</h2>
+                <button type="button" id="subwayMapViewerClose" style="flex:0 0 auto;">Close</button>
+            </header>
+            ${freshnessNotice}
+            <div style="flex:1;min-height:0;background:#fff;">
+                <iframe title="${map.title}" src="${map.url}" style="display:block;width:100%;height:100%;border:0;background:#fff;" loading="eager" allowfullscreen></iframe>
+            </div>
+            <div style="padding:8px 12px;font-size:12px;color:var(--fi-muted,#aaa);">Use the map viewer’s zoom controls if available. Close to return to Subway search.</div>
+        </section>`;
+
+    document.body.appendChild(overlay);
+    overlay.querySelector("#subwayMapViewerClose")?.addEventListener("click", closeSubwayMapViewer);
+    overlay.addEventListener("click", event => {
+        if (event.target === overlay) closeSubwayMapViewer();
+    });
+    const escapeHandler = event => {
+        if (event.key === "Escape" && document.getElementById("subwayMapViewerOverlay")) {
+            closeSubwayMapViewer();
+            document.removeEventListener("keydown", escapeHandler);
+        }
+    };
+    document.addEventListener("keydown", escapeHandler);
+    overlay.querySelector("#subwayMapViewerClose")?.focus();
+    return true;
+}
+
 async function identify() {
     const requestId = ++identifierSearchRequestId;
 
@@ -10370,6 +10459,13 @@ async function identify() {
         return;
     }
 
+
+    // Map shortcuts are Subway-only and must never enter fleet lookup,
+    // unknown-car reporting, search history, or sighting flows.
+    if (activeFleetSystem === "subway" && searchMode === "car" && SUBWAY_MAP_SHORTCUTS[input]) {
+        openSubwayMapViewer(input);
+        return;
+    }
 
     // Test Mode access code. Entering the code toggles Test Mode and clears
     // the input so the next value can be a test car number.
