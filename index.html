@@ -3794,9 +3794,27 @@ function stationMatchScore(station, rawQuery) {
     return 9999;
 }
 
+function stationServiceMatchAdjustment(station) {
+    const selected = String(pendingSighting?.line || "").trim().toUpperCase();
+    if (!selected || selected === "NIS" || selected === "TEST") return 0;
+    const services = selected.split(/\s+VIA\s+/i).map(value => value.trim()).filter(Boolean);
+    const stationRoutes = new Set(stationRouteValues(station.routes, station).map(value => String(value).trim().toUpperCase()));
+    // Staten Island Railway is a separate, non-interchangeable railway for
+    // subway service-search purposes. Do not suggest it for a selected subway line.
+    if (stationRoutes.has("SIR") && !services.includes("STATEN ISLAND RAILWAY")) return 9999;
+    if (services.some(service => stationRoutes.has(service))) return -2;
+    // Keep other stations searchable: a route can reach them by a transfer,
+    // a diversion, or a via-service selection. Merely rank direct service first.
+    return 2;
+}
+
 function stationMatches(rawQuery, limit = 24) {
     return standardizedStations
-        .map(station => ({ station, score: stationMatchScore(station, rawQuery) }))
+        .map(station => {
+            const nameScore = stationMatchScore(station, rawQuery);
+            const serviceAdjustment = stationServiceMatchAdjustment(station);
+            return { station, score: nameScore >= 9999 || serviceAdjustment >= 9999 ? 9999 : nameScore + serviceAdjustment };
+        })
         .filter(item => item.score < 9999)
         .sort((a, b) => a.score - b.score || a.station.stopName.localeCompare(b.station.stopName) || a.station.line.localeCompare(b.station.line) || a.station.routes.localeCompare(b.station.routes))
         .slice(0, limit)
@@ -4766,11 +4784,17 @@ function trainsetUnitGroups(row) {
     const size = trainsetUnitSize(row.fleet, row.consistCars);
     if (!size || row.consistCars.length < size) return [];
     const groups=[];
-    for(let i=0;i<row.consistCars.length;i+=size){
-        const group=row.consistCars.slice(i,i+size).map(c=>String(c.car_number));
-        if(group.length===size) groups.push(group);
+    for(let i=0;i+size<=row.consistCars.length;i+=size){
+        groups.push(row.consistCars.slice(i,i+size).map(c=>String(c.car_number)));
     }
     return groups;
+}
+
+function trainsetUnassignedCars(row) {
+    const size = trainsetUnitSize(row.fleet, row.consistCars);
+    if (!size) return [];
+    const completeCount = Math.floor(row.consistCars.length / size) * size;
+    return row.consistCars.slice(completeCount).map(car => String(car.car_number));
 }
 
 function trainsetUnitLabel(group) {
@@ -4805,6 +4829,7 @@ function renderTrainsetHistory() {
     list.innerHTML=filtered.map(row=>{
         const groups=trainsetUnitGroups(row);
         const groupText=groups.length ? groups.map(trainsetUnitLabel).join(" + ") : "";
+        const unassignedCars=trainsetUnassignedCars(row);
         const date=row.saved_at?new Date(row.saved_at).toLocaleString():"";
         return `<div class="trainset-history-card">
             <div class="trainset-history-head">
@@ -4817,7 +4842,8 @@ function renderTrainsetHistory() {
             <div class="trainset-history-consist">
                 ${row.consistCars.map(c=>`<span class="trainset-car">${escapeHTML(String(c.car_number))}</span>`).join("")}
             </div>
-            ${groupText?`<div class="trainset-history-meta"><strong>Linked unit${groups.length===1?"":"s"}:</strong> ${escapeHTML(groupText)}</div>`:""}
+            ${groupText?`<div class="trainset-history-meta"><strong>Complete linked unit${groups.length===1?"":"s"}:</strong> ${escapeHTML(groupText)}</div>`:""}
+            ${unassignedCars.length?`<div class="trainset-history-meta"><strong>Additional cars (unit incomplete):</strong> ${escapeHTML(unassignedCars.join("–"))}</div>`:""}
             <div class="trainset-history-meta">${escapeHTML(date)}${row.station?` · ${escapeHTML(row.station)}`:""}</div>
         </div>`;
     }).join("");
@@ -6127,7 +6153,7 @@ const fleetData = {
         ranges: [[2500,2924]],
         builder: "Westinghouse-Amrail / ANF",
         years: "1986–1988",
-        lines: "D, N, Q, W, Franklin Avenue Shuttle",
+        lines: "D, N, Q, W",
         division: "B Division",
         factory: "Individual cars",
         passenger: "4 or 8 cars",
@@ -6135,7 +6161,7 @@ const fleetData = {
         serviceSpeed: "55 mph",
         designSpeed: "Unknown",
         propulsion: "Westinghouse E-Cam / DC traction motors",
-        notes: "Most are organized into four-car sets."
+        notes: "R68s are seen on the D, N, Q, and W, as well as the Franklin Avenue Shuttle. Cars 2916–2924 are only seen on the Franklin Avenue Shuttle. Most are organized into four-car sets."
     },
 
     "R68A": {
@@ -6469,7 +6495,7 @@ const subwayCurrentLineFleets = {
     "7":["R188"],
     "42 St S":["R62A"],
     "A":["R179","R211A"],
-    "B":["R211A"],
+    "B":["R68","R68A","R211A"],
     "C":["R179","R211A"],
     "D":["R68","R211A"],
     "E":["R160A","R160B"],
@@ -9653,13 +9679,31 @@ async function loadBusDestinationFeed(source) {
         const routes=parseGtfsCsv(routesText), trips=parseGtfsCsv(tripsText), stops=parseGtfsCsv(stopsText);
         const routeNames=new Map(routes.map(r=>[String(r.route_id),String(r.route_short_name || r.route_id)]));
         const stopCoords=new Map(stops.map(st=>[String(st.stop_id),{lat:Number(st.stop_lat),lon:Number(st.stop_lon)}]).filter(([,v])=>Number.isFinite(v.lat)&&Number.isFinite(v.lon)));
-        // Only retain trips belonging to a route that can be selected in the UI.
         const tripById=new Map(trips.map(t=>[String(t.trip_id),{
             route:routeNames.get(String(t.route_id)) || String(t.route_id),
             direction:String(t.direction_id ?? ""),
             headsign:String(t.trip_headsign || "")
         }]));
-        return {tripById,stopTimesText,stopCoords};
+        // Parse stop_times only once per feed. The previous version rescanned the
+        // entire multi-megabyte table every time a route badge was tapped.
+        const stopTimesByStop=new Map(), stopTimesByTrip=new Map();
+        const stopTimeLines=stopTimesText.split(/\n/);
+        const stopTimeHeader=(stopTimeLines[0]||"").replace(/\r$/g,"").split(",");
+        const stopTimeIx={trip:stopTimeHeader.indexOf("trip_id"),stop:stopTimeHeader.indexOf("stop_id"),sequence:stopTimeHeader.indexOf("stop_sequence"),headsign:stopTimeHeader.indexOf("stop_headsign")};
+        if(stopTimeIx.trip<0||stopTimeIx.stop<0||stopTimeIx.sequence<0) throw new Error("The bus GTFS stop-time table has an unexpected format.");
+        for(let i=1;i<stopTimeLines.length;i++){
+            const line=stopTimeLines[i]; if(!line) continue;
+            const cells=line.replace(/\r$/g,"").split(",");
+            const tripId=cells[stopTimeIx.trip], stopId=cells[stopTimeIx.stop];
+            if(!tripId||!stopId) continue;
+            const row={tripId,stopId,sequence:Number(cells[stopTimeIx.sequence]),headsign:stopTimeIx.headsign>=0?cells[stopTimeIx.headsign]:""};
+            if(!stopTimesByStop.has(stopId)) stopTimesByStop.set(stopId,[]);
+            if(!stopTimesByTrip.has(tripId)) stopTimesByTrip.set(tripId,[]);
+            stopTimesByStop.get(stopId).push(row);
+            stopTimesByTrip.get(tripId).push(row);
+        }
+        for(const rows of stopTimesByTrip.values()) rows.sort((a,b)=>a.sequence-b.sequence);
+        return {tripById,stopTimesByStop,stopTimesByTrip,stopCoords};
     })();
     busDestinationFeedCache.set(source,promise);
     try { return await promise; } catch(err) { busDestinationFeedCache.delete(source); throw err; }
@@ -9695,38 +9739,16 @@ async function getBusDestinationsAtStop(route, stopId) {
                 if (normalizeBusDestinationRoute(trip.route)===target) routeMatches.add(tripId);
             }
             if (!routeMatches.size) { if (sources.length>1) busDestinationFeedCache.delete(source); continue; }
-            const lines=feed.stopTimesText.split(/\n/);
-            if (!lines.length) continue;
-            const header=lines[0].replace(/\r$/g,"").split(",");
-            const ix={trip:header.indexOf("trip_id"),stop:header.indexOf("stop_id"),sequence:header.indexOf("stop_sequence"),headsign:header.indexOf("stop_headsign")};
-            if (ix.trip<0 || ix.stop<0) { if (sources.length>1) busDestinationFeedCache.delete(source); continue; }
-            const atStop=[];
-            for (let i=1;i<lines.length;i++) {
-                const line=lines[i]; if(!line) continue;
-                // stop_times.txt fields used here are plain GTFS identifiers/numbers; no quoted commas are expected in these columns.
-                const cells=line.replace(/\r$/g,"").split(",");
-                if (cells[ix.stop]!==String(stopId) || !routeMatches.has(cells[ix.trip])) continue;
-                const trip=tripById.get(cells[ix.trip]); if(!trip) continue;
-                const stopHeadsign=ix.headsign>=0 ? cells[ix.headsign] : "";
-                atStop.push({tripId:cells[ix.trip],sequence:Number(cells[ix.sequence]),direction:trip.direction,headsign:normalizeBusHeadsign(stopHeadsign || trip.headsign)});
-            }
+            const atStop=(feed.stopTimesByStop.get(String(stopId))||[])
+                .filter(row=>routeMatches.has(row.tripId))
+                .map(row=>{
+                    const trip=tripById.get(row.tripId);
+                    return trip ? {tripId:row.tripId,sequence:row.sequence,direction:trip.direction,headsign:normalizeBusHeadsign(row.headsign || trip.headsign)} : null;
+                }).filter(Boolean);
             if (!atStop.length) { if (sources.length>1) busDestinationFeedCache.delete(source); continue; }
-            // Find each trip's next stop so compass labels are based on actual stop coordinates,
-            // rather than assuming GTFS direction_id 0/1 means north/south.
-            const neededTrips=new Set(atStop.map(x=>x.tripId));
-            const nextRows=new Map();
-            for (let i=1;i<lines.length;i++) {
-                const line=lines[i]; if(!line) continue;
-                const cells=line.replace(/\r$/g,"").split(",");
-                if (!neededTrips.has(cells[ix.trip])) continue;
-                const seq=Number(cells[ix.sequence]);
-                const key=cells[ix.trip];
-                const current=nextRows.get(key) || [];
-                current.push({stopId:cells[ix.stop],sequence:seq});
-                nextRows.set(key,current);
-            }
+            // Trip stop rows are pre-indexed and sequence-sorted when the feed loads.
             for (const entry of atStop) {
-                const rows=(nextRows.get(entry.tripId)||[]).sort((a,b)=>a.sequence-b.sequence);
+                const rows=feed.stopTimesByTrip.get(entry.tripId)||[];
                 const currentIndex=rows.findIndex(r=>r.stopId===String(stopId)&&r.sequence===entry.sequence);
                 const next=currentIndex>=0 ? rows[currentIndex+1] : null;
                 const previous=currentIndex>0 ? rows[currentIndex-1] : null;
@@ -9893,6 +9915,10 @@ async function handleBusLocationInput() {
             results.classList.add("hidden");
             results.innerHTML="";
             if(note) note.textContent=`Selected ${isNIS ? "official stop (NIS bus)" : "official stop"}: ${stop.name}`;
+            // Warm the relevant static GTFS feed(s) in the background. When a
+            // route badge is tapped, its feed is often already downloaded/indexed.
+            const sources=[...new Set((stop.routes||[]).flatMap(route=>busDestinationFeedSources(route)))];
+            for(const source of sources) loadBusDestinationFeed(source).catch(error=>console.debug("Bus destination preload skipped:",error));
         };
         results.appendChild(b);
     }
@@ -10372,10 +10398,9 @@ const SUBWAY_MAP_SHORTCUTS = {
         externalPdf: true
     },
     "32096": {
-        title: "Weekend Subway Map",
-        url: "maps/weekend-subway-diagram.pdf",
-        archived: true,
-        dateLabel: "October 23–26, 2026"
+        title: "Current Weekend Subway Map",
+        url: "https://www.mta.info/weekender",
+        livePage: true
     }
 };
 
@@ -10406,9 +10431,10 @@ function openSubwayMapViewer(shortcut) {
     overlay.setAttribute("aria-labelledby", "subwayMapViewerTitle");
     overlay.style.cssText = "position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:10px;";
 
-    const freshnessNotice = map.archived ? `
-        <div style="padding:10px 12px;background:#3b2b12;color:#ffe0a3;border-bottom:1px solid #795b27;font-size:13px;line-height:1.45;">
-            <strong>Archived diagram:</strong> this uploaded map is dated ${map.dateLabel} and may not reflect current weekend service. Check the <a href="https://www.mta.info/weekender" target="_blank" rel="noopener noreferrer" style="color:#fff1c7;text-decoration:underline;">MTA Weekender</a> for the current weekend map.
+    const freshnessNotice = map.livePage ? `
+        <div style="padding:10px 12px;background:#172b3b;color:#d9edff;border-bottom:1px solid #315c7d;font-size:13px;line-height:1.45;">
+            <strong>Live MTA source:</strong> this opens the MTA Weekender page, where the current weekend service changes are published. The page is updated by the MTA, so the app does not rely on a permanently stored weekly PDF.
+            <div style="margin-top:7px"><a href="${map.url}" target="_blank" rel="noopener noreferrer" style="color:#fff;text-decoration:underline;font-weight:700;">Open current MTA Weekender</a></div>
         </div>` : "";
 
     overlay.innerHTML = `
@@ -10418,10 +10444,13 @@ function openSubwayMapViewer(shortcut) {
                 <button type="button" id="subwayMapViewerClose" style="flex:0 0 auto;">Close</button>
             </header>
             ${freshnessNotice}
-            <div style="flex:1;min-height:0;background:#fff;">
+            <div style="flex:1;min-height:0;background:#fff;position:relative;">
                 <iframe title="${map.title}" src="${map.url}" style="display:block;width:100%;height:100%;border:0;background:#fff;" loading="eager" allowfullscreen></iframe>
+                <div style="position:absolute;left:12px;right:12px;bottom:12px;padding:12px;background:rgba(20,20,20,.92);color:#fff;border-radius:10px;text-align:center;line-height:1.45;">
+                    If the MTA page does not appear inside the app, <a href="${map.url}" target="_blank" rel="noopener noreferrer" style="color:#9ed0ff;text-decoration:underline;font-weight:700;">open ${map.title} directly</a>.
+                </div>
             </div>
-            <div style="padding:8px 12px;font-size:12px;color:var(--fi-muted,#aaa);">Use the map viewer’s zoom controls if available. Close to return to Subway search.</div>
+            <div style="padding:8px 12px;font-size:12px;color:var(--fi-muted,#aaa);">Close to return to Subway search.</div>
         </section>`;
 
     document.body.appendChild(overlay);
@@ -10462,7 +10491,9 @@ async function identify() {
 
     // Map shortcuts are Subway-only and must never enter fleet lookup,
     // unknown-car reporting, search history, or sighting flows.
-    if (activeFleetSystem === "subway" && searchMode === "car" && SUBWAY_MAP_SHORTCUTS[input]) {
+    // Map IDs are reserved in Subway mode regardless of the selected Subway
+    // search sub-mode (car/fleet). Check them before any normal lookup/clearing.
+    if (activeFleetSystem === "subway" && Object.prototype.hasOwnProperty.call(SUBWAY_MAP_SHORTCUTS, input)) {
         openSubwayMapViewer(input);
         return;
     }
@@ -10638,6 +10669,10 @@ async function identify() {
     const configuration = result[1];
 
     const data = fleetData[fleet];
+    // R68 cars 2916–2924 are assigned exclusively to the Franklin Avenue Shuttle.
+    const carSpecificLines = fleet === "R68" && number >= 2916 && number <= 2924
+        ? "Franklin Avenue Shuttle"
+        : data.lines;
 
     recordIdentifierSearch({
         system: "subway", searchValue: input, found: true, resultName: fleet,
@@ -10740,7 +10775,7 @@ async function identify() {
             <div>${data.years}</div>
 
             <div class="label">Lines</div>
-            <div>${fleetLinesDisplayHTML(data.lines, true)}</div>
+            <div>${fleetLinesDisplayHTML(carSpecificLines, true)}</div>
 
             <div class="label">Division</div>
             <div>${data.division}</div>
