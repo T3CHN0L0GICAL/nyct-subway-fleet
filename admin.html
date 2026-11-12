@@ -232,6 +232,25 @@
       background: #2b2b2b;
     }
 
+    .diagnostic-flag-list { display:flex; flex-wrap:wrap; gap:6px; min-width:240px; white-space:normal; }
+    .diagnostic-flag-badge {
+      display:inline-flex; align-items:center; border:1px solid #444; border-radius:999px;
+      padding:4px 8px; font-size:12px; font-weight:700; background:#222; color:#eee;
+    }
+    .diagnostic-flag-badge.is-true { border-color:#287a49; background:#173323; color:#a9f0bf; }
+    .diagnostic-flag-badge.is-false { opacity:.72; }
+    .system-issue { color:#ffcf7a; font-weight:700; }
+    .unclassified-wrap { overflow-x:auto; }
+    .unclassified-classify-controls { display:flex; align-items:center; gap:8px; min-width:230px; }
+    .unclassified-classify-select { min-width:140px; max-width:180px; padding:9px 10px; border:1px solid #444; border-radius:8px; background:#181818; color:#fff; }
+    .unclassified-classify-button { white-space:nowrap; }
+    .unclassified-table { width:100%; border-collapse:collapse; }
+    .findings-editor { display:flex; flex-direction:column; align-items:stretch; gap:8px; min-width:240px; }
+    .findings-editor textarea { width:100%; min-height:72px; resize:vertical; }
+    .findings-editor .filter-button { align-self:flex-start; }
+    .unclassified-table th,.unclassified-table td { text-align:left; padding:10px; border-bottom:1px solid #292929; white-space:nowrap; }
+    .unclassified-table th { color:#999; font-size:13px; }
+
     .result-count {
       color: #888;
       font-size: 13px;
@@ -245,7 +264,7 @@
     /* Phase 5.3F-B — system-scoped admin workspaces */
     .system-switcher {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 10px;
       margin: 0 0 22px;
     }
@@ -543,6 +562,7 @@
         <button class="system-switch-button" type="button" data-admin-system="bus">Bus</button>
         <button class="system-switch-button" type="button" data-admin-system="lirr">LIRR</button>
         <button class="system-switch-button" type="button" data-admin-system="metro-north">Metro-North</button>
+        <button class="system-switch-button hidden" type="button" data-admin-system="unclassified" id="unclassifiedSystemButton">Unclassified</button>
       </div>
 
       <div class="workspace-heading">
@@ -613,8 +633,8 @@
     </div>
 
     <!-- Recent Sightings -->
-    <div class="section">
-      <h2>Recent Sightings</h2>
+    <div class="section" id="recentSightingsSection">
+      <div class="activity-heading"><h2>Recent Sightings</h2><button id="refreshSightingsButton" class="filter-button" type="button">Refresh Sightings</button></div>
 
       <div class="filters">
         <input id="sightingSearch" type="search" placeholder="Search vehicle, fleet, route, or notes">
@@ -640,6 +660,18 @@
 
           <tbody id="sightingsTable">
           </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="unclassifiedSightingsSection" class="section">
+      <h2>Unclassified Sightings</h2>
+      <p class="system-only-note">Records with a missing or unrecognized system ID stay separate until an administrator can verify their system from the available details. Choose a system only when you have enough information to identify it confidently. Classification updates the parent sighting only; it does not create car records.</p>
+      <div id="unclassifiedSightingsCount" class="result-count"></div>
+      <div class="unclassified-wrap">
+        <table class="unclassified-table">
+          <thead><tr><th>Vehicle</th><th>Fleet</th><th>Details</th><th>Stored system ID</th><th>Issue</th><th>Time</th><th>Classify as</th><th>Action</th></tr></thead>
+          <tbody id="unclassifiedSightingsTable"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -1105,6 +1137,34 @@
         ok: true,
         profile
       };
+    }
+
+    async function refreshSightingsForCurrentSystem() {
+      const button=document.getElementById("refreshSightingsButton");
+      if(!currentAdminProfile?.id)return;
+      const previousText=button?.textContent||"Refresh Sightings";
+      if(button){button.disabled=true;button.textContent="Refreshing…";}
+      try{
+        let query=supabaseClient.from("sightings").select("*").order("saved_at",{ascending:false});
+        if(currentAdminSystem!=="unclassified") query=query.eq("system",currentAdminSystem);
+        const {data,error}=await query;
+        if(error)throw error;
+        const refreshedRows=currentAdminSystem==="unclassified"
+          ? (data||[]).filter(row=>!ADMIN_SYSTEMS.includes(sightingSystem(row)))
+          : (data||[]);
+        const retained=sightings.filter(row=>sightingSystem(row)!==currentAdminSystem);
+        const byId=new Map(retained.map(row=>[String(row.id),row]));
+        refreshedRows.forEach(row=>byId.set(String(row.id),row));
+        sightings=[...byId.values()].sort((a,b)=>new Date(b.saved_at||0)-new Date(a.saved_at||0));
+        populateSightingFilters();
+        loadDashboard(currentAdminProfile);
+        setStatus(`${systemLabel(currentAdminSystem)} sightings refreshed.`, "success", 2500);
+      }catch(error){
+        console.error("Selected-system sightings refresh failed:",error);
+        setStatus(`Could not refresh ${systemLabel(currentAdminSystem)} sightings. Check that the system column migration has been applied.`, "error", 5000);
+      }finally{
+        if(button){button.disabled=false;button.textContent=previousText;}
+      }
     }
 
     async function loadAdminData(profile) {
@@ -2011,25 +2071,38 @@
       const table=document.getElementById("alertDecisionReportsTable"), count=document.getElementById("alertDecisionReportResultCount"); if(!table)return;
       const q=(document.getElementById("alertDecisionReportSearch")?.value||"").trim().toLowerCase();
       const statusFilter=document.getElementById("alertDecisionReportStatusFilter")?.value||"";
-      const filtered=alertDecisionReports.filter(r=>[r.line,r.station,r.final_decision,r.notes,r.admin_notes,JSON.stringify(r.warning_flags||{})].join(" ").toLowerCase().includes(q)&&(!statusFilter||r.status===statusFilter));
+      const filtered=alertDecisionReports.filter(r=>(!r.system||normalizeSystemValue(r.system)===currentAdminSystem)&&[r.line,r.station,r.final_decision,r.notes,r.admin_notes,JSON.stringify(r.warning_flags||{})].join(" ").toLowerCase().includes(q)&&(!statusFilter||r.status===statusFilter));
       if(count)count.textContent=`Showing ${filtered.length} of ${alertDecisionReports.length} report${alertDecisionReports.length===1?"":"s"}`;
       table.innerHTML="";
       if(!filtered.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=9;td.className="empty";td.textContent=alertDecisionReports.length?"No alert decision reports match your filters.":"No alert decision reports have been submitted yet.";tr.appendChild(td);table.appendChild(tr);return;}
       filtered.forEach(report=>{
         const tr=document.createElement("tr");
-        const values=[report.line||"—",report.station||"—",report.simulated_at?new Date(report.simulated_at).toLocaleString():"—",report.final_decision||"—",JSON.stringify(report.warning_flags||{}),report.notes||"—",report.created_at?new Date(report.created_at).toLocaleString():"—"];
+        const values=[report.line||"—",report.station||"—",report.simulated_at?new Date(report.simulated_at).toLocaleString():"—",report.final_decision||"—"];
         values.forEach(value=>{const td=document.createElement("td");td.textContent=String(value);tr.appendChild(td);});
+        const flagsTd=document.createElement("td");flagsTd.className="diagnostic-flag-list";
+        const flagLabels={scheduleKnown:"Schedule known",scheduled:"Scheduled",offRoute:"Off route",timeUnusual:"Unusual time",stationRouteKnown:"Station routes known",stationRouteNormal:"Normal station service"};
+        const flags=report.warning_flags&&typeof report.warning_flags==="object"?report.warning_flags:{};
+        const flagEntries=Object.entries(flags);
+        if(!flagEntries.length)flagsTd.textContent="No flags recorded.";
+        flagEntries.forEach(([key,value])=>{const badge=document.createElement("span");badge.className=`diagnostic-flag-badge ${value===true?"is-true":value===false?"is-false":""}`;badge.textContent=`${flagLabels[key]||key}: ${value===true?"Yes":value===false?"No":String(value)}`;flagsTd.appendChild(badge);});
+        tr.appendChild(flagsTd);
+        [report.notes||"—",report.created_at?new Date(report.created_at).toLocaleString():"—"].forEach(value=>{const td=document.createElement("td");td.textContent=String(value);tr.appendChild(td);});
         const statusTd=document.createElement("td"),select=document.createElement("select");select.className="report-status-select";
         ALERT_DECISION_STATUSES.forEach(v=>{const opt=new Option(ALERT_DECISION_STATUS_LABELS[v],v);select.add(opt);});select.value=ALERT_DECISION_STATUSES.includes(report.status)?report.status:"pending";
         select.addEventListener("change",()=>updateAlertDecisionReport(report,{status:select.value},select));statusTd.appendChild(select);tr.appendChild(statusTd);
-        const adminTd=document.createElement("td"),area=document.createElement("textarea");area.rows=3;area.style.minWidth="220px";area.placeholder="Record investigation findings…";area.value=report.admin_notes||"";
-        const save=document.createElement("button");save.type="button";save.className="filter-button";save.textContent="Save findings";save.addEventListener("click",()=>updateAlertDecisionReport(report,{admin_notes:area.value.trim()||null},save));adminTd.append(area,save);tr.appendChild(adminTd);table.appendChild(tr);
+        const adminTd=document.createElement("td"),editor=document.createElement("div"),area=document.createElement("textarea");
+        editor.className="findings-editor";area.rows=3;area.placeholder="Record investigation findings…";area.value=report.admin_notes||"";
+        const save=document.createElement("button");save.type="button";save.className="filter-button hidden";save.textContent="Save findings";
+        const syncSaveVisibility=()=>{const hasUnsavedText=Boolean(area.value.trim())&&area.value.trim()!==(report.admin_notes||"").trim();save.classList.toggle("hidden",!hasUnsavedText);};
+        area.addEventListener("input",syncSaveVisibility);
+        save.addEventListener("click",()=>updateAlertDecisionReport(report,{admin_notes:area.value.trim()||null},save));
+        editor.append(area,save);adminTd.appendChild(editor);tr.appendChild(adminTd);table.appendChild(tr);
       });
     }
     async function loadAlertDecisionReports(showStatus=false){
       const table=document.getElementById("alertDecisionReportsTable"),button=document.getElementById("refreshAlertDecisionReportsButton");if(!currentAdminProfile?.id)return;
       if(button){button.disabled=true;button.textContent="Refreshing…";}
-      try{const {data,error}=await supabaseClient.from("alert_decision_reports").select("id, user_id, line, station, simulated_at, final_decision, warning_flags, decision_type, notes, admin_notes, status, created_at").order("created_at",{ascending:false});if(error)throw error;alertDecisionReports=data||[];renderAlertDecisionReports();if(showStatus)setStatus("Alert decision reports refreshed.","success",2500);}
+      try{const {data,error}=await supabaseClient.from("alert_decision_reports").select("id, user_id, system, line, station, simulated_at, final_decision, warning_flags, decision_type, notes, admin_notes, status, created_at").eq("system","subway").order("created_at",{ascending:false});if(error)throw error;alertDecisionReports=data||[];renderAlertDecisionReports();if(showStatus)setStatus("Alert decision reports refreshed.","success",2500);}
       catch(error){console.error("Alert decision reports error:",error);if(table)table.innerHTML='<tr><td colspan="9" class="empty">Could not load alert decision reports. Confirm the Supabase migration has been applied.</td></tr>';if(showStatus)setStatus("Could not load alert decision reports.","error",4000);}
       finally{if(button){button.disabled=false;button.textContent="Refresh";}}
     }
@@ -2042,48 +2115,172 @@
     document.getElementById("alertDecisionReportStatusFilter")?.addEventListener("change",renderAlertDecisionReports);
     document.getElementById("clearAlertDecisionReportFilters")?.addEventListener("click",()=>{document.getElementById("alertDecisionReportSearch").value="";document.getElementById("alertDecisionReportStatusFilter").value="";renderAlertDecisionReports();});
 
+    const ADMIN_SYSTEMS = ["subway", "bus", "lirr", "metro-north"];
     function normalizeSystemValue(value) {
       const raw = String(value ?? "").trim().toLowerCase();
-      if (!raw) return "subway"; // legacy sightings predate multi-system support
+      if (!raw || raw === "unclassified") return "unclassified";
       if (["subway", "nyc subway", "nyct subway"].includes(raw)) return "subway";
       if (["bus", "nyc bus", "mta bus"].includes(raw)) return "bus";
       if (["lirr", "long island rail road", "long island railroad"].includes(raw)) return "lirr";
       if (["metro-north", "metro north", "mnr", "mnr railroad"].includes(raw)) return "metro-north";
-      return raw;
+      return `unrecognized:${raw}`;
     }
 
+    // System ownership is determined only by the explicit database system ID.
+    // Missing or unknown IDs are isolated for manual review, never guessed from
+    // route/location fields and never silently assigned to Subway.
     function sightingSystem(sighting) {
-      const explicit = normalizeSystemValue(sighting?.system);
-      if (explicit && explicit !== "subway") return explicit;
+      return normalizeSystemValue(sighting?.system);
+    }
 
-      // Bus sightings use route/location-oriented fields. Some existing Bus rows
-      // were saved before the system column was consistently populated, so do
-      // not let a blank system value make Admin treat them as Subway.
-      const route = String(sighting?.route ?? "").trim();
-      const busLocation = String(
-        sighting?.location ??
-        sighting?.stop_name ??
-        sighting?.bus_stop ??
-        ""
-      ).trim();
-      const busService = String(
-        sighting?.service_type ??
-        sighting?.service ??
-        ""
-      ).trim();
-
-      if (route || busLocation || busService) return "bus";
-
-      return explicit || "subway";
+    function systemIssueLabel(sighting) {
+      const normalized = sightingSystem(sighting);
+      if (normalized === "unclassified") return "Missing system ID";
+      if (normalized.startsWith("unrecognized:")) return `Unrecognized system ID: ${String(sighting?.system ?? "").trim()}`;
+      return "";
     }
 
     function systemLabel(value) {
       const system = normalizeSystemValue(value);
-      return ({ subway: "Subway", bus: "Bus", lirr: "LIRR", "metro-north": "Metro-North" })[system] || (value || "Unknown");
+      return ({ subway: "Subway", bus: "Bus", lirr: "LIRR", "metro-north": "Metro-North" })[system] || (system === "unclassified" ? "Unclassified" : `Unrecognized (${String(value ?? "").trim()})`);
+    }
+
+    function renderUnclassifiedSightings() {
+      const section = document.getElementById("unclassifiedSightingsSection");
+      const table = document.getElementById("unclassifiedSightingsTable");
+      const count = document.getElementById("unclassifiedSightingsCount");
+      const switchButton = document.getElementById("unclassifiedSystemButton");
+      if (!table) return;
+
+      const rows = sightings
+        .filter(row => !ADMIN_SYSTEMS.includes(sightingSystem(row)))
+        .sort((a, b) => new Date(b.saved_at || 0) - new Date(a.saved_at || 0));
+
+      const hasRows = rows.length > 0;
+      if (switchButton) switchButton.classList.toggle("hidden", !hasRows);
+      if (section) section.classList.toggle("hidden", !hasRows || currentAdminSystem !== "unclassified");
+      if (count) count.textContent = `${rows.length} record${rows.length === 1 ? "" : "s"} require system review`;
+
+      table.innerHTML = "";
+      if (!hasRows) {
+        if (currentAdminSystem === "unclassified") setAdminSystem("subway");
+        return;
+      }
+
+      rows.forEach(row => {
+        const tr = document.createElement("tr");
+        const detailParts = [
+          row.line ?? row.route,
+          row.station ?? row.location,
+          row.notes
+        ].filter(value => value !== null && value !== undefined && String(value).trim() !== "");
+        const values = [
+          row.car_number ?? row.vehicle_number ?? "—",
+          row.fleet ?? "—",
+          detailParts.length ? detailParts.join(" · ") : "No additional details",
+          row.system === null || row.system === undefined || String(row.system).trim() === "" ? "(blank)" : String(row.system),
+          systemIssueLabel(row),
+          row.saved_at ? new Date(row.saved_at).toLocaleString() : "—"
+        ];
+        values.forEach((value, index) => {
+          const td = document.createElement("td");
+          td.textContent = String(value);
+          if (index === 4) td.className = "system-issue";
+          if (index === 2) td.style.whiteSpace = "normal";
+          tr.appendChild(td);
+        });
+
+        const classifyCell = document.createElement("td");
+        const controls = document.createElement("div");
+        controls.className = "unclassified-classify-controls";
+
+        const select = document.createElement("select");
+        select.className = "unclassified-classify-select";
+        select.setAttribute("aria-label", "Choose the verified system for this sighting");
+        select.add(new Option("Choose system…", ""));
+        [
+          ["subway", "Subway"],
+          ["bus", "Bus"],
+          ["lirr", "LIRR"],
+          ["metro-north", "Metro-North"]
+        ].forEach(([value, label]) => select.add(new Option(label, value)));
+
+        const actionCell = document.createElement("td");
+        const saveButton = document.createElement("button");
+        saveButton.type = "button";
+        saveButton.className = "filter-button unclassified-classify-button";
+        saveButton.textContent = "Save";
+        saveButton.disabled = true;
+        select.addEventListener("change", () => {
+          saveButton.disabled = !ADMIN_SYSTEMS.includes(select.value);
+        });
+        saveButton.addEventListener("click", () => classifyUnclassifiedSighting(row, select, saveButton));
+
+        controls.appendChild(select);
+        classifyCell.appendChild(controls);
+        actionCell.appendChild(saveButton);
+        tr.appendChild(classifyCell);
+        tr.appendChild(actionCell);
+        table.appendChild(tr);
+      });
+
+    }
+
+    async function classifyUnclassifiedSighting(row, select, button) {
+      const selectedSystem = normalizeSystemValue(select?.value);
+      if (!row?.id || !ADMIN_SYSTEMS.includes(selectedSystem)) {
+        setStatus("Choose a valid system before saving.", "error", 3500);
+        return;
+      }
+
+      const vehicle = row.car_number ?? row.vehicle_number ?? "this sighting";
+      const confirmed = window.confirm(
+        `Classify ${vehicle} as ${systemLabel(selectedSystem)}?\n\nOnly the parent sighting's system ID will be updated. No car records will be created or changed.`
+      );
+      if (!confirmed) return;
+
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Saving…";
+      }
+      if (select) select.disabled = true;
+
+      try {
+        let query = supabaseClient
+          .from("sightings")
+          .update({ system: selectedSystem })
+          .eq("id", row.id);
+
+        if (row.system === null || row.system === undefined) {
+          query = query.is("system", null);
+        } else {
+          query = query.eq("system", row.system);
+        }
+
+        const { data, error } = await query.select("id, system").maybeSingle();
+        if (error) throw error;
+        if (!data) {
+          throw new Error("This record changed or could not be updated. Refresh Unclassified and try again.");
+        }
+
+        Object.assign(row, data);
+        setStatus(`Sighting classified as ${systemLabel(selectedSystem)}. No car records were created or changed.`, "success", 4500);
+        populateSightingFilters();
+        loadDashboard(currentAdminProfile);
+      } catch (error) {
+        console.error("Unclassified sighting classification failed:", error);
+        setStatus(error?.message || "Could not classify this sighting.", "error", 5000);
+        if (button) {
+          button.disabled = false;
+          button.textContent = "Save";
+        }
+        if (select) select.disabled = false;
+      }
     }
 
     function loadDashboard(profile) {
       const systemSightings = sightings.filter(s => sightingSystem(s) === currentAdminSystem);
+      renderUnclassifiedSightings();
 
       document.getElementById(
         "totalSightings"
@@ -2683,11 +2880,12 @@
       document.querySelectorAll(".subway-admin-only").forEach(section => {
         section.classList.toggle("hidden", currentAdminSystem !== "subway");
       });
+      document.getElementById("recentSightingsSection")?.classList.toggle("hidden", currentAdminSystem === "unclassified");
 
       const expansion = document.getElementById("systemAdminExpansionNote");
       const expansionTitle = document.getElementById("systemAdminExpansionTitle");
       const expansionText = document.getElementById("systemAdminExpansionText");
-      if (expansion) expansion.classList.toggle("hidden", currentAdminSystem === "subway");
+      if (expansion) expansion.classList.toggle("hidden", currentAdminSystem === "subway" || currentAdminSystem === "unclassified");
       if (expansionTitle) expansionTitle.textContent = `${label} Admin Tools`;
       if (expansionText) expansionText.textContent = `${label}-specific admin tools will appear here as that system expands. Sightings and system-level statistics above are already scoped to ${label}.`;
 
@@ -2705,6 +2903,7 @@
     }
 
     function setupFilters() {
+      document.getElementById("refreshSightingsButton")?.addEventListener("click", refreshSightingsForCurrentSystem);
       ["sightingSearch", "fleetFilter", "lineFilter"].forEach(id => {
         const el = document.getElementById(id);
         el?.addEventListener(id === "sightingSearch" ? "input" : "change", () => loadDashboard(currentAdminProfile));
