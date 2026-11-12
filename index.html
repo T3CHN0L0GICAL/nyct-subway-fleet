@@ -913,6 +913,15 @@
         text-transform: capitalize;
     }
 
+    .diagnostic-flag-list { display:flex; flex-wrap:wrap; gap:6px; }
+    .diagnostic-flag-badge {
+        display:inline-flex; align-items:center; gap:5px; border:1px solid var(--fi-border);
+        border-radius:999px; padding:4px 8px; font-size:12px; font-weight:700;
+        background:var(--fi-chip); color:var(--fi-text);
+    }
+    .diagnostic-flag-badge.is-true { border-color:#287a49; background:rgba(40,122,73,.16); }
+    .diagnostic-flag-badge.is-false { opacity:.72; }
+
     .report-item-details {
         display: grid;
         grid-template-columns: 130px 1fr;
@@ -4307,7 +4316,14 @@ function enhanceStationInput(input) {
 }
 
 function initializeStationPickers() {
-    const apply = () => document.querySelectorAll("#sightingStation, input[id^='edit-station-']").forEach(enhanceStationInput);
+    const apply = () => {
+        document.querySelectorAll("#sightingStation, input[id^='edit-station-']").forEach(input => {
+            // Bus sighting editors have their own GTFS stop picker. Never wrap
+            // these inputs in the Subway station autocomplete.
+            if (input.closest(".bus-edit-stop-picker")) return;
+            enhanceStationInput(input);
+        });
+    };
     apply();
     new MutationObserver(apply).observe(document.body, { childList: true, subtree: true });
 }
@@ -4704,6 +4720,18 @@ async function toggleTrainsetHistoryPanel() {
     if (opening) await loadTrainsetHistory();
 }
 
+async function fetchAllTrainsetHistoryRows(buildQuery, pageSize = 1000) {
+    const allRows = [];
+    for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await buildQuery().range(offset, offset + pageSize - 1);
+        if (error) return { data: null, error };
+        const page = data || [];
+        allRows.push(...page);
+        if (page.length < pageSize) break;
+    }
+    return { data: allRows, error: null };
+}
+
 async function loadTrainsetHistory() {
     if (fiIsOfflineNow()) return null; // B2: skip cloud-only loadTrainsetHistory while offline
 
@@ -4728,15 +4756,22 @@ async function loadTrainsetHistory() {
         return;
     }
 
+    // Supabase/PostgREST may cap each response at 1,000 rows. Fetch every
+    // page so a large history cannot silently lose cars from a consist.
     const [sightingsResult, carsResult] = await Promise.all([
-        supabaseClient.from("sightings")
+        fetchAllTrainsetHistoryRows(() => supabaseClient.from("sightings")
             .select("id, car_number, fleet, line, station, saved_at")
             .eq("user_id", user.id)
-            .order("saved_at", {ascending:false}),
-        supabaseClient.from("sighting_cars")
+            .eq("system", "subway")
+            .order("saved_at", {ascending:false})
+            .order("id", {ascending:false})),
+        fetchAllTrainsetHistoryRows(() => supabaseClient.from("sighting_cars")
             .select("sighting_id, car_number, fleet, position")
             .eq("user_id", user.id)
+            .eq("system", "subway")
+            .order("sighting_id", {ascending:false})
             .order("position", {ascending:true})
+            .order("car_number", {ascending:true}))
     ]);
 
     if (sightingsResult.error) {
@@ -6890,6 +6925,7 @@ async function getLinkedUnitHistory(linkedUnit) {
             .from("sighting_cars")
             .select("sighting_id, car_number")
             .eq("user_id", session.user.id)
+            .eq("system", "subway")
             .in("car_number", cars);
 
         if (error) {
@@ -7415,7 +7451,7 @@ function isLikelyNetworkError(error) {
 }
 async function sightingAlreadySynced(item) {
     const p=item.payload;
-    let q=supabaseClient.from("sightings").select("id").eq("user_id",p.user_id).eq("car_number",String(p.car_number)).eq("fleet",p.fleet).eq("line",p.line).eq("saved_at",p.saved_at).limit(1);
+    let q=supabaseClient.from("sightings").select("id").eq("user_id",p.user_id).eq("system",p.system||item.system).eq("car_number",String(p.car_number)).eq("fleet",p.fleet).eq("line",p.line).eq("saved_at",p.saved_at).limit(1);
     const {data,error}=await q;
     if(error) throw error;
     return data?.[0]?.id || null;
@@ -7432,7 +7468,7 @@ async function uploadQueuedSighting(item) {
         const have=new Set((existing||[]).map(x=>String(x.car_number)));
         const rows=item.consistCars.filter(c=>!have.has(String(c))).map((car,index)=>{
             const match=identifyNumeric(Number(car));
-            return {sighting_id:sightingId,user_id:item.payload.user_id,car_number:String(car),fleet:match?.[0]||item.payload.fleet,position:index+1};
+            return {system:"subway",sighting_id:sightingId,user_id:item.payload.user_id,car_number:String(car),fleet:match?.[0]||item.payload.fleet,position:index+1};
         });
         if(rows.length){ const {error}=await supabaseClient.from("sighting_cars").insert(rows); if(error) throw error; }
     }
@@ -7582,6 +7618,7 @@ async function saveSighting() {
     }
 
     const sightingPayload = {
+        system: "subway",
         user_id: session.user.id,
         car_number: pendingSighting.carNumber,
         fleet: pendingSighting.fleet,
@@ -7617,6 +7654,7 @@ async function saveSighting() {
     const consistRows = consistCars.map((car, index) => {
         const match = identifyNumeric(Number(car));
         return {
+            system: "subway",
             sighting_id: sighting.id,
             user_id: session.user.id,
             car_number: car,
@@ -7830,7 +7868,7 @@ async function submitAlertDecisionReport(event) {
     if (sessionError || !session?.user) { if(status) status.textContent = "Sign in to submit an alert decision report."; return; }
     if (status) status.textContent = "Submitting report...";
     const { error } = await supabaseClient.from("alert_decision_reports").insert({
-      user_id: session.user.id, line: snapshot.line, station: snapshot.station, simulated_at: snapshot.simulated_at,
+      system: "subway", user_id: session.user.id, line: snapshot.line, station: snapshot.station, simulated_at: snapshot.simulated_at,
       final_decision: snapshot.final_decision, warning_flags: snapshot.warning_flags, decision_type: snapshot.decision_type,
       notes, platform: getFleetIdentifierPlatform()
     });
@@ -8328,6 +8366,7 @@ async function getRecentSightingAlert(vehicleNumber, fleet, system) {
         const { data: rows, error } = await supabaseClient
             .from("sightings")
             .select("id,user_id,car_number,fleet,saved_at")
+            .eq("system", system)
             .gte("saved_at", cutoff)
             .lte("saved_at", now.toISOString())
             .order("saved_at", { ascending: false })
@@ -8398,6 +8437,7 @@ async function getVehicleSightingSummary(vehicleNumber, system) {
             .from("sightings")
             .select("id,saved_at")
             .eq("user_id", userId)
+            .eq("system", system)
             .eq("car_number", value);
         if (primary.error) {
             console.error("Could not load vehicle sighting summary:", primary.error);
@@ -8411,6 +8451,7 @@ async function getVehicleSightingSummary(vehicleNumber, system) {
                 .from("sighting_cars")
                 .select("sighting_id")
                 .eq("user_id", userId)
+                .eq("system", "subway")
                 .eq("car_number", value);
             if (!consist.error) {
                 const missingIds = [...new Set((consist.data || []).map(row => row.sighting_id).filter(Boolean).map(String))]
@@ -8420,6 +8461,7 @@ async function getVehicleSightingSummary(vehicleNumber, system) {
                         .from("sightings")
                         .select("id,saved_at")
                         .eq("user_id", userId)
+                        .eq("system", "subway")
                         .in("id", missingIds);
                     if (!linked.error) (linked.data || []).forEach(row => sightingsById.set(String(row.id), row));
                 }
@@ -8575,7 +8617,7 @@ async function getPrimaryRepeatSightingNotice(vehicleNumber, vehicleLabel = "veh
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session?.user) return "";
         const value=String(vehicleNumber);
-        const {data,error}=await supabaseClient.from("sightings").select("id,saved_at").eq("user_id",session.user.id).eq("car_number",value).order("saved_at",{ascending:false});
+        const {data,error}=await supabaseClient.from("sightings").select("id,saved_at").eq("user_id",session.user.id).eq("system","subway").eq("car_number",value).order("saved_at",{ascending:false});
         if(error||!data?.length) return "";
         const last=data[0]?.saved_at?new Date(data[0].saved_at).toLocaleString():"an earlier date";
         return `<div class="repeat-sighting-notice"><strong>You’ve seen ${escapeHTML(vehicleLabel)} ${escapeHTML(value)} before.</strong>${data.length} previous sighting${data.length===1?"":"s"} · Last seen ${escapeHTML(last)}</div>`;
@@ -9037,14 +9079,39 @@ function getFleetFamilyMatches(value) {
         "R211": ["R211A", "R211T", "R211S"],
         "R160": ["R160A", "R160B"],
         "R142": ["R142", "R142A"],
-        "R68": ["R68", "R68A"],
+        "R68": ["R68", "R68-SF", "R68A"],
         "R62": ["R62", "R62A"]
     };
 
     const family = familyRules[normalized];
     if (!family) return [];
 
-    return family.filter(name => fleetData[name]);
+    return family.filter(name => fleetData[name] || name === "R68-SF");
+}
+
+function fleetSearchDisplayName(fleet) {
+    if (fleet === "R68-SF") return "R68 — Franklin Avenue Shuttle";
+    if (fleet === "R68") return "R68 — D, N, Q, W";
+    return fleet;
+}
+
+function fleetSearchDisplayData(fleet) {
+    if (fleet === "R68-SF") {
+        return {
+            ...fleetData.R68,
+            ranges: [[2916, 2924]],
+            lines: "Franklin S",
+            notes: "Franklin Avenue Shuttle assignment group. These R68 cars are assigned exclusively to the Franklin Avenue Shuttle."
+        };
+    }
+    if (fleet === "R68") {
+        return {
+            ...fleetData.R68,
+            ranges: [[2500, 2915]],
+            notes: "Standard R68 service on the D, N, Q, and W. Cars 2916–2924 are listed separately as the Franklin Avenue Shuttle R68 group."
+        };
+    }
+    return fleetData[fleet] || null;
 }
 
 function findFleetBySearch(value) {
@@ -9055,6 +9122,7 @@ function findFleetBySearch(value) {
     // chooser instead of being treated as invalid or guessing a subtype.
     if (getFleetFamilyMatches(value).length > 1) return "";
 
+    if (normalized === "R68SF" || normalized === "R68FRANKLIN") return "R68-SF";
     return Object.keys(fleetData).find(name =>
         normalizeFleetSearch(name) === normalized
     ) || "";
@@ -9075,10 +9143,10 @@ function showFleetFamilyPicker(query, matches) {
         </div>
         <div class="fleet-family-picker">
             ${matches.map(name => {
-                const data = fleetData[name] || {};
+                const data = fleetSearchDisplayData(name) || {};
                 return `
                     <button type="button" class="fleet-family-option" data-fleet="${escapeHTML(name)}">
-                        <span class="fleet-family-option-name">${escapeHTML(name)}</span>
+                        <span class="fleet-family-option-name">${escapeHTML(fleetSearchDisplayName(name))}</span>
                         <span class="fleet-family-option-lines">${fleetLinesDisplayHTML(data.lines || "")}</span>
                     </button>
                 `;
@@ -9089,7 +9157,7 @@ function showFleetFamilyPicker(query, matches) {
     resultBox.querySelectorAll(".fleet-family-option").forEach(button => {
         button.addEventListener("click", () => {
             const fleet = button.dataset.fleet || "";
-            if (fleetData[fleet]) {
+            if (fleetSearchDisplayData(fleet)) {
                 const input = document.getElementById("carNumber");
                 if (input) input.value = fleet;
                 showFleetSearchResult(fleet);
@@ -9111,13 +9179,13 @@ function fleetRangesDisplay(ranges) {
 
 function showFleetSearchResult(fleet) {
     const resultBox = document.getElementById("result");
-    const data = fleetData[fleet];
+    const data = fleetSearchDisplayData(fleet);
     if (!resultBox || !data) return;
 
     pendingSighting = null;
     resultBox.className = "result";
     resultBox.innerHTML = `
-        <div class="fleet-title">${escapeHTML(fleet)}</div>
+        <div class="fleet-title">${escapeHTML(fleetSearchDisplayName(fleet))}</div>
         <div class="car-number">Fleet search</div>
 
         <div class="info">
@@ -9927,9 +9995,17 @@ async function handleBusLocationInput() {
 }
 
 document.addEventListener("click", e=>{
+    // The destinations dialog is a separate overlay, not an outside click
+    // on the stop-search surface. Closing it must leave the search untouched.
+    if (e.target.closest("#busDestinationBackdrop")) return;
     if(!e.target.closest(".bus-stop-picker")) {
         const results=document.getElementById("busStopResults");
         if (results) { results.classList.add("hidden"); results.innerHTML=""; }
+    }
+    if(!e.target.closest(".bus-edit-stop-picker")) {
+        document.querySelectorAll(".bus-edit-stop-picker .bus-stop-results").forEach(results=>{
+            results.classList.add("hidden");results.innerHTML="";
+        });
     }
 });
 
@@ -10078,7 +10154,7 @@ async function saveBusSighting() {
     if(status) status.textContent=requestedTimestamp.value ? "Saving past bus sighting..." : "Saving bus sighting...";
     const notes=document.getElementById("busSightingNotes")?.value.trim() || "";
     const location=document.getElementById("busSightingLocation")?.value.trim() || "";
-    const payload={ user_id:null, car_number:pendingBusSighting.busNumber, fleet:pendingBusSighting.fleet, line:selected.route, station:location||null, notes:notes||null };
+    const payload={ system:"bus", user_id:null, car_number:pendingBusSighting.busNumber, fleet:pendingBusSighting.fleet, line:selected.route, station:location||null, notes:notes||null };
     payload.saved_at=offlineFieldTimestamp(requestedTimestamp.value);
     if (fleetIdentifierTestMode) {
         saveTestSighting(payload, [String(pendingBusSighting.busNumber)]);
@@ -10157,23 +10233,27 @@ function activeRailroadSystem() { return activeFleetSystem === "lirr" || activeF
 function railroadFleetNames(system) { return new Set((RAILROAD_FLEETS[system] || []).map(f => f.name)); }
 function busFleetNames() { return new Set((busFleetData || []).map(f => String(f.model || "").trim()).filter(Boolean)); }
 function sightingBelongsToActiveSystem(row) {
+    const explicit=String(row?.system||"").trim().toLowerCase();
+    if(explicit){
+        const normalized=({"nyc subway":"subway","nyct subway":"subway","nyc bus":"bus","mta bus":"bus","metro north":"metro-north","mnr":"metro-north","mnr railroad":"metro-north","long island rail road":"lirr","long island railroad":"lirr"})[explicit] || explicit;
+        if(["subway","bus","lirr","metro-north"].includes(normalized)) return normalized===activeFleetSystem;
+        return false;
+    }
     const fleet=String(row?.fleet||"").trim();
     const line=String(row?.line||"").trim();
     const station=String(row?.station||"").trim();
-    if(activeFleetSystem === "bus") {
-        if(fleet === "TEST") return line === "TEST" && station === "Stop Av / Stop St";
-        return busFleetNames().has(fleet);
+    if(fleet === "TEST") {
+        if(activeFleetSystem === "bus") return line === "TEST" && station === "Stop Av / Stop St";
+        return line === "TEST" && station !== "Stop Av / Stop St" && (activeFleetSystem === "subway" || activeRailroadSystem() !== null);
     }
+    if(activeFleetSystem === "bus") return busFleetNames().has(fleet);
     const system=activeRailroadSystem();
-    if(system) {
-        if(fleet === "TEST") return line === "TEST" && station !== "Stop Av / Stop St";
-        return railroadFleetNames(system).has(fleet);
-    }
-    // Subway excludes known bus and railroad fleets so each system's tools remain isolated.
+    if(system) return railroadFleetNames(system).has(fleet);
+    // Legacy rows without a system ID are only shown when their fleet is
+    // explicitly known to belong to Subway; unknown fleet names are not guessed.
     if(busFleetNames().has(fleet)) return false;
     if(railroadFleetNames("lirr").has(fleet) || railroadFleetNames("metro-north").has(fleet)) return false;
-    if(fleet === "TEST" && station === "Stop Av / Stop St") return false;
-    return true;
+    return Object.prototype.hasOwnProperty.call(fleetData, fleet);
 }
 function scopeSightingsRows(rows) {
     if (fleetIdentifierTestMode) return (rows||[]).filter(row => String(row?.system || activeFleetSystem) === String(activeFleetSystem));
@@ -10351,7 +10431,7 @@ async function saveRailroadSighting(system, vehicleNumber, fleetName, testMode=f
     const requested=getRailroadPastTimestamp(system);
     if(!requested.ok){ if(status) status.textContent=requested.message; return; }
     const notes=document.getElementById(`${system}-rail-notes`)?.value.trim() || "";
-    const payload={user_id:null,car_number:String(vehicleNumber),fleet:fleetName,line,station:location||null,notes:notes||null};
+    const payload={system,user_id:null,car_number:String(vehicleNumber),fleet:fleetName,line,station:location||null,notes:notes||null};
     payload.saved_at=offlineFieldTimestamp(requested.value);
     if (fleetIdentifierTestMode) {
         saveTestSighting(payload, [String(vehicleNumber)]);
@@ -10389,17 +10469,17 @@ document.getElementById("busNumber")?.addEventListener("keydown", event => {
 const SUBWAY_MAP_SHORTCUTS = {
     "5256": {
         title: "Standard Subway Map",
-        url: "https://www.mta.info/map/5256",
+        url: "https://new.mta.info/map/5256",
         externalPdf: true
     },
     "5336": {
         title: "Late-Night Subway Map",
-        url: "https://www.mta.info/map/5336",
+        url: "https://new.mta.info/map/5336",
         externalPdf: true
     },
     "32096": {
         title: "Current Weekend Subway Map",
-        url: "https://www.mta.info/weekender",
+        url: "https://new.mta.info/weekender",
         livePage: true
     }
 };
@@ -10423,36 +10503,28 @@ function openSubwayMapViewer(shortcut) {
         resultBox.innerHTML = "";
     }
 
+    // MTA map pages may block iframe embedding. Use a real user-clickable
+    // browser link instead of relying on an embedded page that can appear blank.
     document.getElementById("subwayMapViewerOverlay")?.remove();
     const overlay = document.createElement("div");
     overlay.id = "subwayMapViewerOverlay";
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-modal", "true");
     overlay.setAttribute("aria-labelledby", "subwayMapViewerTitle");
-    overlay.style.cssText = "position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:10px;";
-
-    const freshnessNotice = map.livePage ? `
-        <div style="padding:10px 12px;background:#172b3b;color:#d9edff;border-bottom:1px solid #315c7d;font-size:13px;line-height:1.45;">
-            <strong>Live MTA source:</strong> this opens the MTA Weekender page, where the current weekend service changes are published. The page is updated by the MTA, so the app does not rely on a permanently stored weekly PDF.
-            <div style="margin-top:7px"><a href="${map.url}" target="_blank" rel="noopener noreferrer" style="color:#fff;text-decoration:underline;font-weight:700;">Open current MTA Weekender</a></div>
-        </div>` : "";
-
+    overlay.style.cssText = "position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:16px;";
+    const description = map.livePage
+        ? "This opens the MTA's live Weekender page, which publishes the current weekend service changes."
+        : "This opens the official MTA subway map directly. The MTA controls the map document and its updates.";
     overlay.innerHTML = `
-        <section style="display:flex;flex-direction:column;width:min(1100px,100%);height:min(94dvh,100%);background:var(--fi-card,#111);color:var(--fi-text,#fff);border:1px solid var(--fi-border,#444);border-radius:12px;overflow:hidden;box-shadow:0 16px 60px rgba(0,0,0,.45);">
-            <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid var(--fi-border,#444);">
+        <section style="width:min(520px,100%);background:var(--fi-card,#111);color:var(--fi-text,#fff);border:1px solid var(--fi-border,#444);border-radius:12px;padding:20px;box-shadow:0 16px 60px rgba(0,0,0,.45);">
+            <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
                 <h2 id="subwayMapViewerTitle" style="font-size:1rem;margin:0;">${map.title}</h2>
                 <button type="button" id="subwayMapViewerClose" style="flex:0 0 auto;">Close</button>
             </header>
-            ${freshnessNotice}
-            <div style="flex:1;min-height:0;background:#fff;position:relative;">
-                <iframe title="${map.title}" src="${map.url}" style="display:block;width:100%;height:100%;border:0;background:#fff;" loading="eager" allowfullscreen></iframe>
-                <div style="position:absolute;left:12px;right:12px;bottom:12px;padding:12px;background:rgba(20,20,20,.92);color:#fff;border-radius:10px;text-align:center;line-height:1.45;">
-                    If the MTA page does not appear inside the app, <a href="${map.url}" target="_blank" rel="noopener noreferrer" style="color:#9ed0ff;text-decoration:underline;font-weight:700;">open ${map.title} directly</a>.
-                </div>
-            </div>
-            <div style="padding:8px 12px;font-size:12px;color:var(--fi-muted,#aaa);">Close to return to Subway search.</div>
+            <p style="line-height:1.5;color:var(--fi-muted,#aaa);">${description}</p>
+            <a href="${map.url}" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;padding:13px 16px;border-radius:9px;background:#1769aa;color:#fff;text-decoration:none;font-weight:800;">Open ${map.title}</a>
+            <p style="font-size:12px;color:var(--fi-muted,#aaa);margin:12px 0 0;">If the link does not open a new tab, copy this address into your browser: <span style="overflow-wrap:anywhere;">${map.url}</span></p>
         </section>`;
-
     document.body.appendChild(overlay);
     overlay.querySelector("#subwayMapViewerClose")?.addEventListener("click", closeSubwayMapViewer);
     overlay.addEventListener("click", event => {
@@ -11400,7 +11472,8 @@ async function loadMyReports() {
 
         const badge = document.createElement("span");
         badge.className = "report-status-badge";
-        badge.textContent = report.status || "pending";
+        const reportStatusLabels = { pending:"Pending review", under_review:"Under review", confirmed_correct:"Confirmed correct", confirmed_incorrect:"Confirmed incorrect", unable_to_determine:"Unable to determine", resolved:"Resolved", reviewed:"Reviewed" };
+        badge.textContent = reportStatusLabels[report.status] || report.status || "Pending review";
 
         heading.append(car, badge);
 
@@ -11415,7 +11488,7 @@ async function loadMyReports() {
                 ["Station", report.station || "—"], ["Line", report.line || "—"],
                 ["Simulated time", report.simulated_at ? new Date(report.simulated_at).toLocaleString() : "—"],
                 ["Decision", report.final_decision || "—"],
-                ["Diagnostic flags", Object.entries(flags).map(([k,v]) => `${k}: ${v}`).join(" · ") || "—"],
+                ["Diagnostic flags", flags],
                 ["Submitted", report.created_at ? new Date(report.created_at).toLocaleString() : "—"],
                 ["Your notes", report.notes || "—"], ["Admin findings", report.admin_notes || "—"]
             ];
@@ -11447,6 +11520,21 @@ async function loadMyReports() {
 
             if (labelText === "Line" && valueText !== "—") {
                 value.innerHTML = lineDisplayHTML(valueText);
+            } else if (labelText === "Diagnostic flags" && valueText && typeof valueText === "object") {
+                value.classList.add("diagnostic-flag-list");
+                const labels = {
+                    scheduleKnown:"Schedule known", scheduled:"Scheduled", offRoute:"Off route",
+                    timeUnusual:"Unusual time", stationRouteKnown:"Station routes known",
+                    stationRouteNormal:"Normal station service"
+                };
+                const entries = Object.entries(valueText);
+                if (!entries.length) value.textContent = "No diagnostic flags recorded.";
+                entries.forEach(([key, flagValue]) => {
+                    const badge = document.createElement("span");
+                    badge.className = `diagnostic-flag-badge ${flagValue ? "is-true" : "is-false"}`;
+                    badge.textContent = `${labels[key] || key}: ${flagValue === true ? "Yes" : flagValue === false ? "No" : String(flagValue)}`;
+                    value.appendChild(badge);
+                });
             } else {
                 value.textContent = valueText;
             }
@@ -12021,7 +12109,60 @@ function railroadEditOptionsHTML(system,currentLine){
     return custom+nis+options;
 }
 function busEditRouteControlHTML(currentLine,id){
-    return `<input id="edit-line-${id}" type="text" maxlength="20" autocomplete="off" value="${escapeHTML(currentLine||"")}" placeholder="Example: B46 or NIS">`;
+    return `<input id="edit-line-${id}" type="text" maxlength="20" autocomplete="off" value="${escapeHTML(currentLine||"")}" placeholder="Example: B46 or NIS" oninput="handleBusEditLocationInput(${Number(id)})">`;
+}
+
+const editBusStopSelections = new Map();
+
+function normalizeSavedBusRouteForStopSearch(value) {
+    const raw=String(value||"").trim().toUpperCase();
+    if(!raw || raw==="NIS") return raw;
+    return raw.replace(/\s+(SBS|LTD|RUSH)$/i,"-$1").replace(/\s+/g,"");
+}
+
+function handleBusEditLocationInput(id) {
+    const input=document.getElementById(`edit-station-${id}`);
+    const routeInput=document.getElementById(`edit-line-${id}`);
+    const results=document.getElementById(`edit-bus-stop-results-${id}`);
+    const note=document.getElementById(`edit-bus-stop-note-${id}`);
+    if(!input||!routeInput||!results)return;
+    editBusStopSelections.delete(Number(id));
+    const route=normalizeSavedBusRouteForStopSearch(routeInput.value);
+    const q=normalizeBusStopSearch(input.value);
+    if(q.length<2){
+        results.classList.add("hidden");results.innerHTML="";
+        if(note)note.textContent=route==="NIS"?"Search any official bus stop for this NIS sighting.":"Search official stops for the entered bus route. Custom locations are also allowed.";
+        return;
+    }
+    const stops=route==="NIS"?getAllBundledBusStops():getBundledBusStopsForRoute(route);
+    if(!stops.length){
+        results.classList.add("hidden");results.innerHTML="";
+        if(note)note.textContent=route?"No bundled official stops were found for this route. You can still enter a custom location.":"Enter a valid bus route first, then search its stops.";
+        return;
+    }
+    const tokens=q.split(" ").filter(Boolean);
+    const matches=stops.map(stop=>({stop,normalized:normalizeBusStopSearch(stop.name)}))
+        .filter(item=>tokens.every(token=>item.normalized.includes(token))).slice(0,18).map(item=>item.stop);
+    results.innerHTML="";
+    if(!matches.length){
+        results.classList.add("hidden");
+        if(note)note.textContent="No matching official bus stop. You can keep the custom location or try another spelling.";
+        return;
+    }
+    for(const stop of matches){
+        const button=document.createElement("button");
+        button.type="button";button.className="bus-stop-result";button.setAttribute("role","option");
+        button.innerHTML=`<span><span class="bus-stop-name">${escapeHTML(stop.name)}</span></span><span class="bus-stop-routes">${stop.routes.slice(0,5).map(routeName=>busStopRouteBadgeHTML(routeName,stop)).join("")}</span>`;
+        button.addEventListener("click",()=>{
+            editBusStopSelections.set(Number(id),stop);
+            input.value=stop.name;
+            results.classList.add("hidden");results.innerHTML="";
+            if(note)note.textContent=`Selected official bus stop: ${stop.name}`;
+        });
+        results.appendChild(button);
+    }
+    results.classList.remove("hidden");
+    if(note)note.textContent="Select an official bus stop below. You can also leave a custom location.";
 }
 
 function openEditSighting(id) {
@@ -12041,7 +12182,13 @@ function openEditSighting(id) {
         ${routeControl}
 
         <label for="edit-station-${id}" style="margin-top:12px;">Location (optional)</label>
-        <input id="edit-station-${id}" type="text" maxlength="100" autocomplete="off" placeholder="Station, stop, or custom location" value="${escapeHTML(sighting.station || "")}">
+        ${system === "bus" ? `
+        <div class="bus-edit-stop-picker" style="position:relative;margin-top:6px;">
+            <input id="edit-station-${id}" type="text" maxlength="100" autocomplete="off" placeholder="Search this route's bus stops or enter a custom location" value="${escapeHTML(sighting.station || "")}" oninput="handleBusEditLocationInput(${Number(id)})">
+            <div id="edit-bus-stop-results-${id}" class="bus-stop-results hidden" role="listbox" aria-label="Matching bus stops for edited sighting"></div>
+            <div id="edit-bus-stop-note-${id}" class="account-small-note" style="margin-top:6px;">Search official stops for this route. Existing location is preserved.</div>
+        </div>` : `
+        <input id="edit-station-${id}" type="text" maxlength="100" autocomplete="off" placeholder="Station or custom location" value="${escapeHTML(sighting.station || "")}">`}
 
         <label for="edit-datetime-${id}" style="margin-top:12px;">Date &amp; time spotted</label>
         <input id="edit-datetime-${id}" type="datetime-local" value="${escapeHTML(toLocalDateTimeValue(sighting.saved_at))}" style="width:100%;padding:12px;font-size:16px;border-radius:9px;">
@@ -12263,6 +12410,7 @@ async function addCarsToExistingSighting(id) {
 
     if (!existingCars.has(String(sighting.car_number))) {
         carsToInsert.push({
+            system: "subway",
             sighting_id: Number(id),
             user_id: session.user.id,
             car_number: String(sighting.car_number),
@@ -12281,6 +12429,7 @@ async function addCarsToExistingSighting(id) {
     for (const car of orderedRequested) {
         if (existingCars.has(car)) continue;
         carsToInsert.push({
+            system: "subway",
             sighting_id: Number(id),
             user_id: session.user.id,
             car_number: car,
@@ -12322,6 +12471,7 @@ async function addCarsToExistingSighting(id) {
 function cancelSightingEdit(id) {
     const box = document.getElementById(`edit-sighting-${id}`);
     if (!box) return;
+    editBusStopSelections.delete(Number(id));
     box.classList.add("hidden");
     box.innerHTML = "";
 }
@@ -12336,14 +12486,16 @@ async function saveSightingEdit(id) {
     if (!sighting || !lineInput) return;
 
     const system=sightingEditSystem();
-    const newLine = lineInput.value.trim();
+    const newLine = system === "bus"
+        ? normalizeSavedBusRouteForStopSearch(lineInput.value)
+        : lineInput.value.trim();
     const newStation = stationInput?.value.trim() || "";
     const newNotes = notesInput?.value.trim() || "";
     const rawDate=datetimeInput?.value || "";
     if(!newLine){ if(status) status.textContent=`Choose or enter a ${system==="bus"?"route":system==="lirr"?"branch":"line"}.`; return; }
     if(system==="bus" && newLine!=="NIS"){
-        const key=String(newLine).toUpperCase().replace(/\s+/g,"");
-        const valid=Object.keys(BUS_ROUTE_SERVICE_MAP||{}).some(route=>String(route).toUpperCase()===key);
+        const key=normalizeSavedBusRouteForStopSearch(newLine);
+        const valid=Object.keys(BUS_ROUTE_SERVICE_MAP||{}).some(route=>normalizeSavedBusRouteForStopSearch(route)===key);
         if(!valid){ if(status) status.textContent="Enter a valid bus route or NIS."; return; }
     }
     if(!rawDate){ if(status) status.textContent="Choose the date and time spotted."; return; }
@@ -12359,6 +12511,7 @@ async function saveSightingEdit(id) {
         if (status) status.textContent = "Could not update sighting. Please try again.";
         return;
     }
+    editBusStopSelections.delete(Number(id));
     cancelSightingEdit(id);
     await loadMySightings();
 }
