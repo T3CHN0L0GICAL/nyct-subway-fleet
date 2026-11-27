@@ -10874,22 +10874,21 @@ document.getElementById("busNumber")?.addEventListener("keydown", event => {
     if (event.key === "Enter") identifyBus();
 });
 
-// Subway map shortcuts: keep these separate from fleet identification and reporting.
+// Subway map shortcuts: these PDFs are hosted in this repository's maps/ folder.
+// Resolve them relative to the deployed app so GitHub Pages keeps the
+// /nyct-subway-fleet/ repository path instead of incorrectly targeting the domain root.
 const SUBWAY_MAP_SHORTCUTS = {
     "5256": {
         title: "Standard Subway Map",
-        url: "https://new.mta.info/map/5256",
-        externalPdf: true
+        url: new URL("./maps/subway-map.pdf", document.baseURI).href
     },
     "5336": {
         title: "Late-Night Subway Map",
-        url: "https://new.mta.info/map/5336",
-        externalPdf: true
+        url: new URL("./maps/late-night-map.pdf", document.baseURI).href
     },
     "32096": {
         title: "Current Weekend Subway Map",
-        url: "https://new.mta.info/weekender",
-        livePage: true
+        url: new URL("./maps/weekend-map.pdf", document.baseURI).href
     }
 };
 
@@ -10912,8 +10911,8 @@ function openSubwayMapViewer(shortcut) {
         resultBox.innerHTML = "";
     }
 
-    // MTA map pages may block iframe embedding. Use a real user-clickable
-    // browser link instead of relying on an embedded page that can appear blank.
+    // Open the repository-hosted PDF through a normal browser link. The URL
+    // is resolved from document.baseURI, preserving the GitHub Pages repo path.
     document.getElementById("subwayMapViewerOverlay")?.remove();
     const overlay = document.createElement("div");
     overlay.id = "subwayMapViewerOverlay";
@@ -10921,9 +10920,7 @@ function openSubwayMapViewer(shortcut) {
     overlay.setAttribute("aria-modal", "true");
     overlay.setAttribute("aria-labelledby", "subwayMapViewerTitle");
     overlay.style.cssText = "position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:16px;";
-    const description = map.livePage
-        ? "This opens the MTA's live Weekender page, which publishes the current weekend service changes."
-        : "This opens the official MTA subway map directly. The MTA controls the map document and its updates.";
+    const description = "This opens the PDF stored in the Fleet Identifier repository's maps folder.";
     overlay.innerHTML = `
         <section style="width:min(520px,100%);background:var(--fi-card,#111);color:var(--fi-text,#fff);border:1px solid var(--fi-border,#444);border-radius:12px;padding:20px;box-shadow:0 16px 60px rgba(0,0,0,.45);">
             <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
