@@ -283,6 +283,9 @@
     .workspace-heading h2 { margin:0; font-size:24px; }
     .workspace-heading p { margin:5px 0 0; color:#888; }
     .system-only-note { color:#888; margin:0; line-height:1.45; }
+    .sighting-move-checkbox,#selectAllVisibleSightings { width:17px;height:17px;accent-color:#fff;cursor:pointer; }
+    .sighting-move-checkbox { vertical-align:middle; }
+    .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
     @media (max-width: 650px) { .system-switcher { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
     .auth-shell {
@@ -561,7 +564,7 @@
         <button class="system-switch-button active" type="button" data-admin-system="subway">Subway</button>
         <button class="system-switch-button" type="button" data-admin-system="bus">Bus</button>
         <button class="system-switch-button" type="button" data-admin-system="lirr">LIRR</button>
-        <button class="system-switch-button" type="button" data-admin-system="metro-north">Metro-North</button>
+        <button class="system-switch-button" type="button" data-admin-system="mnr">Metro-North</button>
         <button class="system-switch-button hidden" type="button" data-admin-system="unclassified" id="unclassifiedSystemButton">Unclassified</button>
       </div>
 
@@ -649,6 +652,7 @@
         <table>
           <thead>
             <tr>
+              <th><span class="sr-only">Select</span></th>
               <th>Vehicle</th>
               <th>Fleet</th>
               <th>Route</th>
@@ -664,10 +668,34 @@
       </div>
     </div>
 
+    <div id="sightingMovementSection" class="section">
+      <div class="activity-heading"><h2>Move Sightings Between Systems</h2></div>
+      <p class="system-only-note">Select any number of sightings from the current system, including legacy records still stored in the shared sightings table, then move them into the destination system table. Parent and child records retain their IDs and metadata; moves can be reversed from Movement History.</p>
+      <div class="filters" style="margin-top:14px;align-items:center;">
+        <label style="display:flex;align-items:center;gap:8px;color:#aaa;"><input id="selectAllVisibleSightings" type="checkbox"> Select visible sightings</label>
+        <select id="moveTargetSystem" aria-label="Destination system">
+          <option value="">Move selected to…</option>
+          <option value="subway">Subway</option><option value="bus">Bus</option><option value="mnr">Metro-North</option><option value="lirr">LIRR</option>
+        </select>
+        <button id="moveSelectedSightingsButton" class="filter-button" type="button" disabled>Move Selected</button>
+        <span id="selectedSightingCount" class="result-count" style="margin:0;align-self:center;">0 selected</span>
+      </div>
+      <div id="sightingMoveResults" class="result-count" aria-live="polite"></div>
+    </div>
+
+    <div id="sightingMovementHistorySection" class="section">
+      <div class="activity-heading"><h2>Movement History</h2><button id="refreshMovementHistoryButton" class="filter-button" type="button">Refresh History</button></div>
+      <div id="movementHistoryCount" class="result-count"></div>
+      <div class="table-wrap"><table><thead><tr><th>Vehicle</th><th>From</th><th>To</th><th>Moved</th><th>Status</th><th>Action</th></tr></thead><tbody id="movementHistoryTable"><tr><td colspan="6" class="empty">Loading movement history…</td></tr></tbody></table></div>
+    </div>
+
     <div id="unclassifiedSightingsSection" class="section">
       <h2>Unclassified Sightings</h2>
       <p class="system-only-note">Records with a missing or unrecognized system ID stay separate until an administrator can verify their system from the available details. Choose a system only when you have enough information to identify it confidently. Classification updates the parent sighting only; it does not create car records.</p>
       <div id="unclassifiedSightingsCount" class="result-count"></div>
+      <div style="display:flex;justify-content:flex-end;margin:0 0 12px;">
+        <button id="saveAllUnclassifiedButton" class="filter-button" type="button" disabled>Save All Classifications</button>
+      </div>
       <div class="unclassified-wrap">
         <table class="unclassified-table">
           <thead><tr><th>Vehicle</th><th>Fleet</th><th>Details</th><th>Stored system ID</th><th>Issue</th><th>Time</th><th>Classify as</th><th>Action</th></tr></thead>
@@ -733,6 +761,22 @@
       <tbody id="alertDecisionReportsTable"><tr><td colspan="9" class="empty">Loading reports...</td></tr></tbody></table></div>
     </div>
 
+    <!-- Bus assignment warning reports -->
+    <div class="section bus-admin-only hidden" id="busAssignmentReportsSection">
+      <div class="activity-heading"><h2>Bus Assignment Reports</h2><button id="refreshBusAssignmentReportsButton" class="filter-button" type="button">Refresh</button></div>
+      <p class="system-only-note">Reports submitted when a Bus sighting is incorrectly flagged as outside its listed assignment.</p>
+      <div class="filters">
+        <input id="busAssignmentReportSearch" type="search" placeholder="Search bus, fleet, route, stop, or notes">
+        <select id="busAssignmentReportStatusFilter">
+          <option value="">All statuses</option><option value="pending">Pending review</option><option value="under_review">Under review</option><option value="confirmed_correct">Confirmed correct</option><option value="confirmed_incorrect">Confirmed incorrect</option><option value="unable_to_determine">Unable to determine</option>
+        </select>
+        <button id="clearBusAssignmentReportFilters" class="filter-button" type="button">Clear Filters</button>
+      </div>
+      <div id="busAssignmentReportResultCount" class="result-count"></div>
+      <div class="table-wrap"><table><thead><tr><th>Bus</th><th>Fleet</th><th>Route</th><th>Stop / Location</th><th>Warning details</th><th>User notes</th><th>Submitted</th><th>Status</th><th>Admin findings</th></tr></thead>
+      <tbody id="busAssignmentReportsTable"><tr><td colspan="9" class="empty">Loading reports...</td></tr></tbody></table></div>
+    </div>
+
     <!-- Incorrect Information Reports -->
     <div class="section subway-admin-only">
       <div class="activity-heading">
@@ -773,11 +817,6 @@
           </tbody>
         </table>
       </div>
-    </div>
-
-    <div id="systemAdminExpansionNote" class="section hidden">
-      <h2 id="systemAdminExpansionTitle">System Tools</h2>
-      <p id="systemAdminExpansionText" class="system-only-note"></p>
     </div>
 
     <!-- Global Admin -->
@@ -995,14 +1034,26 @@
     }
 
     function setRouteCell(cell, line) {
-      const bullet = createRouteBullet(line);
-      if (!bullet) {
-        cell.textContent = line ?? "—";
-        return;
-      }
+      const raw = String(line ?? "").trim();
+      if (!raw || raw === "—") { cell.textContent = raw || "—"; return; }
+      const parts = raw.split(/\s+via\s+/i).map(part => part.trim()).filter(Boolean);
       const wrap = document.createElement("span");
       wrap.className = "route-cell";
-      wrap.appendChild(bullet);
+      parts.forEach((part, index) => {
+        if (index > 0) {
+          const via = document.createElement("span");
+          via.textContent = "via";
+          via.style.color = "#999";
+          wrap.appendChild(via);
+        }
+        const bullet = createRouteBullet(part);
+        if (bullet) wrap.appendChild(bullet);
+        else {
+          const label = document.createElement("span");
+          label.textContent = part;
+          wrap.appendChild(label);
+        }
+      });
       cell.replaceChildren(wrap);
     }
 
@@ -1139,79 +1190,66 @@
       };
     }
 
+    async function loadAllSystemSightings() {
+      const loaded = [];
+      for (const system of ADMIN_SYSTEMS) {
+        const tableName = ADMIN_TABLES[system];
+        const { data, error } = await supabaseClient.from(tableName).select("*").order("saved_at", { ascending: false });
+        if (error) throw new Error(`${systemLabel(system)} (${tableName}): ${error.message}`);
+        // The dedicated table is authoritative for system ownership.
+        (data || []).forEach(row => loaded.push({
+          ...row,
+          __adminSystem: system,
+          __adminSourceSystem: system
+        }));
+      }
+      const unique = new Map();
+      loaded.forEach(row => unique.set(`${row.__adminSourceSystem || "subway"}:${row.id}`, row));
+      return [...unique.values()].sort((a,b) => new Date(b.saved_at || 0) - new Date(a.saved_at || 0));
+    }
+
     async function refreshSightingsForCurrentSystem() {
-      const button=document.getElementById("refreshSightingsButton");
-      if(!currentAdminProfile?.id)return;
-      const previousText=button?.textContent||"Refresh Sightings";
-      if(button){button.disabled=true;button.textContent="Refreshing…";}
-      try{
-        let query=supabaseClient.from("sightings").select("*").order("saved_at",{ascending:false});
-        if(currentAdminSystem!=="unclassified") query=query.eq("system",currentAdminSystem);
-        const {data,error}=await query;
-        if(error)throw error;
-        const refreshedRows=currentAdminSystem==="unclassified"
-          ? (data||[]).filter(row=>!ADMIN_SYSTEMS.includes(sightingSystem(row)))
-          : (data||[]);
-        const retained=sightings.filter(row=>sightingSystem(row)!==currentAdminSystem);
-        const byId=new Map(retained.map(row=>[String(row.id),row]));
-        refreshedRows.forEach(row=>byId.set(String(row.id),row));
-        sightings=[...byId.values()].sort((a,b)=>new Date(b.saved_at||0)-new Date(a.saved_at||0));
+      const button = document.getElementById("refreshSightingsButton");
+      if (!currentAdminProfile?.id) return;
+      const previousText = button?.textContent || "Refresh Sightings";
+      if (button) { button.disabled = true; button.textContent = "Refreshing…"; }
+      try {
+        sightings = await loadAllSystemSightings();
+        selectedSightingIds.clear();
         populateSightingFilters();
         loadDashboard(currentAdminProfile);
+        syncMovementSelectionUI();
         setStatus(`${systemLabel(currentAdminSystem)} sightings refreshed.`, "success", 2500);
-      }catch(error){
-        console.error("Selected-system sightings refresh failed:",error);
-        setStatus(`Could not refresh ${systemLabel(currentAdminSystem)} sightings. Check that the system column migration has been applied.`, "error", 5000);
-      }finally{
-        if(button){button.disabled=false;button.textContent=previousText;}
+      } catch (error) {
+        console.error("System sightings refresh failed:", error);
+        setStatus(`Could not refresh system sightings: ${error.message || error}`, "error", 6000);
+      } finally {
+        if (button) { button.disabled = false; button.textContent = previousText; }
       }
     }
 
     async function loadAdminData(profile) {
       currentAdminProfile = profile;
       showDashboardShell();
-
-      setStatus(
-        `Signed in as ${profile.username || "administrator"} — loading dashboard...`
-      );
-
-      const {
-        data: sightingsData,
-        error: sightingsError
-      } = await supabaseClient
-        .from("sightings")
-        .select("*")
-        .order("saved_at", { ascending: false });
-
-      if (sightingsError) {
-        console.error("Sightings error:", sightingsError);
-        setStatus("Could not load sighting data.", "error");
+      setStatus(`Signed in as ${profile.username || "administrator"} — loading dashboard...`);
+      try {
+        sightings = await loadAllSystemSightings();
+      } catch (error) {
+        console.error("Sightings error:", error);
+        setStatus(`Could not load sighting data: ${error.message || error}`, "error");
         return;
       }
-
-      sightings = sightingsData || [];
       populateSightingFilters();
-
-      const {
-        data: profilesData,
-        error: profilesError
-      } = await supabaseClient
-        .from("profiles")
-        .select("*");
-
-      if (profilesError) {
-        console.error("Profiles error:", profilesError);
-        profiles = [];
-      } else {
-        profiles = profilesData || [];
-      }
-
+      const { data: profilesData, error: profilesError } = await supabaseClient.from("profiles").select("*");
+      if (profilesError) { console.error("Profiles error:", profilesError); profiles = []; }
+      else profiles = profilesData || [];
       loadDashboard(profile);
       loadUsers();
       await loadAdminActivity();
       await loadMissingCarReports();
       await loadIncorrectInformationReports();
       await loadAlertDecisionReports();
+      await loadMovementHistory();
       refreshNotificationButton();
     }
 
@@ -1963,7 +2001,7 @@
       if (!filtered.length) {
         const row = document.createElement("tr");
         const cell = document.createElement("td");
-        cell.colSpan = 6;
+        cell.colSpan = 7;
         cell.className = "empty";
         cell.textContent = missingCarReports.length ? "No reports match your filters." : "No missing car reports have been submitted yet.";
         row.appendChild(cell);
@@ -2078,7 +2116,7 @@
       filtered.forEach(report=>{
         const tr=document.createElement("tr");
         const values=[report.line||"—",report.station||"—",report.simulated_at?new Date(report.simulated_at).toLocaleString():"—",report.final_decision||"—"];
-        values.forEach(value=>{const td=document.createElement("td");td.textContent=String(value);tr.appendChild(td);});
+        values.forEach((value,index)=>{const td=document.createElement("td");if(index===0&&normalizeSystemValue(report.system||"subway")==="subway")setRouteCell(td,value);else td.textContent=String(value);tr.appendChild(td);});
         const flagsTd=document.createElement("td");flagsTd.className="diagnostic-flag-list";
         const flagLabels={scheduleKnown:"Schedule known",scheduled:"Scheduled",offRoute:"Off route",timeUnusual:"Unusual time",stationRouteKnown:"Station routes known",stationRouteNormal:"Normal station service"};
         const flags=report.warning_flags&&typeof report.warning_flags==="object"?report.warning_flags:{};
@@ -2111,18 +2149,144 @@
       try{const {error}=await supabaseClient.from("alert_decision_reports").update(patch).eq("id",report.id);if(error)throw error;Object.assign(report,patch);setStatus("Alert decision report updated.","success",2500);renderAlertDecisionReports();}
       catch(error){console.error("Alert decision report update failed:",error);setStatus("Could not update alert decision report.","error",4000);if(control)control.disabled=false;}
     }
+
+    let busAssignmentReports = [];
+    function busReportValue(report, keys, fallback = "—") {
+      for (const key of keys) {
+        const value = report?.[key];
+        if (value !== null && value !== undefined && String(value).trim() !== "") return value;
+      }
+      return fallback;
+    }
+    function renderBusAssignmentReports() {
+      const table = document.getElementById("busAssignmentReportsTable");
+      const count = document.getElementById("busAssignmentReportResultCount");
+      if (!table) return;
+      const q = (document.getElementById("busAssignmentReportSearch")?.value || "").trim().toLowerCase();
+      const statusFilter = document.getElementById("busAssignmentReportStatusFilter")?.value || "";
+      const filtered = busAssignmentReports.filter(report => {
+        const searchable = [
+          busReportValue(report, ["bus_number","bus","car_number","vehicle_number"], report.warning_flags?.busCarNumber || ""),
+          busReportValue(report, ["fleet"], report.warning_flags?.fleet || ""),
+          busReportValue(report, ["route","line"], ""),
+          busReportValue(report, ["stop","stop_name","station","location"], ""),
+          busReportValue(report, ["warning_details","warning_type","final_decision","decision_type","report_type"], JSON.stringify(report.warning_flags || {})),
+          report.notes, report.admin_notes, JSON.stringify(report.warning_flags || {})
+        ].join(" ").toLowerCase();
+        return (!q || searchable.includes(q)) && (!statusFilter || report.status === statusFilter);
+      });
+      if (count) count.textContent = `Showing ${filtered.length} of ${busAssignmentReports.length} report${busAssignmentReports.length === 1 ? "" : "s"}`;
+      table.innerHTML = "";
+      if (!filtered.length) {
+        const tr = document.createElement("tr"), td = document.createElement("td");
+        td.colSpan = 9; td.className = "empty";
+        td.textContent = busAssignmentReports.length ? "No Bus reports match your filters." : "No Bus assignment reports have been submitted yet.";
+        tr.appendChild(td); table.appendChild(tr); return;
+      }
+      filtered.forEach(report => {
+        const tr = document.createElement("tr");
+        const values = [
+          busReportValue(report, ["bus_number","bus","car_number","vehicle_number"], report.warning_flags?.busCarNumber || "—"),
+          busReportValue(report, ["fleet"], report.warning_flags?.fleet || "—"),
+          busReportValue(report, ["route","line"]),
+          busReportValue(report, ["stop","stop_name","station","location"]),
+          busReportValue(report, ["warning_details","warning_type","final_decision","decision_type","report_type"], Object.keys(report.warning_flags || {}).length ? JSON.stringify(report.warning_flags) : "—"),
+          busReportValue(report, ["notes"]),
+          report.created_at ? new Date(report.created_at).toLocaleString() : "—"
+        ];
+        values.forEach(value => { const td = document.createElement("td"); td.textContent = String(value); tr.appendChild(td); });
+        const statusTd = document.createElement("td"), select = document.createElement("select");
+        select.className = "report-status-select";
+        ALERT_DECISION_STATUSES.forEach(value => select.add(new Option(ALERT_DECISION_STATUS_LABELS[value], value)));
+        select.value = ALERT_DECISION_STATUSES.includes(report.status) ? report.status : "pending";
+        select.addEventListener("change", () => updateBusAssignmentReport(report, { status: select.value }, select));
+        statusTd.appendChild(select); tr.appendChild(statusTd);
+        const findingsTd = document.createElement("td"), editor = document.createElement("div"), area = document.createElement("textarea");
+        editor.className = "findings-editor"; area.rows = 3; area.placeholder = "Record investigation findings…"; area.value = report.admin_notes || "";
+        const save = document.createElement("button"); save.type = "button"; save.className = "filter-button hidden"; save.textContent = "Save findings";
+        const sync = () => save.classList.toggle("hidden", !area.value.trim() || area.value.trim() === (report.admin_notes || "").trim());
+        area.addEventListener("input", sync);
+        save.addEventListener("click", () => updateBusAssignmentReport(report, { admin_notes: area.value.trim() || null }, save));
+        editor.append(area, save); findingsTd.appendChild(editor); tr.appendChild(findingsTd);
+        table.appendChild(tr);
+      });
+    }
+    async function loadBusAssignmentReports(showStatus = false) {
+      if (!currentAdminProfile?.id) return;
+      const table = document.getElementById("busAssignmentReportsTable");
+      const button = document.getElementById("refreshBusAssignmentReportsButton");
+      if (button) { button.disabled = true; button.textContent = "Refreshing…"; }
+      try {
+        const { data, error } = await supabaseClient
+          .from("alert_decision_reports")
+          .select("*")
+          .eq("system", "bus")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        busAssignmentReports = data || [];
+        renderBusAssignmentReports();
+        if (showStatus) setStatus("Bus assignment reports refreshed.", "success", 2500);
+      } catch (error) {
+        console.error("Bus assignment reports error:", error);
+        if (table) table.innerHTML = '<tr><td colspan="9" class="empty">Could not load Bus reports. Confirm that Bus reports are being saved to alert_decision_reports with system = bus.</td></tr>';
+        if (showStatus) setStatus("Could not load Bus assignment reports.", "error", 4000);
+      } finally {
+        if (button) { button.disabled = false; button.textContent = "Refresh"; }
+      }
+    }
+    async function updateBusAssignmentReport(report, patch, control) {
+      if (!currentAdminProfile?.id || !report?.id) return;
+      if (control) control.disabled = true;
+      try {
+        const { error } = await supabaseClient.from("alert_decision_reports").update(patch).eq("id", report.id).eq("system", "bus");
+        if (error) throw error;
+        Object.assign(report, patch);
+        setStatus("Bus assignment report updated.", "success", 2500);
+        renderBusAssignmentReports();
+      } catch (error) {
+        console.error("Bus assignment report update failed:", error);
+        setStatus("Could not update Bus assignment report.", "error", 4000);
+        if (control) control.disabled = false;
+      }
+    }
+    document.getElementById("refreshBusAssignmentReportsButton")?.addEventListener("click", () => loadBusAssignmentReports(true));
+    document.getElementById("busAssignmentReportSearch")?.addEventListener("input", renderBusAssignmentReports);
+    document.getElementById("busAssignmentReportStatusFilter")?.addEventListener("change", renderBusAssignmentReports);
+    document.getElementById("clearBusAssignmentReportFilters")?.addEventListener("click", () => {
+      document.getElementById("busAssignmentReportSearch").value = "";
+      document.getElementById("busAssignmentReportStatusFilter").value = "";
+      renderBusAssignmentReports();
+    });
+
     document.getElementById("alertDecisionReportSearch")?.addEventListener("input",renderAlertDecisionReports);
     document.getElementById("alertDecisionReportStatusFilter")?.addEventListener("change",renderAlertDecisionReports);
     document.getElementById("clearAlertDecisionReportFilters")?.addEventListener("click",()=>{document.getElementById("alertDecisionReportSearch").value="";document.getElementById("alertDecisionReportStatusFilter").value="";renderAlertDecisionReports();});
 
-    const ADMIN_SYSTEMS = ["subway", "bus", "lirr", "metro-north"];
+    const ADMIN_SYSTEMS = ["subway", "bus", "lirr", "mnr"];
+    const ADMIN_TABLES = {
+      subway: "subway_sightings",
+      bus: "bus_sightings",
+      mnr: "mnr_sightings",
+      lirr: "lirr_sightings"
+    };
+    const ADMIN_CAR_TABLES = {
+      subway: "subway_sighting_cars",
+      mnr: "mnr_sighting_cars",
+      lirr: "lirr_sighting_cars"
+      // Bus intentionally has no child/consist table.
+    };
+    const ADMIN_SYSTEM_LABELS = { subway: "Subway", bus: "Bus", lirr: "LIRR", mnr: "Metro-North" };
+    const selectedSightingIds = new Set();
+    function sightingSelectionKey(row) {
+      return `${row?.__adminSourceSystem || "subway"}:${String(row?.id ?? "")}`;
+    }
     function normalizeSystemValue(value) {
       const raw = String(value ?? "").trim().toLowerCase();
       if (!raw || raw === "unclassified") return "unclassified";
       if (["subway", "nyc subway", "nyct subway"].includes(raw)) return "subway";
       if (["bus", "nyc bus", "mta bus"].includes(raw)) return "bus";
       if (["lirr", "long island rail road", "long island railroad"].includes(raw)) return "lirr";
-      if (["metro-north", "metro north", "mnr", "mnr railroad"].includes(raw)) return "metro-north";
+      if (["metro-north", "metro north", "mnr", "mnr railroad"].includes(raw)) return "mnr";
       return `unrecognized:${raw}`;
     }
 
@@ -2130,7 +2294,7 @@
     // Missing or unknown IDs are isolated for manual review, never guessed from
     // route/location fields and never silently assigned to Subway.
     function sightingSystem(sighting) {
-      return normalizeSystemValue(sighting?.system);
+      return normalizeSystemValue(sighting?.__adminSourceSystem ?? sighting?.__adminSystem ?? sighting?.system);
     }
 
     function systemIssueLabel(sighting) {
@@ -2142,141 +2306,233 @@
 
     function systemLabel(value) {
       const system = normalizeSystemValue(value);
-      return ({ subway: "Subway", bus: "Bus", lirr: "LIRR", "metro-north": "Metro-North" })[system] || (system === "unclassified" ? "Unclassified" : `Unrecognized (${String(value ?? "").trim()})`);
+      return ({ subway: "Subway", bus: "Bus", lirr: "LIRR", mnr: "Metro-North" })[system] || (system === "unclassified" ? "Unclassified" : `Unrecognized (${String(value ?? "").trim()})`);
     }
 
+    const unclassifiedSelections = new Map();
+    function syncSaveAllUnclassifiedButton() {
+      const button = document.getElementById("saveAllUnclassifiedButton");
+      if (button) button.disabled = ![...unclassifiedSelections.values()].some(value => ADMIN_SYSTEMS.includes(value));
+    }
     function renderUnclassifiedSightings() {
       const section = document.getElementById("unclassifiedSightingsSection");
       const table = document.getElementById("unclassifiedSightingsTable");
       const count = document.getElementById("unclassifiedSightingsCount");
       const switchButton = document.getElementById("unclassifiedSystemButton");
       if (!table) return;
-
       const rows = sightings
         .filter(row => !ADMIN_SYSTEMS.includes(sightingSystem(row)))
         .sort((a, b) => new Date(b.saved_at || 0) - new Date(a.saved_at || 0));
-
+      const validIds = new Set(rows.map(row => String(row.id)));
+      [...unclassifiedSelections.keys()].forEach(id => { if (!validIds.has(id)) unclassifiedSelections.delete(id); });
       const hasRows = rows.length > 0;
       if (switchButton) switchButton.classList.toggle("hidden", !hasRows);
       if (section) section.classList.toggle("hidden", !hasRows || currentAdminSystem !== "unclassified");
       if (count) count.textContent = `${rows.length} record${rows.length === 1 ? "" : "s"} require system review`;
-
       table.innerHTML = "";
       if (!hasRows) {
+        syncSaveAllUnclassifiedButton();
         if (currentAdminSystem === "unclassified") setAdminSystem("subway");
         return;
       }
-
       rows.forEach(row => {
         const tr = document.createElement("tr");
-        const detailParts = [
-          row.line ?? row.route,
-          row.station ?? row.location,
-          row.notes
-        ].filter(value => value !== null && value !== undefined && String(value).trim() !== "");
+        const detailParts = [row.line ?? row.route, row.station ?? row.location, row.notes]
+          .filter(value => value !== null && value !== undefined && String(value).trim() !== "");
         const values = [
-          row.car_number ?? row.vehicle_number ?? "—",
-          row.fleet ?? "—",
+          row.car_number ?? row.vehicle_number ?? "—", row.fleet ?? "—",
           detailParts.length ? detailParts.join(" · ") : "No additional details",
           row.system === null || row.system === undefined || String(row.system).trim() === "" ? "(blank)" : String(row.system),
-          systemIssueLabel(row),
-          row.saved_at ? new Date(row.saved_at).toLocaleString() : "—"
+          systemIssueLabel(row), row.saved_at ? new Date(row.saved_at).toLocaleString() : "—"
         ];
         values.forEach((value, index) => {
-          const td = document.createElement("td");
-          td.textContent = String(value);
+          const td = document.createElement("td"); td.textContent = String(value);
           if (index === 4) td.className = "system-issue";
           if (index === 2) td.style.whiteSpace = "normal";
           tr.appendChild(td);
         });
-
         const classifyCell = document.createElement("td");
-        const controls = document.createElement("div");
-        controls.className = "unclassified-classify-controls";
-
         const select = document.createElement("select");
         select.className = "unclassified-classify-select";
         select.setAttribute("aria-label", "Choose the verified system for this sighting");
         select.add(new Option("Choose system…", ""));
-        [
-          ["subway", "Subway"],
-          ["bus", "Bus"],
-          ["lirr", "LIRR"],
-          ["metro-north", "Metro-North"]
-        ].forEach(([value, label]) => select.add(new Option(label, value)));
-
-        const actionCell = document.createElement("td");
-        const saveButton = document.createElement("button");
-        saveButton.type = "button";
-        saveButton.className = "filter-button unclassified-classify-button";
-        saveButton.textContent = "Save";
-        saveButton.disabled = true;
+        [["subway","Subway"],["bus","Bus"],["lirr","LIRR"],["mnr","Metro-North"]]
+          .forEach(([value,label]) => select.add(new Option(label,value)));
+        const id = String(row.id);
+        select.value = unclassifiedSelections.get(id) || "";
         select.addEventListener("change", () => {
-          saveButton.disabled = !ADMIN_SYSTEMS.includes(select.value);
+          if (ADMIN_SYSTEMS.includes(select.value)) unclassifiedSelections.set(id, select.value);
+          else unclassifiedSelections.delete(id);
+          syncSaveAllUnclassifiedButton();
         });
-        saveButton.addEventListener("click", () => classifyUnclassifiedSighting(row, select, saveButton));
-
-        controls.appendChild(select);
-        classifyCell.appendChild(controls);
-        actionCell.appendChild(saveButton);
-        tr.appendChild(classifyCell);
+        classifyCell.appendChild(select); tr.appendChild(classifyCell);
+        const actionCell = document.createElement("td");
+        actionCell.textContent = unclassifiedSelections.has(id) ? "Selected" : "—";
         tr.appendChild(actionCell);
         table.appendChild(tr);
       });
+      syncSaveAllUnclassifiedButton();
+    }
+    async function saveAllUnclassifiedSightings() {
+      if (!currentAdminProfile?.id) return;
+      const pending = [...unclassifiedSelections.entries()].filter(([, system]) => ADMIN_SYSTEMS.includes(system));
+      if (!pending.length) return;
+      if (!window.confirm(`Move ${pending.length} selected unclassified sighting${pending.length === 1 ? "" : "s"} from the legacy Subway table into their selected system tables? Applicable child records and IDs will be preserved (Bus has no child table), and each move will be recorded in movement history.`)) return;
+      const button = document.getElementById("saveAllUnclassifiedButton");
+      if (button) { button.disabled = true; button.textContent = "Moving…"; }
+      let succeeded = 0, failed = 0;
+      const groups = new Map();
+      pending.forEach(([id, target]) => { if (!groups.has(target)) groups.set(target, []); groups.get(target).push(Number(id)); });
+      for (const [target, ids] of groups) {
+        try {
+          const { data, error } = await supabaseClient.rpc("admin_move_sightings", {
+            p_sighting_ids: ids, p_source_system: "subway", p_target_system: target
+          });
+          if (error) throw error;
+          succeeded += Number(data?.success_count || 0);
+          failed += Number(data?.failure_count || 0);
+          (data?.results || []).forEach(result => { if (result.status === "moved") unclassifiedSelections.delete(String(result.sighting_id)); });
+        } catch (error) {
+          console.error("Unclassified physical move failed:", target, error);
+          failed += ids.length;
+        }
+      }
+      sightings = await loadAllSystemSightings();
+      populateSightingFilters();
+      loadDashboard(currentAdminProfile);
+      await loadMovementHistory();
+      setStatus(`${succeeded} classified and moved; ${failed} failed.`, failed ? "error" : "success", 6000);
+      if (button) button.textContent = "Save All Classifications";
+      syncSaveAllUnclassifiedButton();
+    }
+    document.getElementById("saveAllUnclassifiedButton")?.addEventListener("click", saveAllUnclassifiedSightings);
 
+    function syncMovementSelectionUI() {
+      const count = document.getElementById("selectedSightingCount");
+      const moveButton = document.getElementById("moveSelectedSightingsButton");
+      const target = document.getElementById("moveTargetSystem");
+      const selectedRows = [...selectedSightingIds]
+        .map(key => sightings.find(row => sightingSelectionKey(row) === key))
+        .filter(row => row && sightingSystem(row) === currentAdminSystem);
+      if (count) count.textContent = `${selectedRows.length} selected`;
+      if (moveButton) moveButton.disabled = !selectedRows.length ||
+        !ADMIN_SYSTEMS.includes(target?.value) ||
+        selectedRows.every(row => (row.__adminSourceSystem || currentAdminSystem) === target.value);
+      const visible = [...document.querySelectorAll(".sighting-move-checkbox")];
+      const all = document.getElementById("selectAllVisibleSightings");
+      if (all) {
+        all.checked = visible.length > 0 && visible.every(box => box.checked);
+        all.indeterminate = visible.some(box => box.checked) && !all.checked;
+      }
     }
 
-    async function classifyUnclassifiedSighting(row, select, button) {
-      const selectedSystem = normalizeSystemValue(select?.value);
-      if (!row?.id || !ADMIN_SYSTEMS.includes(selectedSystem)) {
-        setStatus("Choose a valid system before saving.", "error", 3500);
+    async function moveSelectedSightings() {
+      const target = document.getElementById("moveTargetSystem")?.value;
+      const rows = [...selectedSightingIds]
+        .map(key => sightings.find(row => sightingSelectionKey(row) === key))
+        .filter(row => row && sightingSystem(row) === currentAdminSystem);
+      if (!rows.length || !ADMIN_SYSTEMS.includes(target)) return;
+
+      const groups = new Map();
+      rows.forEach(row => {
+        const source = row.__adminSourceSystem || currentAdminSystem;
+        if (source === target) return;
+        if (!groups.has(source)) groups.set(source, []);
+        groups.get(source).push(Number(row.id));
+      });
+      const totalToMove = [...groups.values()].reduce((sum, ids) => sum + ids.length, 0);
+      if (!totalToMove) {
+        setStatus("The selected sightings are already stored in that system's table.", "error", 5000);
         return;
       }
+      if (!window.confirm(`Move ${totalToMove} selected ${systemLabel(currentAdminSystem)} sighting${totalToMove === 1 ? "" : "s"} into ${systemLabel(target)} storage?\n\nParent IDs, timestamps, ownership, and sighting details are preserved; consist records move only for Subway, MNR, and LIRR (Bus has no consist table). Each move is recorded in Movement History and can be reversed.`)) return;
 
-      const vehicle = row.car_number ?? row.vehicle_number ?? "this sighting";
-      const confirmed = window.confirm(
-        `Classify ${vehicle} as ${systemLabel(selectedSystem)}?\n\nOnly the parent sighting's system ID will be updated. No car records will be created or changed.`
-      );
-      if (!confirmed) return;
-
-      if (button) {
-        button.disabled = true;
-        button.textContent = "Saving…";
-      }
-      if (select) select.disabled = true;
-
+      const button = document.getElementById("moveSelectedSightingsButton");
+      if (button) { button.disabled = true; button.textContent = "Moving…"; }
+      let success = 0, failed = 0;
+      const failureDetails = [];
       try {
-        let query = supabaseClient
-          .from("sightings")
-          .update({ system: selectedSystem })
-          .eq("id", row.id);
-
-        if (row.system === null || row.system === undefined) {
-          query = query.is("system", null);
-        } else {
-          query = query.eq("system", row.system);
+        for (const [source, ids] of groups) {
+          const { data, error } = await supabaseClient.rpc("admin_move_sightings", {
+            p_sighting_ids: ids,
+            p_source_system: source,
+            p_target_system: target
+          });
+          if (error) throw error;
+          success += Number(data?.success_count || 0);
+          failed += Number(data?.failure_count || 0);
+          (data?.results || []).filter(result => result.status === "failed")
+            .forEach(result => failureDetails.push(`#${result.sighting_id}: ${result.error || "Move failed"}`));
         }
-
-        const { data, error } = await query.select("id, system").maybeSingle();
-        if (error) throw error;
-        if (!data) {
-          throw new Error("This record changed or could not be updated. Refresh Unclassified and try again.");
-        }
-
-        Object.assign(row, data);
-        setStatus(`Sighting classified as ${systemLabel(selectedSystem)}. No car records were created or changed.`, "success", 4500);
+        document.getElementById("sightingMoveResults").textContent =
+          `${success} moved successfully; ${failed} failed.${failureDetails.length ? ` ${failureDetails.join(" | ")}` : ""}`;
+        selectedSightingIds.clear();
+        sightings = await loadAllSystemSightings();
         populateSightingFilters();
         loadDashboard(currentAdminProfile);
+        await loadMovementHistory();
+        setStatus(`${success} moved; ${failed} failed.`, failed ? "error" : "success", 6000);
       } catch (error) {
-        console.error("Unclassified sighting classification failed:", error);
-        setStatus(error?.message || "Could not classify this sighting.", "error", 5000);
-        if (button) {
-          button.disabled = false;
-          button.textContent = "Save";
-        }
-        if (select) select.disabled = false;
+        console.error("Bulk sighting move failed:", error);
+        setStatus(`Move failed: ${error.message || error}`, "error", 7000);
+      } finally {
+        if (button) button.textContent = "Move Selected";
+        syncMovementSelectionUI();
       }
     }
+
+    async function loadMovementHistory() {
+      const table = document.getElementById("movementHistoryTable");
+      const count = document.getElementById("movementHistoryCount");
+      if (!table) return;
+      table.innerHTML = '<tr><td colspan="6" class="empty">Loading movement history…</td></tr>';
+      const { data, error } = await supabaseClient.from("sighting_move_history").select("*").order("moved_at", { ascending: false }).limit(100);
+      if (error) {
+        console.error("Movement history load failed:", error);
+        table.innerHTML = `<tr><td colspan="6" class="empty">Could not load movement history: ${String(error.message || error).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}</td></tr>`;
+        if (count) count.textContent = "";
+        return;
+      }
+      const rows = data || [];
+      if (count) count.textContent = `${rows.length} recent movement${rows.length === 1 ? "" : "s"}`;
+      table.innerHTML = "";
+      if (!rows.length) { table.innerHTML = '<tr><td colspan="6" class="empty">No sightings have been moved yet.</td></tr>'; return; }
+      rows.forEach(item => {
+        const tr = document.createElement("tr");
+        const snap = item.original_snapshot || {};
+        const parent = snap.parent || snap.sighting || snap;
+        const vehicle = parent.car_number || parent.vehicle_number || `Sighting #${item.sighting_id}`;
+        [vehicle, systemLabel(item.source_system), systemLabel(item.target_system), item.moved_at ? new Date(item.moved_at).toLocaleString() : "—", item.status || "—"].forEach(value => { const td = document.createElement("td"); td.textContent = value; tr.appendChild(td); });
+        const action = document.createElement("td");
+        if (item.status === "moved") {
+          const back = document.createElement("button"); back.type = "button"; back.className = "filter-button"; back.textContent = "Move Back";
+          back.addEventListener("click", async () => {
+            if (!window.confirm(`Move sighting #${item.sighting_id} back to ${systemLabel(item.source_system)}?`)) return;
+            back.disabled = true; back.textContent = "Reversing…";
+            try {
+              const { data: result, error: rpcError } = await supabaseClient.rpc("admin_move_sightings_back", { p_movement_ids: [item.id] });
+              if (rpcError) throw rpcError;
+              const ok = Number(result?.success_count || 0) > 0;
+              const detail = result?.results?.[0]?.error;
+              if (!ok) throw new Error(detail || "Move Back was not completed.");
+              sightings = await loadAllSystemSightings();
+              populateSightingFilters(); loadDashboard(currentAdminProfile); await loadMovementHistory();
+              setStatus(`Sighting #${item.sighting_id} moved back successfully.`, "success", 5000);
+            } catch (err) { setStatus(`Move Back failed: ${err.message || err}`, "error", 7000); back.disabled = false; back.textContent = "Move Back"; }
+          });
+          action.appendChild(back);
+        } else { action.textContent = item.reversed_at ? `Reversed ${new Date(item.reversed_at).toLocaleString()}` : "—"; }
+        tr.appendChild(action); table.appendChild(tr);
+      });
+    }
+
+    document.getElementById("moveSelectedSightingsButton")?.addEventListener("click", moveSelectedSightings);
+    document.getElementById("moveTargetSystem")?.addEventListener("change", syncMovementSelectionUI);
+    document.getElementById("selectAllVisibleSightings")?.addEventListener("change", event => {
+      document.querySelectorAll(".sighting-move-checkbox").forEach(box => { box.checked = event.target.checked; if (box.checked) selectedSightingIds.add(box.dataset.selectionKey); else selectedSightingIds.delete(box.dataset.selectionKey); });
+      syncMovementSelectionUI();
+    });
+    document.getElementById("refreshMovementHistoryButton")?.addEventListener("click", loadMovementHistory);
 
     function loadDashboard(profile) {
       const systemSightings = sightings.filter(s => sightingSystem(s) === currentAdminSystem);
@@ -2314,9 +2570,7 @@
           new Date(s.saved_at).toDateString() === today
         ).length;
 
-      const table =
-        document.getElementById("sightingsTable");
-
+      const table = document.getElementById("sightingsTable");
       table.innerHTML = "";
 
       const search = (document.getElementById("sightingSearch")?.value || "").trim().toLowerCase();
@@ -2354,10 +2608,25 @@
 
       } else {
         filteredSightings
-          .slice(0, 20)
           .forEach(sighting => {
             const row =
               document.createElement("tr");
+
+            const selectCell = document.createElement("td");
+            const selectBox = document.createElement("input");
+            selectBox.type = "checkbox";
+            selectBox.className = "sighting-move-checkbox";
+            selectBox.dataset.sightingId = String(sighting.id);
+            selectBox.dataset.selectionKey = sightingSelectionKey(sighting);
+            selectBox.checked = selectedSightingIds.has(sightingSelectionKey(sighting));
+            selectBox.setAttribute("aria-label", `Select sighting ${sighting.car_number || sighting.vehicle_number || sighting.id}`);
+            selectBox.addEventListener("change", () => {
+              if (selectBox.checked) selectedSightingIds.add(sightingSelectionKey(sighting));
+              else selectedSightingIds.delete(sightingSelectionKey(sighting));
+              syncMovementSelectionUI();
+            });
+            selectCell.appendChild(selectBox);
+            row.appendChild(selectCell);
 
             const routeValue = sighting.line ?? sighting.route ?? "—";
             const values = [
@@ -2413,6 +2682,7 @@
           !document.getElementById("status").classList.contains("status-error")) {
         setStatus(normalAdminStatus());
       }
+      syncMovementSelectionUI();
     }
 
     async function deleteSighting(
@@ -2438,12 +2708,15 @@
       button.textContent = "Deleting...";
 
       try {
-        const {
-          error
-        } = await supabaseClient
-          .from("sightings")
-          .delete()
-          .eq("id", sighting.id);
+        const sourceSystem = sightingSystem(sighting);
+        const sourceTable = ADMIN_TABLES[sourceSystem];
+        if (!sourceTable) throw new Error("This record has no recognized source table.");
+        const childTable = ADMIN_CAR_TABLES[sourceSystem];
+        if (childTable) {
+          const { error: childDeleteError } = await supabaseClient.from(childTable).delete().eq("sighting_id", sighting.id);
+          if (childDeleteError) throw new Error(`Could not delete associated vehicle details: ${childDeleteError.message}`);
+        }
+        const { error } = await supabaseClient.from(sourceTable).delete().eq("id", sighting.id);
 
         if (error) {
           console.error(
@@ -2880,20 +3153,18 @@
       document.querySelectorAll(".subway-admin-only").forEach(section => {
         section.classList.toggle("hidden", currentAdminSystem !== "subway");
       });
+      document.getElementById("busAssignmentReportsSection")?.classList.toggle("hidden", currentAdminSystem !== "bus");
       document.getElementById("recentSightingsSection")?.classList.toggle("hidden", currentAdminSystem === "unclassified");
-
-      const expansion = document.getElementById("systemAdminExpansionNote");
-      const expansionTitle = document.getElementById("systemAdminExpansionTitle");
-      const expansionText = document.getElementById("systemAdminExpansionText");
-      if (expansion) expansion.classList.toggle("hidden", currentAdminSystem === "subway" || currentAdminSystem === "unclassified");
-      if (expansionTitle) expansionTitle.textContent = `${label} Admin Tools`;
-      if (expansionText) expansionText.textContent = `${label}-specific admin tools will appear here as that system expands. Sightings and system-level statistics above are already scoped to ${label}.`;
+      document.getElementById("sightingMovementSection")?.classList.toggle("hidden", currentAdminSystem === "unclassified");
+      document.getElementById("sightingMovementHistorySection")?.classList.toggle("hidden", currentAdminSystem === "unclassified");
 
       document.getElementById("sightingSearch").value = "";
       document.getElementById("fleetFilter").value = "";
       document.getElementById("lineFilter").value = "";
       populateSightingFilters();
+      selectedSightingIds.clear();
       loadDashboard(currentAdminProfile);
+      if (currentAdminSystem === "bus") loadBusAssignmentReports();
     }
 
     function setupAdminSystemSwitcher() {

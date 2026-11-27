@@ -1571,6 +1571,25 @@
     .bus-route-badge.sbs { background:#00AEEF; }
     .bus-route-badge.rush { background:#7B2E8E; }
     .bus-route-badge.express { background:#006B54; }
+    .bus-route-entry-grid {
+        display:grid;
+        grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+        gap:10px;
+        margin-top:12px;
+    }
+    .bus-route-entry-cell { min-width:0; }
+    @media (max-width:600px) {
+        .bus-route-entry-grid {
+            grid-template-columns:minmax(0,1fr);
+            gap:14px;
+        }
+        .bus-route-entry-cell select,
+        .bus-route-entry-cell input {
+            width:100%;
+            min-width:0;
+        }
+    }
+
     .bus-stop-picker { position:relative; margin-top:12px; z-index:20; }
     /* Phase 5.3F-D polish: opaque, isolated stop-results dropdown. */
     .bus-stop-results {
@@ -2702,6 +2721,25 @@ function renderSystemViewState() {
 
 let activeFleetSystem = localStorage.getItem("fleetIdentifierActiveSystem") || "subway";
 if (!FLEET_SYSTEMS[activeFleetSystem]) activeFleetSystem = "subway";
+
+// Each fleet system owns its own sightings storage. Bus is intentionally a
+// single-vehicle system and has no child/consist table.
+function normalizeFleetSystemKey(system = activeFleetSystem) {
+    const key = String(system || "subway").toLowerCase();
+    if (key === "mnr" || key === "metro_north" || key === "metro north") return "metro-north";
+    return ["subway", "bus", "lirr", "metro-north"].includes(key) ? key : "subway";
+}
+function sightingsTableForSystem(system = activeFleetSystem) {
+    return ({ subway: "subway_sightings", bus: "bus_sightings", lirr: "lirr_sightings", "metro-north": "mnr_sightings" })[normalizeFleetSystemKey(system)];
+}
+function sightingCarsTableForSystem(system = activeFleetSystem) {
+    const key = normalizeFleetSystemKey(system);
+    if (key === "bus") return null;
+    return ({ subway: "subway_sighting_cars", lirr: "lirr_sighting_cars", "metro-north": "mnr_sighting_cars" })[key] || null;
+}
+function systemHasSightingCars(system = activeFleetSystem) {
+    return Boolean(sightingCarsTableForSystem(system));
+}
 
 function closeSystemSwitcher() {
     document.getElementById("systemSwitcherMenu")?.classList.add("hidden");
@@ -4429,13 +4467,13 @@ async function loadYearInReview() {
     }
 
     const [sightingsResult, consistResult] = await Promise.all([
-        supabaseClient.from("sightings")
+        supabaseClient.from(sightingsTableForSystem(activeFleetSystem))
             .select("id, car_number, fleet, line, station, saved_at")
             .eq("user_id", user.id)
             .order("saved_at", {ascending:true}),
-        supabaseClient.from("sighting_cars")
+        sightingCarsTableForSystem(activeFleetSystem) ? supabaseClient.from(sightingCarsTableForSystem(activeFleetSystem))
             .select("sighting_id, car_number, fleet")
-            .eq("user_id", user.id)
+            .eq("user_id", user.id) : Promise.resolve({data:[],error:null})
     ]);
 
     if (sightingsResult.error) {
@@ -4587,14 +4625,13 @@ async function loadPersonalRecords() {
 
     const [sightingsResult, consistResult] = await Promise.all([
         supabaseClient
-            .from("sightings")
+            .from(sightingsTableForSystem(activeFleetSystem))
             .select("id, car_number, fleet, line, station, saved_at")
             .eq("user_id", user.id)
             .order("saved_at", { ascending: true }),
-        supabaseClient
-            .from("sighting_cars")
+        sightingCarsTableForSystem(activeFleetSystem) ? supabaseClient.from(sightingCarsTableForSystem(activeFleetSystem))
             .select("sighting_id, car_number, fleet")
-            .eq("user_id", user.id)
+            .eq("user_id", user.id) : Promise.resolve({data:[],error:null})
     ]);
 
     if (sightingsResult.error) {
@@ -4774,13 +4811,13 @@ async function loadTrainsetHistory() {
     // Supabase/PostgREST may cap each response at 1,000 rows. Fetch every
     // page so a large history cannot silently lose cars from a consist.
     const [sightingsResult, carsResult] = await Promise.all([
-        fetchAllTrainsetHistoryRows(() => supabaseClient.from("sightings")
+        fetchAllTrainsetHistoryRows(() => supabaseClient.from(sightingsTableForSystem("subway"))
             .select("id, car_number, fleet, line, station, saved_at")
             .eq("user_id", user.id)
             .eq("system", "subway")
             .order("saved_at", {ascending:false})
             .order("id", {ascending:false})),
-        fetchAllTrainsetHistoryRows(() => supabaseClient.from("sighting_cars")
+        fetchAllTrainsetHistoryRows(() => supabaseClient.from(sightingCarsTableForSystem("subway"))
             .select("sighting_id, car_number, fleet, position")
             .eq("user_id", user.id)
             .eq("system", "subway")
@@ -4957,7 +4994,7 @@ async function loadLineStats() {
     }
 
     const { data, error } = await supabaseClient
-        .from("sightings")
+        .from(sightingsTableForSystem(activeFleetSystem))
         .select("car_number, fleet, line, station, saved_at")
         .eq("user_id", user.id);
 
@@ -5054,7 +5091,7 @@ async function loadDepotStats() {
     }
 
     const { data, error } = await supabaseClient
-        .from("sightings")
+        .from(sightingsTableForSystem("bus"))
         .select("car_number, fleet, line, station, saved_at")
         .eq("user_id", user.id);
     if (error) {
@@ -5149,7 +5186,7 @@ async function loadFleetBreakdown() {
     const {data:{user}}=await supabaseClient.auth.getUser();
     if(!user){status.textContent="Log in to view your fleet breakdown.";return;}
 
-    const {data,error}=await supabaseClient.from("sightings").select("fleet").eq("user_id",user.id);
+    const {data,error}=await supabaseClient.from(sightingsTableForSystem(activeFleetSystem)).select("fleet").eq("user_id",user.id);
     if(error){console.error("Could not load fleet breakdown:",error);status.textContent="Could not load your fleet breakdown.";return;}
 
     const rows=scopeSightingsRows(data||[]);
@@ -5224,7 +5261,7 @@ async function loadSightingCalendar() {
     }
 
     const { data, error } = await supabaseClient
-        .from("sightings")
+        .from(sightingsTableForSystem(activeFleetSystem))
         .select("id, car_number, fleet, line, station, saved_at")
         .eq("user_id", user.id)
         .order("saved_at", { ascending: true });
@@ -5423,13 +5460,12 @@ async function loadFleetCollection() {
 
     const [sightingsResult, consistResult] = await Promise.all([
         supabaseClient
-            .from("sightings")
+            .from(sightingsTableForSystem(activeFleetSystem))
             .select("id, car_number, fleet, saved_at")
             .eq("user_id", user.id),
-        supabaseClient
-            .from("sighting_cars")
+        sightingCarsTableForSystem(activeFleetSystem) ? supabaseClient.from(sightingCarsTableForSystem(activeFleetSystem))
             .select("sighting_id, car_number, fleet")
-            .eq("user_id", user.id)
+            .eq("user_id", user.id) : Promise.resolve({data:[],error:null})
     ]);
 
     if (sightingsResult.error || consistResult.error) {
@@ -5591,7 +5627,7 @@ function collectionProgressCardHTML(item, index, unitLabel) {
 }
 
 async function loadBusFleetCollection(user, status, list) {
-    const { data, error } = await supabaseClient.from("sightings").select("car_number, fleet, saved_at, line, station").eq("user_id", user.id);
+    const { data, error } = await supabaseClient.from(sightingsTableForSystem("bus")).select("car_number, fleet, saved_at, line, station").eq("user_id", user.id);
     if (error) { console.error("Could not load bus fleet collection:", error); status.textContent = "Could not load your bus fleet collection."; return; }
     const rows = scopeSightingsRows(data || []).filter(r => String(r.fleet || "") !== "TEST");
     const fleetMap = new Map();
@@ -5630,7 +5666,7 @@ function railroadCollectionNumbers(fleet) {
 
 async function loadRailroadFleetCollection(user, status, list) {
     const system=activeFleetSystem;
-    const {data,error}=await supabaseClient.from("sightings").select("car_number, fleet, saved_at").eq("user_id",user.id);
+    const {data,error}=await supabaseClient.from(sightingsTableForSystem(system)).select("car_number, fleet, saved_at").eq("user_id",user.id);
     if(error){console.error("Could not load railroad fleet collection:",error);status.textContent=`Could not load your ${activeSystemToolLabel()} fleet collection.`;return;}
     const rows=scopeSightingsRows(data||[]).filter(r=>String(r.fleet||"")!=="TEST");
     const cards=(RAILROAD_FLEETS[system]||[]).map(fleet=>{
@@ -5706,7 +5742,7 @@ async function loadAchievementConsistCars(userId, system = activeFleetSystem) {
     // Consist-car expansion is a Subway-only concept. Other systems count the logged vehicle number.
     if (system !== "subway") return [];
     const { data, error } = await supabaseClient
-        .from("sighting_cars")
+        .from(sightingCarsTableForSystem("subway"))
         .select("car_number")
         .eq("user_id", userId);
     if (error) {
@@ -5746,7 +5782,7 @@ async function refreshAchievementEligibility(user){
     if(!user) return;
     const system=activeFleetSystem;
     const [s,a,consistCars]=await Promise.all([
-        supabaseClient.from("sightings").select("car_number, saved_at, fleet, line, station").eq("user_id",user.id),
+        supabaseClient.from(sightingsTableForSystem(activeFleetSystem)).select("car_number, saved_at, fleet, line, station").eq("user_id",user.id),
         supabaseClient.from("user_achievements").select("achievement_key, earned_at").eq("user_id",user.id),
         loadAchievementConsistCars(user.id, system)
     ]);
@@ -5788,7 +5824,7 @@ async function loadAchievements(){
 
     const system=activeFleetSystem;
     const [s,a,consistCars]=await Promise.all([
-        supabaseClient.from("sightings").select("car_number, saved_at, fleet, line, station").eq("user_id",user.id),
+        supabaseClient.from(sightingsTableForSystem(activeFleetSystem)).select("car_number, saved_at, fleet, line, station").eq("user_id",user.id),
         supabaseClient.from("user_achievements").select("achievement_key, earned_at").eq("user_id",user.id),
         loadAchievementConsistCars(user.id, system)
     ]);
@@ -6958,7 +6994,7 @@ async function getLinkedUnitHistory(linkedUnit) {
 
         const cars = linkedUnit.cars.map(String);
         const { data: rows, error } = await supabaseClient
-            .from("sighting_cars")
+            .from(sightingCarsTableForSystem("subway"))
             .select("sighting_id, car_number")
             .eq("user_id", session.user.id)
             .eq("system", "subway")
@@ -6983,7 +7019,7 @@ async function getLinkedUnitHistory(linkedUnit) {
         if (!matchingIds.length) return null;
 
         const { data: sightings, error: sightingsError } = await supabaseClient
-            .from("sightings")
+            .from(sightingsTableForSystem("subway"))
             .select("id,saved_at")
             .eq("user_id", session.user.id)
             .in("id", matchingIds);
@@ -7506,7 +7542,7 @@ function isLikelyNetworkError(error) {
 }
 async function sightingAlreadySynced(item) {
     const p=item.payload;
-    let q=supabaseClient.from("sightings").select("id").eq("user_id",p.user_id).eq("system",p.system||item.system).eq("car_number",String(p.car_number)).eq("fleet",p.fleet).eq("line",p.line).eq("saved_at",p.saved_at).limit(1);
+    let q=supabaseClient.from(sightingsTableForSystem(item.system)).select("id").eq("user_id",p.user_id).eq("system",p.system||item.system).eq("car_number",String(p.car_number)).eq("fleet",p.fleet).eq("line",p.line).eq("saved_at",p.saved_at).limit(1);
     const {data,error}=await q;
     if(error) throw error;
     return data?.[0]?.id || null;
@@ -7514,18 +7550,20 @@ async function sightingAlreadySynced(item) {
 async function uploadQueuedSighting(item) {
     let sightingId = await sightingAlreadySynced(item);
     if(!sightingId){
-        const {data,error}=await supabaseClient.from("sightings").insert(item.payload).select("id").single();
+        const {data,error}=await supabaseClient.from(sightingsTableForSystem(item.system)).insert(item.payload).select("id").single();
         if(error) throw error; sightingId=data?.id;
     }
-    if(item.system==="subway" && sightingId && Array.isArray(item.consistCars) && item.consistCars.length){
-        const {data:existing,error:checkError}=await supabaseClient.from("sighting_cars").select("car_number").eq("sighting_id",sightingId);
+    const childTable=sightingCarsTableForSystem(item.system);
+    if(childTable && sightingId && (Array.isArray(item.consistCars) && item.consistCars.length || item.system==="lirr" || item.system==="metro-north")){
+        const {data:existing,error:checkError}=await supabaseClient.from(childTable).select("car_number").eq("sighting_id",sightingId);
         if(checkError) throw checkError;
         const have=new Set((existing||[]).map(x=>String(x.car_number)));
-        const rows=item.consistCars.filter(c=>!have.has(String(c))).map((car,index)=>{
+        const queuedCars=(Array.isArray(item.consistCars)&&item.consistCars.length)?item.consistCars:[item.payload.car_number];
+        const rows=queuedCars.filter(c=>!have.has(String(c))).map((car,index)=>{
             const match=identifyNumeric(Number(car));
-            return {system:"subway",sighting_id:sightingId,user_id:item.payload.user_id,car_number:String(car),fleet:match?.[0]||item.payload.fleet,position:index+1};
+            return {system:item.system,sighting_id:sightingId,user_id:item.payload.user_id,car_number:String(car),fleet:match?.[0]||item.payload.fleet,position:index+1};
         });
-        if(rows.length){ const {error}=await supabaseClient.from("sighting_cars").insert(rows); if(error) throw error; }
+        if(rows.length){ const {error}=await supabaseClient.from(childTable).insert(rows); if(error) throw error; }
     }
 }
 let offlineSyncRunning=false;
@@ -7688,7 +7726,7 @@ async function saveSighting() {
     sightingPayload.saved_at = offlineFieldTimestamp(requestedTimestamp.value);
 
     const { data: sighting, error } = await supabaseClient
-        .from("sightings")
+        .from(sightingsTableForSystem("subway"))
         .insert(sightingPayload)
         .select("id")
         .single();
@@ -7719,7 +7757,7 @@ async function saveSighting() {
     });
 
     const { error: consistError } = await supabaseClient
-        .from("sighting_cars")
+        .from(sightingCarsTableForSystem("subway"))
         .insert(consistRows);
 
     if (consistError) {
@@ -8234,7 +8272,7 @@ async function logEasterEggEvent(codeLabel) {
     }
 }
 
-async function getRepeatSightingNotice(carNumber) {
+async function getRepeatSightingNotice(carNumber, system = "subway") {
     if (fiIsOfflineNow()) return ""; // B2.1: optional display content is blank offline
 
     try {
@@ -8248,17 +8286,21 @@ async function getRepeatSightingNotice(carNumber) {
 
         // A car counts as previously spotted whether it was the primary car
         // on a sighting or appeared anywhere in a Consist Builder entry.
+        const childTable = sightingCarsTableForSystem(system);
         const [primaryResult, consistResult] = await Promise.all([
             supabaseClient
-                .from("sightings")
+                .from(sightingsTableForSystem(system))
                 .select("id,saved_at")
                 .eq("user_id", userId)
+                .eq("system", system)
                 .eq("car_number", car),
-            supabaseClient
-                .from("sighting_cars")
-                .select("sighting_id")
-                .eq("user_id", userId)
-                .eq("car_number", car)
+            childTable
+                ? supabaseClient.from(childTable)
+                    .select("sighting_id")
+                    .eq("user_id", userId)
+                    .eq("system", system)
+                    .eq("car_number", car)
+                : Promise.resolve({data:[],error:null})
         ]);
 
         if (primaryResult.error) {
@@ -8284,9 +8326,10 @@ async function getRepeatSightingNotice(carNumber) {
 
         if (missingIds.length) {
             const { data: consistSightings, error: consistSightingsError } = await supabaseClient
-                .from("sightings")
+                .from(sightingsTableForSystem(system))
                 .select("id,saved_at")
                 .eq("user_id", userId)
+                .eq("system", system)
                 .in("id", missingIds);
 
             if (consistSightingsError) {
@@ -8460,7 +8503,7 @@ async function getRecentSightingAlert(vehicleNumber, fleet, system) {
         const now = new Date();
         const cutoff = new Date(now.getTime() - 15 * 60 * 1000).toISOString();
         const { data: rows, error } = await supabaseClient
-            .from("sightings")
+            .from(sightingsTableForSystem(system))
             .select("id,user_id,car_number,fleet,saved_at")
             .eq("system", system)
             .gte("saved_at", cutoff)
@@ -8476,10 +8519,10 @@ async function getRecentSightingAlert(vehicleNumber, fleet, system) {
         const filtered = (rows || []).filter(row => recentSightingSystemFromFleet(row.fleet) === system);
         let consistBySighting = new Map();
 
-        if (system === "subway" && filtered.length) {
+        if (systemHasSightingCars(system) && filtered.length) {
             const ids = filtered.map(row => row.id).filter(id => id != null);
             const { data: consistRows, error: consistError } = await supabaseClient
-                .from("sighting_cars")
+                .from(sightingCarsTableForSystem(system))
                 .select("sighting_id,car_number")
                 .in("sighting_id", ids);
             if (!consistError) {
@@ -8530,7 +8573,7 @@ async function getVehicleSightingSummary(vehicleNumber, system) {
         const sightingsById = new Map();
 
         const primary = await supabaseClient
-            .from("sightings")
+            .from(sightingsTableForSystem(system))
             .select("id,saved_at")
             .eq("user_id", userId)
             .eq("system", system)
@@ -8542,9 +8585,9 @@ async function getVehicleSightingSummary(vehicleNumber, system) {
         (primary.data || []).forEach(row => sightingsById.set(String(row.id), row));
 
         // Subway cars can also be present as non-primary cars in Consist Builder.
-        if (system === "subway") {
+        if (systemHasSightingCars(system)) {
             const consist = await supabaseClient
-                .from("sighting_cars")
+                .from(sightingCarsTableForSystem(system))
                 .select("sighting_id")
                 .eq("user_id", userId)
                 .eq("system", "subway")
@@ -8554,7 +8597,7 @@ async function getVehicleSightingSummary(vehicleNumber, system) {
                     .filter(id => !sightingsById.has(id));
                 if (missingIds.length) {
                     const linked = await supabaseClient
-                        .from("sightings")
+                        .from(sightingsTableForSystem(system))
                         .select("id,saved_at")
                         .eq("user_id", userId)
                         .eq("system", "subway")
@@ -8608,15 +8651,15 @@ async function openVehicleTimeline(vehicleNumber, system) {
         const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
         if(sessionError||!session?.user){body.innerHTML='<div class="muted">Sign in to view your vehicle timeline.</div>';return;}
         const userId=session.user.id,value=String(vehicleNumber),byId=new Map();
-        const primary=await supabaseClient.from("sightings").select("id,car_number,fleet,line,station,notes,saved_at").eq("user_id",userId).eq("car_number",value);
+        const primary=await supabaseClient.from(sightingsTableForSystem(system)).select("id,car_number,fleet,line,station,notes,saved_at").eq("user_id",userId).eq("system",system).eq("car_number",value);
         if(primary.error) throw primary.error;
         (primary.data||[]).forEach(row=>byId.set(String(row.id),row));
-        if(system==="subway"){
-            const consist=await supabaseClient.from("sighting_cars").select("sighting_id").eq("user_id",userId).eq("car_number",value);
+        if(systemHasSightingCars(system)){
+            const consist=await supabaseClient.from(sightingCarsTableForSystem(system)).select("sighting_id").eq("user_id",userId).eq("system",system).eq("car_number",value);
             if(!consist.error){
                 const ids=[...new Set((consist.data||[]).map(r=>r.sighting_id).filter(Boolean).map(String))].filter(id=>!byId.has(id));
                 if(ids.length){
-                    const linked=await supabaseClient.from("sightings").select("id,car_number,fleet,line,station,notes,saved_at").eq("user_id",userId).in("id",ids);
+                    const linked=await supabaseClient.from(sightingsTableForSystem(system)).select("id,car_number,fleet,line,station,notes,saved_at").eq("user_id",userId).eq("system",system).in("id",ids);
                     if(!linked.error)(linked.data||[]).forEach(row=>byId.set(String(row.id),row));
                 }
             }
@@ -8666,7 +8709,7 @@ async function openLocationHistory(locationName, system = activeFleetSystem || "
         }
         const {data:{session},error:sessionError}=await supabaseClient.auth.getSession();
         if(sessionError||!session?.user){body.innerHTML='<div class="muted">Sign in to view your location history.</div>';return;}
-        const result=await supabaseClient.from("sightings")
+        const result=await supabaseClient.from(sightingsTableForSystem(system))
             .select("id,car_number,fleet,line,station,notes,saved_at")
             .eq("user_id",session.user.id)
             .eq("station",location)
@@ -8700,9 +8743,9 @@ document.addEventListener("click",event=>{
     openLocationHistory(location,button.dataset.locationSystem||activeFleetSystem||"subway");
 });
 
-async function getPrimaryRepeatSightingNotice(vehicleNumber, vehicleLabel = "vehicle") {
+async function getPrimaryRepeatSightingNotice(vehicleNumber, vehicleLabel = "vehicle", system = "subway") {
     if (fleetIdentifierTestMode) {
-        const rows=getActiveTestSightings(activeFleetSystem).filter(r=>String(r.car_number)===String(vehicleNumber));
+        const rows=getActiveTestSightings(system).filter(r=>String(r.car_number)===String(vehicleNumber));
         if(!rows.length) return "";
         const last=rows[0]?.saved_at?new Date(rows[0].saved_at).toLocaleString():"an earlier date";
         return `<div class="repeat-sighting-notice"><strong>You’ve seen ${escapeHTML(vehicleLabel)} ${escapeHTML(String(vehicleNumber))} before in Test Mode.</strong>${rows.length} previous test sighting${rows.length===1?"":"s"} · Last seen ${escapeHTML(last)}</div>`;
@@ -8713,7 +8756,7 @@ async function getPrimaryRepeatSightingNotice(vehicleNumber, vehicleLabel = "veh
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session?.user) return "";
         const value=String(vehicleNumber);
-        const {data,error}=await supabaseClient.from("sightings").select("id,saved_at").eq("user_id",session.user.id).eq("system","subway").eq("car_number",value).order("saved_at",{ascending:false});
+        const {data,error}=await supabaseClient.from(sightingsTableForSystem(system)).select("id,saved_at").eq("user_id",session.user.id).eq("system",system).eq("car_number",value).order("saved_at",{ascending:false});
         if(error||!data?.length) return "";
         const last=data[0]?.saved_at?new Date(data[0].saved_at).toLocaleString():"an earlier date";
         return `<div class="repeat-sighting-notice"><strong>You’ve seen ${escapeHTML(vehicleLabel)} ${escapeHTML(value)} before.</strong>${data.length} previous sighting${data.length===1?"":"s"} · Last seen ${escapeHTML(last)}</div>`;
@@ -9475,7 +9518,7 @@ async function identifyBus() {
     }
 
     const busDataForAlert = findBusFleet(Number(input));
-    const busRepeatNotice = input === "0000" ? "" : await getPrimaryRepeatSightingNotice(input, "bus");
+    const busRepeatNotice = input === "0000" ? "" : await getPrimaryRepeatSightingNotice(input, "bus", "bus");
     const recentBusSightingAlert = input === "0000" || !busDataForAlert ? "" : await getRecentSightingAlert(input, busDataForAlert.model, "bus");
     const busSightingSummary = input === "0000" ? "" : await getVehicleSightingSummary(input, "bus");
 
@@ -9567,7 +9610,7 @@ async function identifyBus() {
         <div class="sighting-panel">
             <h3>Log this sighting</h3>
             <div>What route did you see bus <strong>${escapeHTML(input)}</strong> on?</div>
-            <div class="bus-route-entry-grid" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:12px;">
+            <div class="bus-route-entry-grid">
                 <div class="bus-route-entry-cell" style="min-width:0;">
                     <label for="busRoutePrefix">Route prefix</label>
                     <select id="busRoutePrefix" style="box-sizing:border-box;width:100%;min-width:0;padding:12px;font-size:16px;border-radius:9px;" onchange="updateBusRoutePreview()">
@@ -10008,7 +10051,7 @@ async function getRecentBusStopsForRoute(route) {
     try {
         if(!supabaseClient || fiIsOfflineNow()) return names;
         const cutoff=new Date(now-2*60*1000).toISOString();
-        const {data,error}=await supabaseClient.from("sightings").select("station,line,saved_at")
+        const {data,error}=await supabaseClient.from(sightingsTableForSystem("bus")).select("station,line,saved_at")
             .eq("system","bus").eq("line",key).gte("saved_at",cutoff)
             .lte("saved_at",new Date(now).toISOString()).order("saved_at",{ascending:false}).limit(100);
         if(error) throw error;
@@ -10525,7 +10568,7 @@ async function saveBusSighting() {
     const { data:{ session } } = await supabaseClient.auth.getSession();
     if (!session?.user) { if(status) status.textContent="You need to be signed in to save sightings to the cloud."; return; }
     payload.user_id=session.user.id;
-    const { error }=await supabaseClient.from("sightings").insert(payload);
+    const { error }=await supabaseClient.from(sightingsTableForSystem("bus")).insert(payload);
     if(error){
         console.error("Could not save bus sighting:",error);
         if(isLikelyNetworkError(error)){
@@ -10713,7 +10756,7 @@ async function identifyRailroad(system) {
         recordIdentifierSearch({system,searchValue:input,found:false,resultDetails:{knownException:false}});
         return;
     }
-    const railroadRepeatNotice=await getPrimaryRepeatSightingNotice(input,system==="lirr"?"LIRR vehicle":"Metro-North vehicle");
+    const railroadRepeatNotice=await getPrimaryRepeatSightingNotice(input,system==="lirr"?"LIRR vehicle":"Metro-North vehicle",system);
     const recentRailroadSightingAlert=await getRecentSightingAlert(input,fleet.name,system);
     const railroadSightingSummary=await getVehicleSightingSummary(input,system);
     box.className="result";
@@ -10803,8 +10846,8 @@ async function saveRailroadSighting(system, vehicleNumber, fleetName, testMode=f
     if(!session?.user){ if(status) status.textContent="You need to be signed in to save sightings to the cloud."; return; }
     payload.user_id=session.user.id;
     if(status) status.textContent=requested.value?"Saving past railroad sighting...":"Saving railroad sighting...";
-    const {error}=await supabaseClient.from("sightings").insert(payload);
-    if(error){
+    const {data:savedSighting,error}=await supabaseClient.from(sightingsTableForSystem(system)).insert(payload).select("id").single();
+    if(error || !savedSighting?.id){
         console.error("Could not save railroad sighting:",error);
         if(isLikelyNetworkError(error)){
             queueOfflineSighting({system,payload});
@@ -10813,6 +10856,12 @@ async function saveRailroadSighting(system, vehicleNumber, fleetName, testMode=f
             return;
         }
         if(status) status.textContent="Could not save railroad sighting. Please try again."; return;
+    }
+    const childTable=sightingCarsTableForSystem(system);
+    if(childTable){
+        const childRow={system,user_id:session.user.id,sighting_id:savedSighting.id,car_number:String(vehicleNumber),fleet:fleetName,position:1};
+        const {error:childError}=await supabaseClient.from(childTable).insert(childRow);
+        if(childError){console.error("Could not save railroad vehicle detail:",childError);if(status)status.textContent="The sighting was saved, but its vehicle detail could not be saved.";return;}
     }
     if(status) status.innerHTML=sightingSaveSuccessHTML(system, 1, line, location);
     resetIdentifierAfterSave(system);
@@ -10920,6 +10969,24 @@ async function identify() {
         return;
     }
 
+// Special Subway map shortcut code
+if (
+    activeFleetSystem === "subway" &&
+    searchMode === "car" &&
+    input === "72145"
+) {
+    pendingSighting = null;
+    resultBox.className = "result";
+    resultBox.innerHTML = `
+        <div class="fleet-title">Subway Maps</div>
+        <div class="info" style="display:block;line-height:2;">
+            <div><strong>Subway:</strong> 5256</div>
+            <div><strong>Late-night:</strong> 5336</div>
+            <div><strong>Weekend Service Changes:</strong> 32096</div>
+        </div>
+    `;
+    return;
+}
 
     // Map shortcuts are Subway-only and must never enter fleet lookup,
     // unknown-car reporting, search history, or sighting flows.
@@ -11145,7 +11212,7 @@ async function identify() {
     recordSearchHistory(input, fleet);
 
     let repeatSightingNotice = "";
-    try { repeatSightingNotice = await getRepeatSightingNotice(input); }
+    try { repeatSightingNotice = await getRepeatSightingNotice(input, "subway"); }
     catch (error) { console.warn("Optional repeat-sighting lookup failed:", error); }
     if (requestId !== identifierSearchRequestId) return;
 
@@ -11960,15 +12027,14 @@ async function loadMySightings() {
 
     const [sightingsResult, consistResult] = await Promise.all([
         supabaseClient
-            .from("sightings")
+            .from(sightingsTableForSystem(activeFleetSystem))
             .select("id, car_number, fleet, line, station, notes, saved_at")
             .eq("user_id", session.user.id)
             .order("saved_at", { ascending: false }),
-        supabaseClient
-            .from("sighting_cars")
+        sightingCarsTableForSystem(activeFleetSystem) ? supabaseClient.from(sightingCarsTableForSystem(activeFleetSystem))
             .select("sighting_id, car_number, fleet, position")
             .eq("user_id", session.user.id)
-            .order("position", { ascending: true })
+            .order("position", { ascending: true }) : Promise.resolve({data:[],error:null})
     ]);
 
     if (sightingsResult.error) {
@@ -12817,7 +12883,7 @@ async function addCarsToExistingSighting(id) {
     }
 
     const { data: existingRows, error: existingError } = await supabaseClient
-        .from("sighting_cars")
+        .from(sightingCarsTableForSystem("subway"))
         .select("car_number, position")
         .eq("sighting_id", Number(id))
         .eq("user_id", session.user.id)
@@ -12874,7 +12940,7 @@ async function addCarsToExistingSighting(id) {
         return;
     }
 
-    const { error } = await supabaseClient.from("sighting_cars").insert(carsToInsert);
+    const { error } = await supabaseClient.from(sightingCarsTableForSystem("subway")).insert(carsToInsert);
     if (error) {
         console.error("Could not add consist cars:", error);
         if (status) status.textContent = "Could not add those cars. Please try again.";
@@ -12930,7 +12996,7 @@ async function saveSightingEdit(id) {
 
     if (status) status.textContent = "Saving changes...";
     const updatePayload={line:newLine,station:newStation||null,notes:newNotes||null,saved_at:date.toISOString()};
-    const { error } = await supabaseClient.from("sightings").update(updatePayload).eq("id", Number(id));
+    const { error } = await supabaseClient.from(sightingsTableForSystem(sightingEditSystem())).update(updatePayload).eq("id", Number(id));
     if (error) {
         console.error("Could not update sighting:", error);
         if (status) status.textContent = "Could not update sighting. Please try again.";
@@ -12950,8 +13016,18 @@ async function deleteSighting(id) {
     const status = document.getElementById("mySightingsStatus");
     status.textContent = "Deleting sighting...";
 
+    const deleteSystem = sightingEditSystem();
+    const childTable = sightingCarsTableForSystem(deleteSystem);
+    if (childTable) {
+        const { error: childDeleteError } = await supabaseClient.from(childTable).delete().eq("sighting_id", Number(id));
+        if (childDeleteError) {
+            console.error("Could not delete sighting vehicle details:", childDeleteError);
+            status.textContent = "Could not delete this sighting's vehicle details. Please try again.";
+            return;
+        }
+    }
     const { error } = await supabaseClient
-        .from("sightings")
+        .from(sightingsTableForSystem(deleteSystem))
         .delete()
         .eq("id", Number(id));
 
